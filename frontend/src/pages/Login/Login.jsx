@@ -23,16 +23,16 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate email format
-    if (!email.endsWith('@srmist.edu.in')) {
-      toast.error('Please use your institutional email');
+    // Basic validation
+    if (!email || !password) {
+      toast.error('Please fill in all fields');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -41,15 +41,31 @@ export default function Login() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Login failed');
 
+      // Store token and user data
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       toast.success('Login successful');
 
-      if (data.role === 'admin') {
-        navigate('/admin');
-      } else if (data.role === 'user') {
-        navigate('/user');
-      } else {
-        toast.error('Unknown role. Contact admin.');
+      // Redirect based on role
+      switch(data.user.role) {
+        case 'super_admin':
+          navigate('/super-admin');
+          break;
+        case 'campus_admin':
+          navigate('/campus-admin');
+          break;
+        case 'admin':
+          navigate('/admin');
+          break;
+        case 'faculty':
+          navigate('/faculty');
+          break;
+        case 'scholar':
+          navigate('/scholar');
+          break;
+        default:
+          toast.error('Unknown role. Contact admin.');
+          break;
       }
     } catch (err) {
       toast.error(err.message || 'Login failed');
@@ -72,10 +88,10 @@ export default function Login() {
               />
             </div>
             <CardTitle className="text-2xl font-bold tracking-tight">
-              Scholar Sync
+              ScholarSync
             </CardTitle>
             <CardDescription className="text-blue-100 my-3">
-              Enter your credentials to access your account
+              Research Management Portal
             </CardDescription>
           </div>
         </CardHeader>
@@ -94,7 +110,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="username@srmist.edu.in"
+                  placeholder="username@institution.edu"
                   className="pl-10 h-11 text-base focus-visible:ring-blue-500 focus-visible:ring-2"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -114,6 +130,7 @@ export default function Login() {
                   variant="link"
                   type="button"
                   className="text-blue-600 hover:text-blue-800 text-xs h-auto px-0"
+                  onClick={() => toast.info('Please contact your administrator to reset your password')}
                 >
                   Forgot password?
                 </Button>
@@ -130,6 +147,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={8}
                   autoComplete="current-password"
                 />
                 <button
@@ -149,7 +167,7 @@ export default function Login() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium text-base shadow-sm transition-colors duration-200"
+              className="w-full h-11 bg-blue-500 hover:bg-blue-600 text-white font-medium text-base shadow-sm transition-colors duration-200"
               disabled={loading}
             >
               {loading ? (
@@ -167,9 +185,13 @@ export default function Login() {
             <div className="text-center pt-2">
               <p className="text-xs text-gray-500">
                 Need help?{' '}
-                <a href="mailto:helpdesk@srmist.edu.in" className="text-blue-600 hover:underline">
+                <Button 
+                  variant="link" 
+                  className="text-blue-500 hover:text-blue-600 text-xs h-auto px-0"
+                  onClick={() => toast.info('Please contact your campus administrator for assistance')}
+                >
                   Contact support
-                </a>
+                </Button>
               </p>
             </div>
           </form>
