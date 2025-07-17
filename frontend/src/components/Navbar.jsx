@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import { User, LogOut, ChevronDown, LayoutDashboard, Settings, Upload } from 'lucide-react';
+import { User, LogOut, ChevronDown, LayoutDashboard, Settings, Upload, Users, FilePlus } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -50,11 +50,34 @@ export default function Navbar() {
     return parts.map(part => part.charAt(0).toUpperCase()).join('').slice(0, 2);
   };
 
+  // Determine dashboard path based on role
+  const getDashboardPath = () => {
+    switch(user.role) {
+      case 'super_admin':
+        return '/super-admin';
+      case 'campus_admin':
+        return '/campus-admin';
+      case 'admin':
+        return '/admin';
+      case 'faculty':
+      case 'scholar':
+        return '/dashboard';
+      default:
+        return '/';
+    }
+  };
+
+  // Check if user can upload research papers
+  const canUpload = ['admin', 'faculty', 'scholar'].includes(user.role);
+
+  // Check if user can manage users
+  const canManageUsers = ['super_admin', 'campus_admin', 'admin'].includes(user.role);
+
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b px-6 py-3 flex items-center justify-between">
       {/* Left: Logo and Title */}
       <Link
-        to={user.role === 'admin' ? '/admin' : '/user'}
+        to={getDashboardPath()}
         className="flex items-center space-x-3 group"
       >
         <div className="p-1.5 rounded-lg transition-all">
@@ -69,21 +92,37 @@ export default function Navbar() {
         </span>
       </Link>
 
-      {/* Right: Upload Button (only for users) and Profile Dropdown */}
+      {/* Right: Actions and Profile Dropdown */}
       <div className="flex items-center gap-4">
-        {user.role === 'user' && (
+        {/* Upload Button (for admin, faculty, scholar) */}
+        {canUpload && (
           <Button 
             variant="default"
             size="sm"
             onClick={() => navigate("/upload")}
             className="gap-2 bg-blue-500 hover:bg-blue-600 text-white shadow-sm transition-colors"
           >
-            <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Upload Files</span>
+            <FilePlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Upload Research</span>
             <span className="sm:hidden">Upload</span>
           </Button>
         )}
         
+        {/* User Management Button (for super_admin, campus_admin, admin) */}
+        {canManageUsers && (
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/users")}
+            className="gap-2 border-blue-500 text-blue-500 hover:bg-blue-50 shadow-sm transition-colors"
+          >
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Manage Users</span>
+            <span className="sm:hidden">Users</span>
+          </Button>
+        )}
+        
+        {/* Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -101,10 +140,15 @@ export default function Navbar() {
                   {user.email.split('@')[0]}
                 </span>
                 <Badge 
-                  variant={user.role === 'admin' ? 'default' : 'secondary'}
+                  variant={
+                    user.role === 'super_admin' ? 'default' :
+                    user.role === 'campus_admin' ? 'secondary' :
+                    user.role === 'admin' ? 'outline' :
+                    'destructive'
+                  }
                   className="h-5 text-xs capitalize px-1.5"
                 >
-                  {user.role}
+                  {user.role.replace('_', ' ')}
                 </Badge>
               </div>
               <ChevronDown className="h-4 w-4 text-gray-500 ml-1" />
@@ -128,11 +172,21 @@ export default function Navbar() {
                     {user.email}
                   </p>
                   <Badge 
-                    variant={user.role === 'admin' ? 'default' : 'secondary'}
+                    variant={
+                      user.role === 'super_admin' ? 'default' :
+                      user.role === 'campus_admin' ? 'secondary' :
+                      user.role === 'admin' ? 'outline' :
+                      'destructive'
+                    }
                     className="h-5 text-xs capitalize mt-1 w-fit"
                   >
-                    {user.role}
+                    {user.role.replace('_', ' ')}
                   </Badge>
+                  {user.college && user.college !== 'N/A' && (
+                    <span className="text-xs text-gray-500 mt-1 truncate">
+                      {user.college}
+                    </span>
+                  )}
                 </div>
               </div>
             </DropdownMenuItem>
@@ -140,17 +194,38 @@ export default function Navbar() {
             <DropdownMenuSeparator className="my-1" />
             
             <DropdownMenuItem 
+              onClick={() => navigate(getDashboardPath())}
               className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
             >
               <LayoutDashboard className="mr-2 h-4 w-4 text-gray-500" />
-              Dashboard Overview
+              Dashboard
             </DropdownMenuItem>
+            
+            {canManageUsers && (
+              <DropdownMenuItem 
+                onClick={() => navigate("/users")}
+                className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
+              >
+                <Users className="mr-2 h-4 w-4 text-gray-500" />
+                Manage Users
+              </DropdownMenuItem>
+            )}
+            
+            {canUpload && (
+              <DropdownMenuItem 
+                onClick={() => navigate("/upload")}
+                className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
+              >
+                <FilePlus className="mr-2 h-4 w-4 text-gray-500" />
+                Upload Research
+              </DropdownMenuItem>
+            )}
             
             <DropdownMenuItem 
               asChild
               className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
             >
-              <Link to={user.role === 'admin' ? '/admin/settings' : '/user/settings'}>
+              <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4 text-gray-500" />
                 Account Settings
               </Link>
