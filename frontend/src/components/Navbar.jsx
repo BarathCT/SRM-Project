@@ -44,11 +44,13 @@ export default function Navbar() {
 
   if (!user) return null;
 
-  // Get initials from email for avatar fallback
-  const getInitials = (email) => {
-    const parts = email.split('@')[0].split(/[._]/);
-    return parts.map(part => part.charAt(0).toUpperCase()).join('').slice(0, 2);
+  // Get initials from full name for avatar fallback
+  const getInitials = (name) => {
+  if (!name) return 'US';
+    const names = name.trim().split(' ');
+    return names.map(n => n.charAt(0)).join('').slice(0, 2).toUpperCase();
   };
+
 
   // Determine dashboard path based on role
   const getDashboardPath = () => {
@@ -130,14 +132,14 @@ export default function Navbar() {
               className="flex items-center gap-2 px-3 py-8 rounded-lg hover:bg-gray-100/50 focus-visible:ring-0 focus-visible:ring-offset-0"
             >
               <Avatar className="h-8 w-8 border border-gray-200">
-                <AvatarImage src="" alt={user.email} />
+                <AvatarImage src="" alt={user.fullName || user.email} />
                 <AvatarFallback className="bg-blue-100 text-blue-800 font-medium">
-                  {getInitials(user.email)}
+                  {getInitials(user.fullName || user.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start gap-0.5">
                 <span className="ml-1 text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                  {user.email.split('@')[0]}
+                  {user.fullName || user.email.split('@')[0]}
                 </span>
                 <Badge 
                   variant={
@@ -162,13 +164,16 @@ export default function Navbar() {
             <DropdownMenuItem className="px-2 py-1.5 rounded-md">
               <div className="flex items-center gap-3 w-full">
                 <Avatar className="h-9 w-9 flex-shrink-0">
-                  <AvatarImage src="" alt={user.email} />
+                  <AvatarImage src="" alt={user.fullName || user.email} />
                   <AvatarFallback className="bg-blue-100 text-blue-800 font-medium">
-                    {getInitials(user.email)}
+                    {getInitials(user.fullName || user.email)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.fullName || user.email.split('@')[0]}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
                     {user.email}
                   </p>
                   <Badge 
