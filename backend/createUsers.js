@@ -10,6 +10,9 @@ const run = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
+
+
+    
     // Optional: clean slate
     await User.deleteMany({});
     console.log('🗑️  Existing users cleared');
