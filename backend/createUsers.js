@@ -2,50 +2,77 @@
 // import mongoose from 'mongoose';
 // import dotenv from 'dotenv';
 // import bcrypt from 'bcrypt';
-// import User from './models/User.js'; // ✅ Adjust path if needed
+// import User from './models/User.js'; // ✅ Adjust path as per your project structure
 
-dotenv.config();
+// dotenv.config();
 
 // const run = async () => {
 //   try {
 //     await mongoose.connect(process.env.MONGO_URI);
-//     console.log('Connected to MongoDB');
+//     console.log('✅ Connected to MongoDB');
 
-//     const hashedAdmin = await bcrypt.hash('admin123', 10);
-//     const hashedUser = await bcrypt.hash('user123', 10);
+//     // Optional: clean slate
+//     await User.deleteMany({});
 
-//     await User.deleteMany({}); // Optional: Clean up all users
+//     // Passwords
+//     const superAdminPass = await bcrypt.hash('superadmin123', 10);
+//     const campusAdminPass = await bcrypt.hash('campusadmin123', 10);
+//     const adminPass = await bcrypt.hash('admin123', 10);
+//     const facultyPass = await bcrypt.hash('faculty123', 10);
+//     const scholarPass = await bcrypt.hash('scholar123', 10);
 
-//     await User.insertMany([
+//     const users = [
 //       {
-//         email: 'admin@srmist.edu.in',
-//         password: hashedAdmin,
-//         role: 'admin',
+//         email: 'superadmin@srmist.edu.in',
+//         password: superAdminPass,
+//         role: 'super_admin',
 //         college: 'N/A',
 //         category: 'N/A'
 //       },
 //       {
-//         email: 'user@srmist.edu.in',
-//         password: hashedUser,
-//         role: 'user',
+//         email: 'campusadmin@ramapuram.edu.in',
+//         password: campusAdminPass,
+//         role: 'campus_admin',
 //         college: 'SRMIST RAMAPURAM',
-//         category: 'Engineering and Technology' // ✅ Only valid for SRMIST RAMAPURAM
+//         category: 'N/A'
 //       },
 //       {
-//         email: 'user2@srmist.edu.in',
-//         password: await bcrypt.hash('user123', 10),
-//         role: 'user',
-//         college: 'EASWARI ENGINEERING COLLEGE',
-//         category: 'N/A' // ✅ Automatically N/A for non-RAMAPURAM
+//         email: 'campusadmin@trichy.edu.in',
+//         password: campusAdminPass,
+//         role: 'campus_admin',
+//         college: 'SRM TRICHY',
+//         category: 'N/A'
+//       },
+//       {
+//         email: 'admin@ramapuram.edu.in',
+//         password: adminPass,
+//         role: 'admin',
+//         college: 'SRMIST RAMAPURAM',
+//         category: 'N/A'
+//       },
+//       {
+//         email: 'faculty1@ramapuram.edu.in',
+//         password: facultyPass,
+//         role: 'faculty',
+//         college: 'SRMIST RAMAPURAM',
+//         category: 'Engineering and Technology'
+//       },
+//       {
+//         email: 'scholar1@ramapuram.edu.in',
+//         password: scholarPass,
+//         role: 'scholar',
+//         college: 'SRMIST RAMAPURAM',
+//         category: 'Engineering and Technology'
 //       }
-//     ]);
+//     ];
 
-//     console.log('Users created successfully');
+//     await User.insertMany(users);
+//     console.log('✅ Users created successfully');
 //   } catch (error) {
-//     console.error('Error creating users:', error);
+//     console.error('❌ Error creating users:', error.message);
 //   } finally {
 //     mongoose.connection.close();
 //   }
 // };
 
-run();
+// run();

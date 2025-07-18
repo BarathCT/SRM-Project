@@ -78,15 +78,18 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center px-4 py-8">
       <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 border border-gray-100 shadow-lg rounded-xl overflow-hidden">
         {/* Header with subtle gradient */}
-        <CardHeader className="text-center space-y-4 pb-0 bg-gradient-to-r from-blue-600 to-indigo-700 text-white pt-8">
+        <CardHeader className="text-center space-y-4 pb-0 bg-gradient-to-r from-blue-400 to-blue-600 text-white pt-8">
+
           <div className="flex flex-col items-center">
+
             <div className="bg-white p-2 rounded-full shadow-md mb-3">
               <img
                 src="/logo.jpg"
                 alt="ScholarSync"
-                className="h-14 w-14 rounded-full object-cover border-2 border-blue-100"
+                className="h-14 w-14 rounded-full object-cover"
               />
             </div>
+
             <CardTitle className="text-2xl font-bold tracking-tight">
               ScholarSync
             </CardTitle>
