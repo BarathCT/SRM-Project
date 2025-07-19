@@ -68,6 +68,15 @@ export default function Navbar() {
     }
   };
 
+
+  const getUploadPath = () => {
+    switch(user.role) {
+      case 'faculty':
+        return '/faculty/upload';
+          }
+  };
+
+
   // Check if user can upload research papers
   const canUpload = ['admin', 'faculty', 'scholar'].includes(user.role);
 
@@ -100,7 +109,7 @@ export default function Navbar() {
           <Button 
             variant="default"
             size="sm"
-            onClick={() => navigate("/upload")}
+            onClick={() => navigate(getUploadPath())}
             className="gap-2 bg-blue-500 hover:bg-blue-600 text-white shadow-sm transition-colors"
           >
             <FilePlus className="h-4 w-4" />
