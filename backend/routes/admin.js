@@ -1,10 +1,20 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import multer from 'multer';
+import xlsx from 'xlsx';
 import User from '../models/User.js';
 import { sendUserWelcomeEmail } from '../utils/sendUserWelcomeMail.js';
 
 const router = express.Router();
+
+// Helper function to normalize college names
+const normalizeCollegeName = (college) => {
+  if (!college || college === 'N/A') return 'N/A';
+  const upperCollege = college.toUpperCase();
+  const validColleges = ['SRMIST RAMAPURAM', 'SRM TRICHY', 'EASWARI ENGINEERING COLLEGE', 'TRP ENGINEERING COLLEGE'];
+  return validColleges.find(c => c === upperCollege) || 'N/A';
+};
 
 // Helper function to validate college-category relationship
 const validateCollegeCategory = (college, category) => {
@@ -15,22 +25,18 @@ const validateCollegeCategory = (college, category) => {
     'TRP ENGINEERING COLLEGE': ['N/A'],
     'N/A': ['N/A']
   };
-
   return collegeData[college]?.includes(category) || false;
 };
 
-// Helper: Does this college require a category (not N/A)?
 const collegeRequiresCategory = (college) => {
   return ['SRMIST RAMAPURAM', 'SRM TRICHY'].includes(college);
 };
 
-// Middleware: Authenticate and attach user info from JWT
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Unauthorized: Token missing' });
   }
-
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -41,7 +47,6 @@ function authenticate(req, res, next) {
   }
 }
 
-// Helper: Check if creator has permission to create the specified role
 function canCreateRole(creatorRole, targetRole) {
   const rolePermissions = {
     super_admin: ['campus_admin', 'admin', 'faculty'],
@@ -51,7 +56,6 @@ function canCreateRole(creatorRole, targetRole) {
   return rolePermissions[creatorRole]?.includes(targetRole) || false;
 }
 
-// Helper: Check if user can modify target user
 function canModifyUser(creator, targetUser) {
   if (creator.role === 'super_admin') return true;
   if (creator.userId === targetUser._id.toString()) return false;
@@ -67,16 +71,31 @@ function canModifyUser(creator, targetUser) {
            creator.category === targetUser.category &&
            targetUser.role === 'faculty';
   }
-
   return false;
 }
 
-// Generate a faculty ID
 function generateFacultyId() {
   return 'FAC-' + Math.random().toString(36).substr(2, 8).toUpperCase();
 }
 
-// GET: Get all users (filtered by access)
+// Multer config for bulk upload
+const upload = multer({
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: function (req, file, cb) {
+    if (
+      file.mimetype ===
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel' ||
+      file.mimetype === 'text/csv'
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel (.xlsx, .xls) or CSV files are allowed!'));
+    }
+  },
+});
+
+// GET: Get all users
 router.get('/users', authenticate, async (req, res) => {
   try {
     const { role, college, category } = req.user;
@@ -133,17 +152,15 @@ router.post('/users', authenticate, async (req, res) => {
     if (!email || !password || !fullName || !role) {
       return res.status(400).json({ message: 'Email, password, full name and role are required' });
     }
-
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
-
     if (!canCreateRole(creator.role, role)) {
       return res.status(403).json({ message: `You are not allowed to create a '${role}'` });
     }
 
-    let finalCollege = college;
+    let finalCollege = normalizeCollegeName(college);
     let finalCategory = category;
     let finalFacultyId = facultyId;
 
@@ -154,44 +171,24 @@ router.post('/users', authenticate, async (req, res) => {
     } else {
       if (creator.role !== 'super_admin') {
         finalCollege = creator.college;
+        finalCategory = collegeRequiresCategory(creator.college) ? creator.category : 'N/A';
       }
 
-      const validColleges = ['SRMIST RAMAPURAM', 'SRM TRICHY', 'EASWARI ENGINEERING COLLEGE', 'TRP ENGINEERING COLLEGE'];
-      if (finalCollege !== 'N/A' && !validColleges.includes(finalCollege)) {
-        return res.status(400).json({ message: 'Invalid college specified' });
-      }
-
-      if (role !== 'super_admin') {
-        finalFacultyId = facultyId || generateFacultyId();
-      }
-
-      if (!collegeRequiresCategory(finalCollege)) {
-        finalCategory = 'N/A';
-      } else if (creator.role === 'campus_admin' && (role === 'admin' || role === 'faculty')) {
-        finalCategory = creator.category;
-      } else if (
-        creator.role === 'super_admin' &&
-        (role === 'admin' || role === 'campus_admin' || role === 'faculty')
-      ) {
+      // Only require category for colleges that need it
+      if (collegeRequiresCategory(finalCollege)) {
         if (!finalCategory || finalCategory === 'N/A') {
           return res.status(400).json({ message: 'Category is required for this role in this college' });
         }
         if (!validateCollegeCategory(finalCollege, finalCategory)) {
           return res.status(400).json({ message: `Category ${finalCategory} is not valid for college ${finalCollege}` });
         }
-      } else if (role === 'faculty') {
-        if (!finalCategory || finalCategory === 'N/A') {
-          return res.status(400).json({ message: 'Category is required for faculty' });
-        }
-        if (!validateCollegeCategory(finalCollege, finalCategory)) {
-          return res.status(400).json({ message: `Category ${finalCategory} is not valid for college ${finalCollege}` });
-        }
-      } else if (role === 'campus_admin') {
-        if (!finalCategory || finalCategory === 'N/A') {
-          return res.status(400).json({ message: 'Category is required for campus admin in this college' });
-        }
       } else {
+        // For Eswari/TRP, always set category to N/A for any role
         finalCategory = 'N/A';
+      }
+
+      if (role !== 'super_admin') {
+        finalFacultyId = facultyId || generateFacultyId();
       }
     }
 
@@ -251,16 +248,17 @@ router.put('/users/:id', authenticate, async (req, res) => {
     if (!userToUpdate) {
       return res.status(404).json({ message: 'User not found' });
     }
-
     if (userToUpdate._id.toString() === updaterId) {
       return res.status(403).json({ message: 'You cannot modify your own role, college or category' });
     }
-
     if (!canModifyUser(req.user, userToUpdate)) {
       return res.status(403).json({ message: 'You are not authorized to modify this user' });
     }
 
     const updateData = { ...req.body };
+    if (updateData.college) {
+      updateData.college = normalizeCollegeName(updateData.college);
+    }
     const targetRole = updateData.role || userToUpdate.role;
     const targetCollege = updateData.college || userToUpdate.college;
 
@@ -331,11 +329,9 @@ router.delete('/users/:id', authenticate, async (req, res) => {
     if (!userToDelete) {
       return res.status(404).json({ message: 'User not found' });
     }
-
     if (userToDelete._id.toString() === deleterId) {
       return res.status(403).json({ message: 'You cannot delete yourself' });
     }
-
     if (!canModifyUser(req.user, userToDelete)) {
       return res.status(403).json({ message: 'You are not authorized to delete this user' });
     }
@@ -344,6 +340,165 @@ router.delete('/users/:id', authenticate, async (req, res) => {
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Error deleting user', error: err.message });
+  }
+});
+
+// BULK UPLOAD: Create users from Excel/CSV file
+// BULK UPLOAD: Create users from Excel/CSV file
+router.post('/bulk-upload-users', authenticate, upload.single('file'), async (req, res) => {
+  const creator = req.user;
+  const defaultRole = req.body.role || null;
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+  try {
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    let success = 0;
+    let failed = 0;
+    let errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        // Get columns (case insensitive)
+        const email = row.email || row.Email || row.EMAIL;
+        const fullName = row.fullName || row['Full Name'] || row.FULLNAME || row.name;
+        let password = row.password || row.Password || row.PASSWORD;
+        let role = creator.role === 'admin' ? 'faculty' : (row.role || row.Role || row.ROLE || defaultRole);
+        let college = normalizeCollegeName(row.college || row.College || row.COLLEGE);
+        let category = row.category || row.Category || row.CATEGORY;
+        let facultyId = row.facultyId || row.FacultyId || row.FACULTYID;
+
+        if (!email || !fullName) {
+          failed++;
+          errors.push(`Row ${i + 2}: Missing email or fullName`);
+          continue;
+        }
+
+        // For admin, skip role validation since we force it to 'faculty'
+        if (creator.role !== 'admin' && !role) {
+          failed++;
+          errors.push(`Row ${i + 2}: Role is missing`);
+          continue;
+        }
+
+        if (!canCreateRole(creator.role, role)) {
+          failed++;
+          errors.push(`Row ${i + 2}: You are not allowed to create a '${role}'`);
+          continue;
+        }
+
+        // Check for existing user
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+          failed++;
+          errors.push(`Row ${i + 2}: User already exists`);
+          continue;
+        }
+
+        let finalCollege = college;
+        let finalCategory = category;
+        let finalFacultyId = facultyId;
+
+        if (role === 'super_admin') {
+          finalCollege = 'N/A';
+          finalCategory = 'N/A';
+          finalFacultyId = 'N/A';
+        } else {
+          // For campus_admin and admin, always use their own college and category
+          if (['campus_admin', 'admin'].includes(creator.role)) {
+            finalCollege = creator.college;
+            finalCategory = collegeRequiresCategory(creator.college) ? creator.category : 'N/A';
+          } else if (creator.role === 'super_admin') {
+            // super_admin can assign college/category from file
+            finalCollege = college;
+            finalCategory = category;
+            if (!collegeRequiresCategory(finalCollege)) {
+              finalCategory = 'N/A';
+            }
+          }
+
+          if (role !== 'super_admin') {
+            finalFacultyId = facultyId || generateFacultyId();
+          }
+
+          // Only require category for colleges that need it
+          if (collegeRequiresCategory(finalCollege)) {
+            if (!finalCategory || finalCategory === 'N/A') {
+              failed++;
+              errors.push(`Row ${i + 2}: Category is required for college ${finalCollege}`);
+              continue;
+            }
+            if (!validateCollegeCategory(finalCollege, finalCategory)) {
+              failed++;
+              errors.push(`Row ${i + 2}: Category ${finalCategory} is not valid for college ${finalCollege}`);
+              continue;
+            }
+          } else {
+            // For Eswari/TRP, always set category to N/A for any role
+            finalCategory = 'N/A';
+          }
+        }
+
+        if (!password) {
+          // Auto-generate password if missing
+          password = Math.random().toString(36).slice(-8);
+        }
+        const bcrypt = await import('bcrypt');
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = new User({
+          email,
+          password: hashedPassword,
+          fullName,
+          facultyId: finalFacultyId,
+          role,
+          college: finalCollege,
+          category: finalCategory,
+          createdBy: creator.userId
+        });
+
+        await newUser.save();
+
+        if (['super_admin', 'campus_admin', 'admin'].includes(creator.role)) {
+          try {
+            await sendUserWelcomeEmail({
+              to: email,
+              fullName,
+              email,
+              password,
+              role,
+              collegeName: finalCollege,
+              category: finalCategory,
+              appUrl: process.env.APP_URL || 'https://scholarsync.example.com'
+            });
+          } catch (mailErr) {
+            errors.push(`Row ${i + 2}: Failed to send welcome email`);
+          }
+        }
+
+        success++;
+      } catch (rowErr) {
+        failed++;
+        errors.push(`Row ${i + 2}: ${rowErr.message}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      summary: {
+        total: rows.length,
+        success,
+        failed,
+        errors,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Bulk upload failed.' });
   }
 });
 

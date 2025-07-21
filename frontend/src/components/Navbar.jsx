@@ -51,7 +51,6 @@ export default function Navbar() {
     return names.map(n => n.charAt(0)).join('').slice(0, 2).toUpperCase();
   };
 
-
   // Determine dashboard path based on role
   const getDashboardPath = () => {
     switch(user.role) {

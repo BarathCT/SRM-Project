@@ -1,35 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Trash2, Edit, Users, UserCog, Mail, Lock, UserPlus, Shield, BookOpen, Filter, X, User, BadgeCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { jwtDecode } from 'jwt-decode';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+
 import { DeleteConfirmationDialog } from './components/DeleteConfirmationDialog';
 import AddUserDialog from './components/AddUserDialog';
 import UserTable from './components/UserTable';
 import UserFilters from './components/UserFilter';
 import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
+import BulkUploadDialog from './components/BulkUploadDialog';
 
 // College options with their specific categories
 const collegeOptions = [
@@ -95,6 +75,7 @@ export default function UserManagement() {
   const [openDialog, setOpenDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openBulkDialog, setOpenBulkDialog] = useState(false);
   const [filters, setFilters] = useState({
     role: 'all',
     category: 'all',
@@ -103,8 +84,10 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+
   const navigate = useNavigate();
 
+  // Validate token and fetch users on mount
   useEffect(() => {
     const validateTokenAndFetchUsers = async () => {
       const token = localStorage.getItem('token');
@@ -128,10 +111,13 @@ export default function UserManagement() {
       }
     };
     validateTokenAndFetchUsers();
+    // eslint-disable-next-line
   }, [navigate]);
 
+  // Apply user filters
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line
   }, [users, filters, searchTerm]);
 
   const applyFilters = () => {
@@ -155,7 +141,7 @@ export default function UserManagement() {
     setFilteredUsers(result);
   };
 
-  // This logic ensures campus admin will see admins and faculty with their college and category
+  // Fetch users based on current user role
   const fetchUsers = async (user) => {
     try {
       setIsLoading(true);
@@ -182,11 +168,14 @@ export default function UserManagement() {
           'Content-Type': 'application/json'
         }
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to fetch users: ${res.status}`);
+      const contentType = res.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server did not return JSON. Response: ${text}`);
       }
-      const data = await res.json();
       if (!Array.isArray(data)) {
         throw new Error('Invalid data format: Expected array of users');
       }
@@ -227,31 +216,26 @@ export default function UserManagement() {
       if (!form.fullName) throw new Error('Full name is required');
       if (!form.email) throw new Error('Email is required');
       if (!editMode && !form.password) throw new Error('Password is required');
-
       let payload = {
         fullName: form.fullName,
         email: form.email,
         role: form.role,
         ...(form.password && { password: form.password })
       };
-
       // Handle faculty ID
       if (form.role !== 'super_admin') {
         payload.facultyId = form.facultyId || generateFacultyId();
       } else {
         payload.facultyId = 'N/A';
       }
-
-      // Handle college and category based on current user's role and selections
+      // College and category logic based on role
       if (currentUser.role === 'super_admin') {
         payload.college = form.college;
-
         // For super admin, validate category requirements
         if (form.role !== 'super_admin') {
           const college = collegeOptions.find(c => c.name === form.college);
           if (college && college.hasCategories) {
-            // Colleges with categories require proper category selection
-            if (form.role === 'faculty' || form.role === 'campus_admin' || form.role === 'admin') {
+            if (['faculty', 'campus_admin', 'admin'].includes(form.role)) {
               if (!form.category || form.category === 'N/A') {
                 throw new Error('Category is required for this role in this college');
               }
@@ -260,19 +244,15 @@ export default function UserManagement() {
               payload.category = 'N/A';
             }
           } else {
-            // Colleges without categories
             payload.category = 'N/A';
           }
         } else {
           payload.category = 'N/A';
         }
       } else {
-        // For non-super admins, use their own college/category
         payload.college = currentUser.college;
-        // For colleges with categories, send user's category, else N/A
         payload.category = collegesWithCategories.includes(currentUser.college) ? currentUser.category : 'N/A';
       }
-
       const url = editMode 
         ? `http://localhost:5000/api/admin/users/${currentUserId}`
         : 'http://localhost:5000/api/admin/users';
@@ -287,10 +267,17 @@ export default function UserManagement() {
         body: JSON.stringify(payload),
       });
 
+      const contentType = res.headers.get('content-type');
+      let result;
+      if (contentType && contentType.includes('application/json')) {
+        result = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server did not return JSON. Response: ${text}`);
+      }
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message ||
-          (editMode ? 'Failed to update user' : 'Failed to create user'));
+        throw new Error(result.error || result.message || (editMode ? 'Failed to update user' : 'Failed to create user'));
       }
 
       toast.success(editMode ? 'User updated successfully' : 'User created successfully');
@@ -329,16 +316,23 @@ export default function UserManagement() {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/users/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
+      const contentType = res.headers.get('content-type');
+      let result;
+      if (contentType && contentType.includes('application/json')) {
+        result = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server did not return JSON. Response: ${text}`);
+      }
+      if (!res.ok) {
+        throw new Error(result.error || result.message || 'Failed to delete user');
       }
       toast.success('User deleted successfully');
       await fetchUsers(currentUser);
@@ -378,7 +372,7 @@ export default function UserManagement() {
       category: value === 'N/A' ? 'N/A' : (form.category || 'N/A')
     };
     const selectedCollege = collegeOptions.find(c => c.name === value);
-    if (form.role === 'campus_admin' || form.role === 'admin' || form.role === 'faculty') {
+    if (['campus_admin', 'admin', 'faculty'].includes(form.role)) {
       if (selectedCollege && !selectedCollege.hasCategories) {
         newForm.category = 'N/A';
       }
@@ -394,7 +388,7 @@ export default function UserManagement() {
       facultyId: value === 'super_admin' ? 'N/A' : (form.facultyId || generateFacultyId())
     };
     const selectedCollege = collegeOptions.find(c => c.name === newForm.college);
-    if ((value === 'campus_admin' || value === 'admin' || value === 'faculty') && selectedCollege && !selectedCollege.hasCategories) {
+    if ((['campus_admin', 'admin', 'faculty'].includes(value)) && selectedCollege && !selectedCollege.hasCategories) {
       newForm.category = 'N/A';
     }
     setForm(newForm);
@@ -450,14 +444,54 @@ export default function UserManagement() {
       .map(user => user.college)
   )];
 
+  // Bulk Upload Function (local, not helper)
+  const handleBulkUpload = async (formData) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('http://localhost:5000/api/admin/bulk-upload-users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      const contentType = res.headers.get('content-type');
+      let result;
+      if (contentType && contentType.includes('application/json')) {
+        result = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server did not return JSON. Response: ${text}`);
+      }
+      if (!res.ok) {
+        throw new Error(result.error || result.message || 'Bulk upload failed');
+      }
+      toast.success('Bulk upload successful!');
+      await fetchUsers(currentUser);
+      return result;
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload. Please try again.');
+      return { error: err.message || 'Failed to upload. Please try again.' };
+    }
+  };
+
   return (
-    <div className="p-6 w-9/10 mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
 
       {/* Header Section */}
       <UserHeader
         currentUser={currentUser}
         getAvailableRoles={getAvailableRoles}
         setOpenDialog={setOpenDialog}
+        setOpenBulkDialog={setOpenBulkDialog}
+      />
+
+      <BulkUploadDialog
+        open={openBulkDialog}
+        onClose={() => setOpenBulkDialog(false)}
+        currentUser={currentUser}
+        getAvailableRoles={getAvailableRoles}
+        onBulkUpload={handleBulkUpload}
       />
 
       {/* Stats Card */}
@@ -468,41 +502,35 @@ export default function UserManagement() {
       />
 
       {/* Filters */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="p-4">
-          <UserFilters
-            filters={filters}
-            setFilters={setFilters}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            availableRoles={availableRoles}
-            availableCategories={availableCategories}
-            availableColleges={availableColleges}
-            currentUser={currentUser}
-            resetFilters={resetFilters}
-          />
-        </CardHeader>
-      </Card>
+      <UserFilters
+        filters={filters}
+        setFilters={setFilters}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        availableRoles={availableRoles}
+        availableCategories={availableCategories}
+        availableColleges={availableColleges}
+        currentUser={currentUser}
+        resetFilters={resetFilters}
+      />
 
       {/* Users Table */}
-      <Card className="border-0 shadow-sm">
-        <UserTable
-          users={users}
-          filteredUsers={filteredUsers}
-          isLoading={isLoading}
-          currentUser={currentUser}
-          getRoleColor={getRoleColor}
-          canModifyUser={canModifyUser}
-          handleEdit={handleEdit}
-          setDeleteDialogOpen={setDeleteDialogOpen}
-          setUserToDelete={setUserToDelete}
-          getAvailableRoles={getAvailableRoles}
-          filters={filters}
-          searchTerm={searchTerm}
-          resetFilters={resetFilters}
-          setOpenDialog={setOpenDialog}
-        />
-      </Card>
+      <UserTable
+        users={users}
+        filteredUsers={filteredUsers}
+        isLoading={isLoading}
+        currentUser={currentUser}
+        getRoleColor={getRoleColor}
+        canModifyUser={canModifyUser}
+        handleEdit={handleEdit}
+        setDeleteDialogOpen={setDeleteDialogOpen}
+        setUserToDelete={setUserToDelete}
+        getAvailableRoles={getAvailableRoles}
+        filters={filters}
+        searchTerm={searchTerm}
+        resetFilters={resetFilters}
+        setOpenDialog={setOpenDialog}
+      />
 
       <AddUserDialog
         open={openDialog}
