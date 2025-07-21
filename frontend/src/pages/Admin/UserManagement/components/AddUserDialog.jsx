@@ -17,9 +17,16 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { User, Mail, Lock, Shield, BookOpen, BadgeCheck } from 'lucide-react';
+import { useEffect } from 'react';
 
-// Colleges which require a category
-const collegesWithCategories = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
+// College to email domain mapping
+const collegeDomains = {
+  'SRMIST RAMAPURAM': 'srmist.edu.in',
+  'SRM TRICHY': 'srmtrp.edu.in',
+  'ESWARI': 'eec.srmrmp.edu.in',
+  'TRP ENGINEERING COLLEGE': 'trpeng.edu.in',
+  // Add other colleges as needed
+};
 
 export default function AddUserDialog({
   open,
@@ -122,6 +129,24 @@ export default function AddUserDialog({
     });
   };
 
+  // Validate email domain based on selected college
+  const validateEmailDomain = (email, college) => {
+    if (!college || !collegeDomains[college]) return true;
+    const domain = collegeDomains[college];
+    return email.endsWith(`@${domain}`);
+  };
+
+  // Auto-suggest email domain when college changes
+  useEffect(() => {
+    if (form.college && collegeDomains[form.college] && form.email) {
+      const currentEmail = form.email.split('@')[0];
+      if (currentEmail) {
+        const newEmail = `${currentEmail}@${collegeDomains[form.college]}`;
+        setForm({ ...form, email: newEmail });
+      }
+    }
+  }, [form.college]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
@@ -144,134 +169,78 @@ export default function AddUserDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left Column */}
-            <div className="space-y-4">
-              {/* Full Name */}
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="flex items-center">
-                  <User className="h-4 w-4 mr-2 text-gray-500" />
-                  Full Name
-                </Label>
-                <Input
-                  id="fullName"
-                  placeholder="John Doe"
-                  value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  required
-                />
-              </div>
-
-              {/* Faculty ID (hidden for super admin) */}
-              {form.role !== 'super_admin' && (
-                <div className="space-y-2">
-                  <Label htmlFor="facultyId" className="flex items-center">
-                    <BadgeCheck className="h-4 w-4 mr-2 text-gray-500" />
-                    Faculty ID
-                  </Label>
-                  <Input
-                    id="facultyId"
-                    placeholder="FAC-12345"
-                    value={form.facultyId}
-                    onChange={(e) => setForm({ ...form, facultyId: e.target.value })}
-                    required={form.role !== 'super_admin'}
-                  />
-                </div>
-              )}
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center">
-                  <Mail className="h-4 w-4 mr-2 text-gray-500" />
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  placeholder="user@example.edu"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-4">
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center">
-                  <Lock className="h-4 w-4 mr-2 text-gray-500" />
-                  {editMode ? 'New Password (leave blank to keep current)' : 'Password'}
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={editMode ? '********' : 'Enter password'}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required={!editMode}
-                />
-                {editMode && (
-                  <p className="text-xs text-muted-foreground">
-                    Only enter a password if you want to change it
-                  </p>
-                )}
-              </div>
-
-              {/* Role */}
-              <div className="space-y-2">
-                <Label htmlFor="role" className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2 text-gray-500" />
-                  Role
-                </Label>
-                <Select
-                  value={form.role}
-                  onValueChange={handleRoleChangeWithReset}
-                  disabled={editMode && currentUser?.role !== 'super_admin'}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableRoles().map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* College (for super admin creating non-super admin users) */}
-              {(currentUser?.role === 'super_admin' && form.role !== 'super_admin') && (
-                <div className="space-y-2">
-                  <Label htmlFor="college" className="flex items-center">
-                    <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
-                    College
-                  </Label>
-                  <Select
-                    value={form.college}
-                    onValueChange={handleCollegeChangeWithReset}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select college" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {collegeOptions
-                        .filter(college => college.name !== 'N/A')
-                        .map((college) => (
-                          <SelectItem key={college.name} value={college.name}>
-                            {college.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
+          {/* Full Name - Always first */}
+          <div className="space-y-2">
+            <Label htmlFor="fullName" className="flex items-center">
+              <User className="h-4 w-4 mr-2 text-gray-500" />
+              Full Name
+            </Label>
+            <Input
+              id="fullName"
+              placeholder="John Doe"
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              required
+            />
           </div>
 
-          {/* Category (when applicable) - Full width */}
+          {/* College (for super admin creating non-super admin users) */}
+          {(currentUser?.role === 'super_admin' && form.role !== 'super_admin') && (
+            <div className="space-y-2">
+              <Label htmlFor="college" className="flex items-center">
+                <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
+                College
+              </Label>
+              <Select
+                value={form.college}
+                onValueChange={handleCollegeChangeWithReset}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select college" />
+                </SelectTrigger>
+                <SelectContent>
+                  {collegeOptions
+                    .filter(college => college.name !== 'N/A')
+                    .map((college) => (
+                      <SelectItem key={college.name} value={college.name}>
+                        {college.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Email - After college selection */}
+          <div className="space-y-2">
+            <Label htmlFor="email" className="flex items-center">
+              <Mail className="h-4 w-4 mr-2 text-gray-500" />
+              Email
+            </Label>
+            <Input
+              id="email"
+              placeholder={
+                form.college && collegeDomains[form.college] 
+                  ? `example@${collegeDomains[form.college]}` 
+                  : 'user@example.edu'
+              }
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+            />
+            {form.college && collegeDomains[form.college] && (
+              <p className="text-xs text-muted-foreground">
+                Email must end with @{collegeDomains[form.college]}
+              </p>
+            )}
+            {form.college && form.email && !validateEmailDomain(form.email, form.college) && (
+              <p className="text-xs text-red-500">
+                Email domain must match {collegeDomains[form.college]}
+              </p>
+            )}
+          </div>
+
+          {/* Category (when applicable) */}
           {shouldShowCategoryField() && (
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
@@ -293,13 +262,81 @@ export default function AddUserDialog({
               </Select>
             </div>
           )}
+
+          {/* Faculty ID (hidden for super admin) */}
+          {form.role !== 'super_admin' && (
+            <div className="space-y-2">
+              <Label htmlFor="facultyId" className="flex items-center">
+                <BadgeCheck className="h-4 w-4 mr-2 text-gray-500" />
+                Faculty ID
+              </Label>
+              <Input
+                id="facultyId"
+                placeholder="FAC-12345"
+                value={form.facultyId}
+                onChange={(e) => setForm({ ...form, facultyId: e.target.value })}
+                required={form.role !== 'super_admin'}
+              />
+            </div>
+          )}
+
+          {/* Role */}
+          <div className="space-y-2">
+            <Label htmlFor="role" className="flex items-center">
+              <Shield className="h-4 w-4 mr-2 text-gray-500" />
+              Role
+            </Label>
+            <Select
+              value={form.role}
+              onValueChange={handleRoleChangeWithReset}
+              disabled={editMode && currentUser?.role !== 'super_admin'}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableRoles().map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Password - At the end */}
+          <div className="space-y-2">
+            <Label htmlFor="password" className="flex items-center">
+              <Lock className="h-4 w-4 mr-2 text-gray-500" />
+              {editMode ? 'New Password (leave blank to keep current)' : 'Password'}
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder={editMode ? '********' : 'Enter password'}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required={!editMode}
+            />
+            {editMode && (
+              <p className="text-xs text-muted-foreground">
+                Only enter a password if you want to change it
+              </p>
+            )}
+          </div>
         </div>
         
         <DialogFooter>
           <Button 
             type="button" 
             onClick={handleSubmit}
-            disabled={isSubmitting || !form.fullName || !form.email || (!editMode && !form.password)}
+            disabled={
+              isSubmitting || 
+              !form.fullName || 
+              !form.email || 
+              (!editMode && !form.password) ||
+              (form.college && !validateEmailDomain(form.email, form.college))
+            }
             className="w-full"
           >
             {isSubmitting ? (
