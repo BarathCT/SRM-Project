@@ -1,4 +1,4 @@
-import { User, Edit, Trash2, Users } from 'lucide-react';
+import { User, Edit, Trash2, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
