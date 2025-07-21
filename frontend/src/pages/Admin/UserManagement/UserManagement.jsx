@@ -224,7 +224,7 @@ export default function UserManagement() {
       };
       // Handle faculty ID
       if (form.role !== 'super_admin') {
-        payload.facultyId = form.facultyId || generateFacultyId();
+        payload.facultyId = form.facultyId;
       } else {
         payload.facultyId = 'N/A';
       }
@@ -276,8 +276,14 @@ export default function UserManagement() {
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
 
+      // Updated Error Handling for existing email
       if (!res.ok) {
-        throw new Error(result.error || result.message || (editMode ? 'Failed to update user' : 'Failed to create user'));
+        if (result.message?.toLowerCase().includes('user already exists')) {
+          toast.error('Email already exists');
+        } else {
+          toast.error(result.error || result.message || (editMode ? 'Failed to update user' : 'Failed to create user'));
+        }
+        return; // Prevent showing success toast
       }
 
       toast.success(editMode ? 'User updated successfully' : 'User created successfully');
@@ -290,11 +296,6 @@ export default function UserManagement() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Helper function to generate faculty ID
-  const generateFacultyId = () => {
-    return 'FAC-' + Math.random().toString(36).substr(2, 8).toUpperCase();
   };
 
   // Reset form function
@@ -332,7 +333,8 @@ export default function UserManagement() {
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
       if (!res.ok) {
-        throw new Error(result.error || result.message || 'Failed to delete user');
+        toast.error(result.error || result.message || 'Failed to delete user');
+        return;
       }
       toast.success('User deleted successfully');
       await fetchUsers(currentUser);
@@ -385,7 +387,7 @@ export default function UserManagement() {
       ...form,
       role: value,
       category: value === 'faculty' ? (form.category || 'N/A') : 'N/A',
-      facultyId: value === 'super_admin' ? 'N/A' : (form.facultyId || generateFacultyId())
+      facultyId: value === 'super_admin' ? 'N/A' : (form.facultyId)
     };
     const selectedCollege = collegeOptions.find(c => c.name === newForm.college);
     if ((['campus_admin', 'admin', 'faculty'].includes(value)) && selectedCollege && !selectedCollege.hasCategories) {
@@ -464,7 +466,8 @@ export default function UserManagement() {
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
       if (!res.ok) {
-        throw new Error(result.error || result.message || 'Bulk upload failed');
+        toast.error(result.error || result.message || 'Bulk upload failed');
+        return;
       }
       toast.success('Bulk upload successful!');
       await fetchUsers(currentUser);

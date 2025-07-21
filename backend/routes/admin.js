@@ -74,10 +74,6 @@ function canModifyUser(creator, targetUser) {
   return false;
 }
 
-function generateFacultyId() {
-  return 'FAC-' + Math.random().toString(36).substr(2, 8).toUpperCase();
-}
-
 // Multer config for bulk upload
 const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
@@ -152,10 +148,13 @@ router.post('/users', authenticate, async (req, res) => {
     if (!email || !password || !fullName || !role) {
       return res.status(400).json({ message: 'Email, password, full name and role are required' });
     }
-    const existingUser = await User.findOne({ email });
+
+    // Check for existing user by email (case-insensitive)
+    const existingUser = await User.findOne({ email: { $regex: `^${email}$`, $options: 'i' } });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
+
     if (!canCreateRole(creator.role, role)) {
       return res.status(403).json({ message: `You are not allowed to create a '${role}'` });
     }
@@ -188,7 +187,7 @@ router.post('/users', authenticate, async (req, res) => {
       }
 
       if (role !== 'super_admin') {
-        finalFacultyId = facultyId || generateFacultyId();
+        finalFacultyId = facultyId;
       }
     }
 
@@ -304,6 +303,14 @@ router.put('/users/:id', authenticate, async (req, res) => {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
+    // Prevent email from being updated to an existing user's email (case-insensitive)
+    if (updateData.email && updateData.email !== userToUpdate.email) {
+      const existingEmailUser = await User.findOne({ email: { $regex: `^${updateData.email}$`, $options: 'i' } });
+      if (existingEmailUser) {
+        return res.status(400).json({ message: 'User already exists' });
+      }
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
@@ -343,7 +350,6 @@ router.delete('/users/:id', authenticate, async (req, res) => {
   }
 });
 
-// BULK UPLOAD: Create users from Excel/CSV file
 // BULK UPLOAD: Create users from Excel/CSV file
 router.post('/bulk-upload-users', authenticate, upload.single('file'), async (req, res) => {
   const creator = req.user;
@@ -392,8 +398,8 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
           continue;
         }
 
-        // Check for existing user
-        const existingUser = await User.findOne({ email });
+        // Check for existing user by email (case-insensitive)
+        const existingUser = await User.findOne({ email: { $regex: `^${email}$`, $options: 'i' } });
         if (existingUser) {
           failed++;
           errors.push(`Row ${i + 2}: User already exists`);
@@ -423,7 +429,7 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
           }
 
           if (role !== 'super_admin') {
-            finalFacultyId = facultyId || generateFacultyId();
+            finalFacultyId = facultyId;
           }
 
           // Only require category for colleges that need it

@@ -44,15 +44,28 @@ export default function Navbar() {
 
   if (!user) return null;
 
-  // Get initials from full name for avatar fallback
+  // Get initials from full name or email for avatar fallback
   const getInitials = (name) => {
-  if (!name) return 'US';
+    if (!name) return 'US';
     const names = name.trim().split(' ');
     return names.map(n => n.charAt(0)).join('').slice(0, 2).toUpperCase();
   };
 
+  // Get display name - fallback from email if fullName doesn't exist
+  const getDisplayName = () => {
+    if (user.fullName) return user.fullName;
+    if (user.email) return user.email.split('@')[0];
+    return 'User';
+  };
+
+  // Get email or return empty string if undefined
+  const getEmail = () => {
+    return user.email || '';
+  };
+
   // Determine dashboard path based on role
   const getDashboardPath = () => {
+    if (!user.role) return '/';
     switch(user.role) {
       case 'super_admin':
         return '/super-admin';
@@ -68,20 +81,21 @@ export default function Navbar() {
     }
   };
 
-
   const getUploadPath = () => {
+    if (!user.role) return '/';
     switch(user.role) {
       case 'faculty':
         return '/faculty/upload';
-          }
+      default:
+        return '/upload';
+    }
   };
 
-
   // Check if user can upload research papers
-  const canUpload = ['admin', 'faculty', 'scholar'].includes(user.role);
+  const canUpload = user.role && ['admin', 'faculty', 'scholar'].includes(user.role);
 
   // Check if user can manage users
-  const canManageUsers = ['super_admin', 'campus_admin', 'admin'].includes(user.role);
+  const canManageUsers = user.role && ['super_admin', 'campus_admin', 'admin'].includes(user.role);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b px-6 py-3 flex items-center justify-between">
@@ -140,26 +154,28 @@ export default function Navbar() {
               className="flex items-center gap-2 px-3 py-8 rounded-lg hover:bg-gray-100/50 focus-visible:ring-0 focus-visible:ring-offset-0"
             >
               <Avatar className="h-8 w-8 border border-gray-200">
-                <AvatarImage src="" alt={user.fullName || user.email} />
+                <AvatarImage src="" alt={getDisplayName()} />
                 <AvatarFallback className="bg-blue-100 text-blue-800 font-medium">
                   {getInitials(user.fullName || user.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start gap-0.5">
                 <span className="ml-1 text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                  {user.fullName || user.email.split('@')[0]}
+                  {getDisplayName()}
                 </span>
-                <Badge 
-                  variant={
-                    user.role === 'super_admin' ? 'default' :
-                    user.role === 'campus_admin' ? 'secondary' :
-                    user.role === 'admin' ? 'outline' :
-                    'destructive'
-                  }
-                  className="h-5 text-xs capitalize px-1.5"
-                >
-                  {user.role.replace('_', ' ')}
-                </Badge>
+                {user.role && (
+                  <Badge 
+                    variant={
+                      user.role === 'super_admin' ? 'default' :
+                      user.role === 'campus_admin' ? 'secondary' :
+                      user.role === 'admin' ? 'outline' :
+                      'destructive'
+                    }
+                    className="h-5 text-xs capitalize px-1.5"
+                  >
+                    {user.role.replace('_', ' ')}
+                  </Badge>
+                )}
               </div>
               <ChevronDown className="h-4 w-4 text-gray-500 ml-1" />
             </Button>
@@ -172,29 +188,31 @@ export default function Navbar() {
             <DropdownMenuItem className="px-2 py-1.5 rounded-md">
               <div className="flex items-center gap-3 w-full">
                 <Avatar className="h-9 w-9 flex-shrink-0">
-                  <AvatarImage src="" alt={user.fullName || user.email} />
+                  <AvatarImage src="" alt={getDisplayName()} />
                   <AvatarFallback className="bg-blue-100 text-blue-800 font-medium">
                     {getInitials(user.fullName || user.email)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.fullName || user.email.split('@')[0]}
+                    {getDisplayName()}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
-                    {user.email}
+                    {getEmail()}
                   </p>
-                  <Badge 
-                    variant={
-                      user.role === 'super_admin' ? 'default' :
-                      user.role === 'campus_admin' ? 'secondary' :
-                      user.role === 'admin' ? 'outline' :
-                      'destructive'
-                    }
-                    className="h-5 text-xs capitalize mt-1 w-fit"
-                  >
-                    {user.role.replace('_', ' ')}
-                  </Badge>
+                  {user.role && (
+                    <Badge 
+                      variant={
+                        user.role === 'super_admin' ? 'default' :
+                        user.role === 'campus_admin' ? 'secondary' :
+                        user.role === 'admin' ? 'outline' :
+                        'destructive'
+                      }
+                      className="h-5 text-xs capitalize mt-1 w-fit"
+                    >
+                      {user.role.replace('_', ' ')}
+                    </Badge>
+                  )}
                   {user.college && user.college !== 'N/A' && (
                     <span className="text-xs text-gray-500 mt-1 truncate">
                       {user.college}
