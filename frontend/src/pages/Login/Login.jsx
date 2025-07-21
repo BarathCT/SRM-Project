@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useToast } from '@/components/Toast';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,13 +19,30 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
-    if (!email || !password) {
-      toast.error('Please fill in all fields');
+
+    // Remove browser default validation
+    e.stopPropagation();
+
+    // Field required validation
+    let isValid = true;
+    if (!email) {
+      toast.error('Email is required');
+      isValid = false;
+    }
+    if (!password) {
+      toast.error('Password is required');
+      isValid = false;
+    }
+    if (!isValid) return;
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('Please enter a valid email address');
       return;
     }
 
@@ -39,7 +56,17 @@ export default function Login() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Login failed');
+
+      if (!response.ok) {
+        if (response.status === 400) {
+          toast.error('User not found');
+        } else if (response.status === 401) {
+          toast.error('Invalid credentials');
+        } else {
+          toast.error(data.message || 'Login failed');
+        }
+        throw new Error(data.message || 'Login failed');
+      }
 
       // Store token and user data
       localStorage.setItem('token', data.token);
@@ -60,28 +87,30 @@ export default function Login() {
         case 'faculty':
           navigate('/faculty');
           break;
-        case 'scholar':
-          navigate('/scholar');
-          break;
         default:
-          toast.error('Unknown role. Contact admin.');
+          toast.warning('Unknown role. Contact admin.');
           break;
       }
     } catch (err) {
-      toast.error(err.message || 'Login failed');
+      // Error already handled in the response.ok block
     } finally {
       setLoading(false);
     }
   };
 
+  const handleForgotPassword = () => {
+    toast.info('Please contact your administrator to reset your password', { duration: 8000 });
+  };
+
+  const handleContactSupport = () => {
+    toast.info('Please contact your campus administrator for assistance', { duration: 8000 });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center px-4 py-8">
       <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 border border-gray-100 shadow-lg rounded-xl overflow-hidden">
-        {/* Header with subtle gradient */}
         <CardHeader className="text-center space-y-4 pb-0 bg-gradient-to-r from-blue-400 to-blue-600 text-white pt-8">
-
           <div className="flex flex-col items-center">
-
             <div className="bg-white p-2 rounded-full shadow-md mb-3">
               <img
                 src="/logo.jpg"
@@ -89,7 +118,6 @@ export default function Login() {
                 className="h-14 w-14 rounded-full object-cover"
               />
             </div>
-
             <CardTitle className="text-2xl font-bold tracking-tight">
               ScholarSync
             </CardTitle>
@@ -100,7 +128,7 @@ export default function Login() {
         </CardHeader>
 
         <CardContent className="p-8 pt-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
@@ -117,7 +145,6 @@ export default function Login() {
                   className="pl-10 h-11 text-base focus-visible:ring-blue-500 focus-visible:ring-2"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
                   autoComplete="username"
                 />
               </div>
@@ -133,7 +160,7 @@ export default function Login() {
                   variant="link"
                   type="button"
                   className="text-blue-600 hover:text-blue-800 text-xs h-auto px-0"
-                  onClick={() => toast.info('Please contact your administrator to reset your password')}
+                  onClick={handleForgotPassword}
                 >
                   Forgot password?
                 </Button>
@@ -149,7 +176,6 @@ export default function Login() {
                   className="pl-10 h-11 text-base focus-visible:ring-blue-500 focus-visible:ring-2 pr-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
                   minLength={8}
                   autoComplete="current-password"
                 />
@@ -191,7 +217,7 @@ export default function Login() {
                 <Button 
                   variant="link" 
                   className="text-blue-500 hover:text-blue-600 text-xs h-auto px-0"
-                  onClick={() => toast.info('Please contact your campus administrator for assistance')}
+                  onClick={handleContactSupport}
                 >
                   Contact support
                 </Button>

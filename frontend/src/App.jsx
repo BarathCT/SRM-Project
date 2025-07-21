@@ -12,81 +12,85 @@ import SettingsPage from './pages/SettingsPage';
 import FacultyDashboard from './pages/User/FacultyDashboard';
 import ScholarDashboard from './pages/User/ScholarDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ToastProvider } from './components/Toast';
 
 export default function App() {
   return (
-    <Router>
-      <Navbar />
-      
-      <Routes>
-        {/* Public route */}
-        <Route path="/login" element={<Login />} />
+    <ToastProvider>
+      <Router>
+        <Navbar />
         
-        {/* Super Admin routes */}
-        <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
-          <Route path="/super-admin" element={<SuperAdminDashboard />} />
-          <Route path="/super-admin/users" element={<UserManagement />} />
-        </Route>
-        
-        {/* Campus Admin routes */}
-        <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
-          <Route path="/campus-admin" element={<CampusAdminDashboard />} />
-          <Route path="/campus-admin/users" element={<UserManagement />} />
-        </Route>
-        
-        {/* Admin routes */}
-        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/users" element={<UserManagement />} />
-        </Route>
-        
-        {/* Faculty routes */}
-        <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
-          <Route path="/faculty" element={<FacultyDashboard />} />
-          <Route path="/faculty/upload" element={<UploadPage />} />
-        </Route>
-        
-        {/* Scholar routes */}
-        <Route element={<ProtectedRoute allowedRoles={['scholar']} />}>
-          <Route path="/scholar" element={<ScholarDashboard/>} />
-          <Route path="/scholar/upload" element={<UploadPage />} />
-        </Route>
-        
-        {/* Common routes accessible to all authenticated users */}
-        <Route element={<ProtectedRoute allowedRoles={['super_admin', 'campus_admin', 'admin', 'faculty', 'scholar']} />}>
-          <Route path="/settings" element={<SettingsPage/>} />
-        </Route>
-        
-        {/* Redirect based on authentication status */}
-        <Route path="/" element={
-          localStorage.getItem('token') ? (
-            <Navigate to={
-              JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
-              JSON.parse(localStorage.getItem('user'))?.role === 'campus_admin' ? '/campus-admin' :
-              JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
-              JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
-              '/scholar'
-            } />
-          ) : (
-            <Navigate to="/login" />
-          )
-        } />
-        
-        {/* Catch-all route */}
-        {/* <Route path="*" element={
-          localStorage.getItem('token') ? (
-            <Navigate to={
-              JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
-              JSON.parse(localStorage.getItem('user'))?.role === 'campus_admin' ? '/campus-admin' :
-              JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
-              JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
-              '/scholar'
-            } />
-          ) : (
-            <Navigate to="/login" />
-          )
-        } /> */}
-      </Routes>
-    </Router>
+        <Routes>
+          {/* Public route */}
+          <Route path="/login" element={<Login />} />
+          
+          {/* Super Admin routes */}
+          <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
+            <Route path="/super-admin" element={<SuperAdminDashboard />} />
+            <Route path="/super-admin/users" element={<UserManagement />} />
+          </Route>
+          
+          {/* Campus Admin routes */}
+          <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
+            <Route path="/campus-admin" element={<CampusAdminDashboard />} />
+            <Route path="/campus-admin/users" element={<UserManagement />} />
+          </Route>
+          
+          {/* Admin routes */}
+          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<UserManagement />} />
+            <Route path="/admin/upload" element={<UploadPage />} />
+          </Route>
+          
+          {/* Faculty routes */}
+          <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
+            <Route path="/faculty" element={<FacultyDashboard />} />
+            <Route path="/faculty/upload" element={<UploadPage />} />
+          </Route>
+          
+          {/* Scholar routes */}
+          <Route element={<ProtectedRoute allowedRoles={['scholar']} />}>
+            <Route path="/scholar" element={<ScholarDashboard/>} />
+            <Route path="/scholar/upload" element={<UploadPage />} />
+          </Route>
+          
+          {/* Common routes accessible to all authenticated users */}
+          <Route element={<ProtectedRoute allowedRoles={['super_admin', 'campus_admin', 'admin', 'faculty', 'scholar']} />}>
+            <Route path="/settings" element={<SettingsPage/>} />
+          </Route>
+          
+          {/* Redirect based on authentication status */}
+          <Route path="/" element={
+            localStorage.getItem('token') ? (
+              <Navigate to={
+                JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
+                JSON.parse(localStorage.getItem('user'))?.role === 'campus_admin' ? '/campus-admin' :
+                JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
+                JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
+                '/scholar'
+              } />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } />
+          
+          {/* Catch-all route */}
+          {/* <Route path="*" element={
+            localStorage.getItem('token') ? (
+              <Navigate to={
+                JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
+                JSON.parse(localStorage.getItem('user'))?.role === 'campus_admin' ? '/campus-admin' :
+                JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
+                JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
+                '/scholar'
+              } />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } /> */}
+        </Routes>
+      </Router>
+    </ToastProvider>
   );
 }

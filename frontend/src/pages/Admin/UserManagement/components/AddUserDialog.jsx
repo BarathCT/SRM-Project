@@ -17,9 +17,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { User, Mail, Lock, Shield, BookOpen, BadgeCheck } from 'lucide-react';
-
-// Colleges which require a category
-const collegesWithCategories = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
+import { useToast } from '@/components/Toast';
 
 export default function AddUserDialog({
   open,
@@ -33,9 +31,9 @@ export default function AddUserDialog({
   currentUser,
   collegeOptions,
   getCategoriesForCollege,
-  handleRoleChange,
-  handleCollegeChange,
 }) {
+  const { toast } = useToast();
+
   // Helper function to check if college has categories
   const collegeHasCategories = (collegeName) => {
     const college = collegeOptions.find(c => c.name === collegeName);
@@ -46,16 +44,12 @@ export default function AddUserDialog({
   const shouldShowCategoryField = () => {
     if (!currentUser) return false;
 
-    // For super admin creating non-super admin users
     if (currentUser.role === 'super_admin') {
-      // Don't show for super_admin or colleges with no category
       if (form.role === 'super_admin') return false;
       if (!collegeHasCategories(form.college)) return false;
-      // Show for faculty, admin, campus_admin
       return ['faculty', 'campus_admin', 'admin'].includes(form.role);
     }
 
-    // For campus admin creating admin/faculty
     if (
       currentUser.role === 'campus_admin' &&
       ['admin', 'faculty'].includes(form.role) &&
@@ -67,27 +61,21 @@ export default function AddUserDialog({
     return false;
   };
 
-  // Get categories for the current college (super admin: form.college, else: currentUser.college)
+  // Get categories for the current college
   const getCurrentCategories = () => {
     const college = currentUser?.role === 'super_admin' ? form.college : currentUser?.college;
     return getCategoriesForCollege(college);
   };
 
-  // Handle role change with proper category reset
+  // Handle role change with proper validation
   const handleRoleChangeWithReset = (value) => {
     const selectedCollege = currentUser?.role === 'super_admin' ? form.college : currentUser?.college;
     const categories = getCategoriesForCollege(selectedCollege);
-
     const hasCat = collegeHasCategories(selectedCollege);
 
-    // If switching to a role that requires a category, set to first available (not N/A)
     let category = form.category;
     if (hasCat && ['faculty', 'campus_admin', 'admin'].includes(value)) {
-      // If not editing, set to first available category
-      category =
-        !editMode && categories.length > 0 && categories[0] !== 'N/A'
-          ? categories[0]
-          : category;
+      category = !editMode && categories.length > 0 && categories[0] !== 'N/A' ? categories[0] : category;
     } else {
       category = 'N/A';
     }
@@ -98,21 +86,24 @@ export default function AddUserDialog({
       category,
       facultyId: value === 'super_admin' ? 'N/A' : form.facultyId,
     });
+
+    if (value === 'super_admin') {
+      toast.info('Super Admin selected - college and category not required');
+    }
   };
 
-  // Handle college change with proper category reset
+  // Handle college change with validation
   const handleCollegeChangeWithReset = (value) => {
     const categories = getCategoriesForCollege(value);
     const hasCat = collegeHasCategories(value);
 
     let category = form.category;
     if (hasCat && ['faculty', 'campus_admin', 'admin'].includes(form.role)) {
-      category =
-        !editMode && categories.length > 0 && categories[0] !== 'N/A'
-          ? categories[0]
-          : category;
+      category = !editMode && categories.length > 0 && categories[0] !== 'N/A' ? categories[0] : category;
+      toast.info(`Selected ${value} - please choose a category`);
     } else {
       category = 'N/A';
+      toast.info(`Selected ${value} - no category required`);
     }
 
     setForm({
@@ -120,6 +111,82 @@ export default function AddUserDialog({
       college: value,
       category,
     });
+  };
+
+  // Handle category change with toast
+  const handleCategoryChange = (value) => {
+    setForm({ ...form, category: value });
+    toast.info(`Category set to ${value}`);
+  };
+
+  // Enhanced submit handler with complete validation and duplicate email check
+  const handleSubmitWithToast = async () => {
+    try {
+      // Basic validation
+      if (!form.fullName) {
+        toast.error('Full name is required');
+        return;
+      }
+      if (!form.email) {
+        toast.error('Email is required');
+        return;
+      }
+      if (!editMode && !form.password) {
+        toast.error('Password is required for new users');
+        return;
+      }
+      if (form.role !== 'super_admin' && !form.facultyId) {
+        toast.error('Faculty ID is required');
+        return;
+      }
+
+      // College validation for non-super_admin roles
+      if (currentUser?.role === 'super_admin' && form.role !== 'super_admin' && !form.college) {
+        toast.error('College selection is required');
+        return;
+      }
+
+      // Category validation when required
+      if (shouldShowCategoryField() && (!form.category || form.category === 'N/A')) {
+        toast.error('Category selection is required for this college');
+        return;
+      }
+
+      // Await the handleSubmit function and handle error responses
+      const result = await handleSubmit();
+
+      // If handleSubmit returns an error (not throws)
+      if (result && typeof result === "object" && result.error) {
+        if (result.error.toLowerCase().includes('user already exists')) {
+          toast.error('Email already exists');
+        } else {
+          toast.error(result.error);
+        }
+        return;
+      }
+      if (result && typeof result === "string" && result.toLowerCase().includes('user already exists')) {
+        toast.error('Email already exists');
+        return;
+      }
+
+      // If no error, show success toast
+      toast.success(
+        editMode
+          ? 'User updated successfully'
+          : 'User created successfully'
+      );
+      onOpenChange(false);
+    } catch (error) {
+      // Catch thrown errors
+      if (error.message && error.message.toLowerCase().includes('user already exists')) {
+        toast.error('Email already exists');
+      } else {
+        toast.error(
+          error.message ||
+          (editMode ? 'Failed to update user' : 'Failed to create user')
+        );
+      }
+    }
   };
 
   return (
@@ -158,7 +225,6 @@ export default function AddUserDialog({
                   placeholder="John Doe"
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  required
                 />
               </div>
 
@@ -174,7 +240,6 @@ export default function AddUserDialog({
                     placeholder="FAC-12345"
                     value={form.facultyId}
                     onChange={(e) => setForm({ ...form, facultyId: e.target.value })}
-                    required={form.role !== 'super_admin'}
                   />
                 </div>
               )}
@@ -190,7 +255,6 @@ export default function AddUserDialog({
                   placeholder="user@example.edu"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
                 />
               </div>
             </div>
@@ -271,14 +335,13 @@ export default function AddUserDialog({
             </div>
           </div>
 
-          {/* Category (when applicable) - Full width */}
+          {/* Category (when applicable) */}
           {shouldShowCategoryField() && (
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <Select
                 value={form.category}
-                onValueChange={(value) => setForm({ ...form, category: value })}
-                required
+                onValueChange={handleCategoryChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
@@ -298,8 +361,8 @@ export default function AddUserDialog({
         <DialogFooter>
           <Button 
             type="button" 
-            onClick={handleSubmit}
-            disabled={isSubmitting || !form.fullName || !form.email || (!editMode && !form.password)}
+            onClick={handleSubmitWithToast}
+            disabled={isSubmitting}
             className="w-full"
           >
             {isSubmitting ? (

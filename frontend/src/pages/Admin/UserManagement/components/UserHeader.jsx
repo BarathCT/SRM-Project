@@ -52,7 +52,6 @@ export default function UserHeader({
             required: true, 
             notes: "Required for SRM colleges (Science and Humanities, Engineering and Technology, Management, Dental); not required for other colleges"
           },
-          { name: "role", required: true, notes: "Selected role will be applied to all users" }
         ],
         notes: [
           "For SRM colleges (RAMAPURAM, TRICHY): Must include category in Excel.",
@@ -179,25 +178,25 @@ export default function UserHeader({
                       </div>
 
                       <div className="rounded-lg border overflow-hidden shadow-sm">
-                        <Table>
+                        <Table className="table-fixed w-full">
                           <TableHeader className="bg-gray-50">
                             <TableRow>
-                              <TableHead className="font-medium text-gray-700">Column</TableHead>
-                              <TableHead className="font-medium text-gray-700">Required</TableHead>
-                              <TableHead className="font-medium text-gray-700">Notes</TableHead>
+                              <TableHead className="font-medium text-gray-700 max-w-[160px] break-words whitespace-normal">Column</TableHead>
+                              <TableHead className="font-medium text-gray-700 max-w-[100px]">Required</TableHead>
+                              <TableHead className="font-medium text-gray-700 max-w-[300px] break-words whitespace-normal">Notes</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {instructions.columns.map((col) => (
                               <TableRow key={col.name} className="border-t">
-                                <TableCell className="font-medium py-3">
+                                <TableCell className="font-medium py-3 max-w-[160px] break-words whitespace-normal">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-mono bg-gray-100 px-2 py-1 rounded text-sm text-gray-800">
+                                    <span className="font-mono bg-gray-100 px-2 py-1 rounded text-sm text-gray-800 break-words whitespace-normal">
                                       {col.name}
                                     </span>
                                   </div>
                                 </TableCell>
-                                <TableCell className="py-3">
+                                <TableCell className="py-3 max-w-[100px] break-words whitespace-normal">
                                   {col.required ? (
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                       Required
@@ -208,7 +207,7 @@ export default function UserHeader({
                                     </span>
                                   )}
                                 </TableCell>
-                                <TableCell className="text-sm text-gray-600 py-3">
+                                <TableCell className="text-sm text-gray-600 py-3 max-w-[300px] break-words whitespace-normal">
                                   {col.notes}
                                   {col.name === 'password' && (
                                     <span className="block mt-1 text-xs text-gray-500 italic">
@@ -221,6 +220,7 @@ export default function UserHeader({
                           </TableBody>
                         </Table>
                       </div>
+
                     </div>
 
                     {/* Important Notes Section */}
