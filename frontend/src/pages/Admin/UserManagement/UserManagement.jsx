@@ -476,7 +476,8 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 w-9/10 mx-auto space-y-6">
+
 
       {/* Header Section */}
       <UserHeader
