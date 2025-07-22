@@ -18,6 +18,16 @@ import {
 } from '@/components/ui/select';
 import { User, Mail, Lock, Shield, BookOpen, BadgeCheck } from 'lucide-react';
 import { useToast } from '@/components/Toast';
+import { useEffect } from 'react';
+
+// College to email domain mapping
+const collegeDomains = {
+  'SRMIST RAMAPURAM': 'srmist.edu.in',
+  'SRM TRICHY': 'srmtrp.edu.in',
+  'EASWARI ENGINEERING COLLEGE': 'eec.srmrmp.edu.in',
+  'TRP ENGINEERING COLLEGE': 'trpeng.edu.in',
+  // Add other colleges as needed
+};
 
 export default function AddUserDialog({
   open,
@@ -39,6 +49,24 @@ export default function AddUserDialog({
     const college = collegeOptions.find(c => c.name === collegeName);
     return college ? college.hasCategories : false;
   };
+
+  // Validate email domain based on selected college
+  const validateEmailDomain = (email, college) => {
+    if (!college || !collegeDomains[college]) return true;
+    const domain = collegeDomains[college];
+    return email.endsWith(`@${domain}`);
+  };
+
+  // Auto-suggest email domain when college changes
+  useEffect(() => {
+    if (form.college && collegeDomains[form.college] && form.email) {
+      const currentEmail = form.email.split('@')[0];
+      if (currentEmail) {
+        const newEmail = `${currentEmail}@${collegeDomains[form.college]}`;
+        setForm({ ...form, email: newEmail });
+      }
+    }
+  }, [form.college]);
 
   // Determine if we should show category field
   const shouldShowCategoryField = () => {
@@ -74,8 +102,9 @@ export default function AddUserDialog({
     const hasCat = collegeHasCategories(selectedCollege);
 
     let category = form.category;
+    // Empty the category if changing to a role that requires a category
     if (hasCat && ['faculty', 'campus_admin', 'admin'].includes(value)) {
-      category = !editMode && categories.length > 0 && categories[0] !== 'N/A' ? categories[0] : category;
+      category = '';
     } else {
       category = 'N/A';
     }
@@ -99,7 +128,7 @@ export default function AddUserDialog({
 
     let category = form.category;
     if (hasCat && ['faculty', 'campus_admin', 'admin'].includes(form.role)) {
-      category = !editMode && categories.length > 0 && categories[0] !== 'N/A' ? categories[0] : category;
+      category = ''; // Set to empty so user has to pick
       toast.info(`Selected ${value} - please choose a category`);
     } else {
       category = 'N/A';
@@ -129,6 +158,10 @@ export default function AddUserDialog({
       }
       if (!form.email) {
         toast.error('Email is required');
+        return;
+      }
+      if (form.college && !validateEmailDomain(form.email, form.college)) {
+        toast.error(`Email must end with @${collegeDomains[form.college]}`);
         return;
       }
       if (!editMode && !form.password) {
@@ -187,6 +220,36 @@ export default function AddUserDialog({
         );
       }
     }
+  };
+
+  // Helper: Determines if all required fields are filled (for button disable logic)
+  const isFormValid = () => {
+    // For edit mode, password is not required
+    const passwordRequired = !editMode;
+    // If creating/editing super_admin, college/category not required
+    if (form.role === 'super_admin') {
+      return (
+        !!form.fullName &&
+        !!form.email &&
+        (!!form.password || !passwordRequired) &&
+        !!form.facultyId
+      );
+    }
+    // For super_admin adding other users, must select college and (maybe) category
+    if (currentUser?.role === 'super_admin') {
+      if (!form.college || form.college === 'N/A') return false;
+      if (shouldShowCategoryField() && (!form.category || form.category === 'N/A' || form.category === '')) return false;
+    }
+    // Common required fields plus email domain validation
+    return (
+      !!form.fullName &&
+      !!form.email &&
+      (form.college ? validateEmailDomain(form.email, form.college) : true) &&
+      (!!form.password || !passwordRequired) &&
+      !!form.facultyId &&
+      !!form.role &&
+      (currentUser?.role !== 'super_admin' || !!form.college)
+    );
   };
 
   return (
@@ -252,10 +315,24 @@ export default function AddUserDialog({
                 </Label>
                 <Input
                   id="email"
-                  placeholder="user@example.edu"
+                  placeholder={
+                    form.college && collegeDomains[form.college] 
+                      ? `example@${collegeDomains[form.college]}` 
+                      : 'user@example.edu'
+                  }
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
+                {form.college && collegeDomains[form.college] && (
+                  <p className="text-xs text-muted-foreground">
+                    Email must end with @{collegeDomains[form.college]}
+                  </p>
+                )}
+                {form.college && form.email && !validateEmailDomain(form.email, form.college) && (
+                  <p className="text-xs text-red-500">
+                    Email domain must match @{collegeDomains[form.college]}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -340,7 +417,7 @@ export default function AddUserDialog({
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <Select
-                value={form.category}
+                value={form.category || ""}
                 onValueChange={handleCategoryChange}
               >
                 <SelectTrigger>
@@ -362,7 +439,7 @@ export default function AddUserDialog({
           <Button 
             type="button" 
             onClick={handleSubmitWithToast}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isFormValid()}
             className="w-full"
           >
             {isSubmitting ? (

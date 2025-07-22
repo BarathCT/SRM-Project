@@ -313,6 +313,7 @@ export default function UserManagement() {
     setCurrentUserId(null);
   };
 
+  // --------- MAIN CHANGE HERE: only update users state, do not refetch all users!
   const handleDelete = async (id) => {
     try {
       setIsLoading(true);
@@ -336,8 +337,9 @@ export default function UserManagement() {
         toast.error(result.error || result.message || 'Failed to delete user');
         return;
       }
+      // Only update local users array!
+      setUsers(prevUsers => prevUsers.filter(user => user._id !== id));
       toast.success('User deleted successfully');
-      await fetchUsers(currentUser);
     } catch (err) {
       console.error('Delete error:', err);
       toast.error(err.message || 'Failed to delete user');

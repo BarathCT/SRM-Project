@@ -10,32 +10,20 @@ import {
   Loader2, 
   X, 
   Info,
-  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Components - These would be your custom UI components
-// Buttons
 import { Button } from "@/components/ui/button";
-
-// Cards
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-
-// Forms
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage
 } from "@/components/ui/form";
-
-// Inputs
 import { Input } from "@/components/ui/input";
-
-// Select
 import {
   Select,
   SelectContent,
@@ -43,32 +31,9 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-
-// Alerts
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-// Radio
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-
-// Checkbox
 import { Checkbox } from "@/components/ui/checkbox";
-
-// Avatar
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-// Badge
-import { Badge } from "@/components/ui/badge";
-
-// Dropdown Menu
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from "@/components/ui/dropdown-menu";
-// Adjust this import path to your actual component location
 
 const formSchema = z.object({
   authors: z.array(z.object({ 
@@ -78,13 +43,16 @@ const formSchema = z.object({
   ).min(1, "At least one author is required."),
   title: z.string().min(1, "Title is required."),
   volumeName: z.string().min(1, "Volume name is required."),
+  publisherName: z.string().min(1, "Publisher name is required."),
   volume: z.string().min(1, "Volume is required."),
-  issue: z.string().min(1, "Issue is required."),
-  pageNo: z.string().min(1, "Page number is required."),
+  issue: z.string().optional(),
+  pageNo: z.string().optional(),
   doi: z.string().min(1, "A valid DOI is required."),
-  hasScopus: z.enum(["yes", "no"], { required_error: "Scopus selection is required." }),
+  publication: z.enum(["scopus", "sci", "webOfScience", "pubmed", "abdc"], { 
+    required_error: "Publication type is required." 
+  }),
   facultyId: z.string().min(1, "Faculty ID is required."),
-  scopusId: z.string().min(1, "Scopus ID is required."),
+  publicationId: z.string().min(1, "Publication ID is required."),
   year: z.string().min(4, "Year must be 4 digits.").max(4, "Year must be 4 digits."),
   claimedBy: z.string().min(1, "This field is required."),
   authorNo: z.string().min(1, "This field is required."),
@@ -93,8 +61,8 @@ const formSchema = z.object({
       name: z.string().min(1, "Student author name is required."),
       id: z.string().min(1, "Student ID is required."),
     })).optional(),
-  q1: z.string().min(1, "Q1 is required."),
-  q2: z.string().min(1, "Q2 is required."),
+  qRating: z.string().min(1, "Q rating is required."),
+  issueType: z.string().min(1, "Type of issue is required."),
 }).superRefine((data, ctx) => {
     if (data.isStudentScholar === 'yes') {
       if (!data.studentScholars || data.studentScholars.length === 0) {
@@ -106,6 +74,14 @@ const formSchema = z.object({
       }
     }
   });
+
+const publicationLabels = {
+  scopus: "Scopus ID",
+  sci: "SCI ID",
+  webOfScience: "Web of Science ID",
+  pubmed: "PubMed ID",
+  abdc: "ABDC ID"
+};
 
 export default function UploadPage() {
   const navigate = useNavigate();
@@ -135,18 +111,22 @@ export default function UploadPage() {
       authors: [{ name: "", isCorresponding: false }],
       title: "",
       volumeName: "",
+      publisherName: "",
       volume: "",
       issue: "",
       pageNo: "",
       doi: "",
       facultyId: "",
-      scopusId: "",
+      publicationId: "",
       year: "",
-      q1: "",
-      q2: "",
+      qRating: "",
+      issueType: "",
       studentScholars: [],
     },
   });
+
+  const publicationType = form.watch("publication");
+  const publicationLabel = publicationType ? publicationLabels[publicationType] : "Publication ID";
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -182,6 +162,8 @@ export default function UploadPage() {
     []
   );
 
+  const correspondingAuthor = watchAuthors?.find(a => a.isCorresponding);
+
   function onSubmit(values) {
     setIsPending(true);
     console.log(values);
@@ -193,16 +175,12 @@ export default function UploadPage() {
     }, 1500);
   }
 
-  const correspondingAuthor = watchAuthors?.find(a => a.isCorresponding);
-
   if (!isAuthenticated) {
     return null;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <div className="mx-auto w-full max-w-4xl space-y-6">
           <div className="flex items-center gap-4">
@@ -300,6 +278,20 @@ export default function UploadPage() {
                         </FormItem>
                       )}
                     />
+                    
+                    <FormField 
+                      control={form.control}
+                      name="publisherName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Publisher Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Name of the publisher" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <FormField 
                       control={form.control}
@@ -389,30 +381,24 @@ export default function UploadPage() {
 
                     <FormField
                       control={form.control}
-                      name="hasScopus"
+                      name="publication"
                       render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <FormLabel>Scopus?</FormLabel>
-                          <FormControl>
-                            <RadioGroup 
-                              onValueChange={field.onChange} 
-                              defaultValue={field.value} 
-                              className="flex gap-4"
-                            >
-                              <FormItem className="flex items-center space-x-2">
-                                <FormControl>
-                                  <RadioGroupItem value="yes" />
-                                </FormControl>
-                                <FormLabel className="font-normal">Yes</FormLabel>
-                              </FormItem>
-                              <FormItem className="flex items-center space-x-2">
-                                <FormControl>
-                                  <RadioGroupItem value="no" />
-                                </FormControl>
-                                <FormLabel className="font-normal">No</FormLabel>
-                              </FormItem>
-                            </RadioGroup>
-                          </FormControl>
+                        <FormItem>
+                          <FormLabel>Publication</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select publication type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="scopus">Scopus</SelectItem>
+                              <SelectItem value="sci">SCI</SelectItem>
+                              <SelectItem value="webOfScience">Web of Science</SelectItem>
+                              <SelectItem value="pubmed">PubMed</SelectItem>
+                              <SelectItem value="abdc">ABDC</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -431,21 +417,24 @@ export default function UploadPage() {
                         </FormItem>
                       )}
                     />
-
+                    
                     <FormField 
                       control={form.control}
-                      name="scopusId"
+                      name="publicationId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Scopus ID</FormLabel>
+                          <FormLabel>{publicationLabel}</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., 12345678900" {...field} />
+                            <Input 
+                              placeholder={`e.g., ${publicationType === 'scopus' ? '12345678900' : 'ID'}`} 
+                              {...field} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
+                    
                     <FormField
                       control={form.control}
                       name="claimedBy"
@@ -589,29 +578,47 @@ export default function UploadPage() {
                       </div>
                     )}
 
-                    <FormField 
+                    <FormField
                       control={form.control}
-                      name="q1"
+                      name="qRating"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Q1</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Q1" {...field} />
-                          </FormControl>
+                          <FormLabel>Q Rating</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Q rating" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="q1">Q1</SelectItem>
+                              <SelectItem value="q2">Q2</SelectItem>
+                              <SelectItem value="q3">Q3</SelectItem>
+                              <SelectItem value="q4">Q4</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <FormField 
+                    <FormField
                       control={form.control}
-                      name="q2"
+                      name="issueType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Q2</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Q2" {...field} />
-                          </FormControl>
+                          <FormLabel>Type of Issue</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Type of Issue" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Regular Issue">Regular Issue</SelectItem>
+                              <SelectItem value="Special Issue">Special Issue</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
