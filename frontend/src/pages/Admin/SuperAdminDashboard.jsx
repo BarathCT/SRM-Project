@@ -14,7 +14,7 @@ const SuperAdminDashboard = () => {
       {/* Top bar with title and manage button */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-blue-800">
-          SRM Group Super Admin Dashboard
+          SRM Group Super Admin Dashboard - coming soon
         </h1>
         <Button onClick={handleManageUsers} className="bg-blue-600 hover:bg-blue-700 text-white">
           Manage Users
