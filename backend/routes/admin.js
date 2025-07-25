@@ -5,6 +5,8 @@ import multer from 'multer';
 import xlsx from 'xlsx';
 import User from '../models/User.js';
 import { sendUserWelcomeEmail } from '../utils/sendUserWelcomeMail.js';
+import bcrypt from 'bcrypt';
+
 
 const router = express.Router();
 
@@ -247,83 +249,162 @@ router.put('/users/:id', authenticate, async (req, res) => {
     if (!userToUpdate) {
       return res.status(404).json({ message: 'User not found' });
     }
-    if (userToUpdate._id.toString() === updaterId) {
-      return res.status(403).json({ message: 'You cannot modify your own role, college or category' });
+
+    // Check if user is trying to update themselves
+    const isSelfUpdate = userToUpdate._id.toString() === updaterId;
+
+    // Initialize update data
+    const updateData = { ...req.body };
+
+    // Normalize college name if provided
+    if (updateData.college) {
+      updateData.college = normalizeCollegeName(updateData.college);
     }
+
+    // Determine target role and college (either from update or existing values)
+    const targetRole = updateData.role || userToUpdate.role;
+    const targetCollege = updateData.college || userToUpdate.college;
+
+    // Handle self-updates (only allow name and email changes)
+    if (isSelfUpdate) {
+      if (updateData.role || updateData.college || updateData.category || updateData.facultyId) {
+        return res.status(403).json({ 
+          message: 'You cannot modify your own role, college, category, or faculty ID' 
+        });
+      }
+
+      // Only allow updating name and email
+      const allowedFields = ['fullName', 'email'];
+      Object.keys(updateData).forEach(key => {
+        if (!allowedFields.includes(key)) {
+          delete updateData[key];
+        }
+      });
+
+      // Validate email if being updated
+      if (updateData.email && updateData.email !== userToUpdate.email) {
+        const existingEmailUser = await User.findOne({ 
+          email: { $regex: `^${updateData.email}$`, $options: 'i' } 
+        });
+        if (existingEmailUser) {
+          return res.status(400).json({ message: 'Email already in use' });
+        }
+      }
+
+      // Update the user
+      const updatedUser = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      ).select('-password -__v');
+
+      return res.json({ 
+        message: 'Profile updated successfully', 
+        user: updatedUser 
+      });
+    }
+
+    // Handle updates to other users (admin functionality)
     if (!canModifyUser(req.user, userToUpdate)) {
       return res.status(403).json({ message: 'You are not authorized to modify this user' });
     }
 
-    const updateData = { ...req.body };
-    if (updateData.college) {
-      updateData.college = normalizeCollegeName(updateData.college);
-    }
-    const targetRole = updateData.role || userToUpdate.role;
-    const targetCollege = updateData.college || userToUpdate.college;
-
+    // Role change validation
     if (updateData.role) {
       if (!canCreateRole(updaterRole, updateData.role)) {
-        return res.status(403).json({ message: `You are not allowed to set role to '${updateData.role}'` });
+        return res.status(403).json({ 
+          message: `You are not allowed to set role to '${updateData.role}'` 
+        });
       }
+
+      // For colleges without categories, set category to N/A
       if (updateData.role !== 'faculty' && !collegeRequiresCategory(targetCollege)) {
         updateData.category = 'N/A';
       }
     }
 
+    // College change validation (only super_admin can change college)
     if (updateData.college) {
       if (updaterRole !== 'super_admin') {
-        return res.status(403).json({ message: 'Only super admins can change college' });
+        return res.status(403).json({ 
+          message: 'Only super admins can change college' 
+        });
       }
-      if (updateData.role === 'super_admin' && updateData.college !== 'N/A') {
-        return res.status(400).json({ message: 'Super admin must have college set to N/A' });
+      if (targetRole === 'super_admin' && updateData.college !== 'N/A') {
+        return res.status(400).json({ 
+          message: 'Super admin must have college set to N/A' 
+        });
       }
     }
 
+    // Category validation for colleges that require it
     if (collegeRequiresCategory(targetCollege)) {
       if (!updateData.category || updateData.category === 'N/A') {
-        return res.status(400).json({ message: 'Category is required for this role in this college' });
+        return res.status(400).json({ 
+          message: 'Category is required for this role in this college' 
+        });
       }
       if (!validateCollegeCategory(targetCollege, updateData.category)) {
-        return res.status(400).json({ message: `Category ${updateData.category} is not valid for college ${targetCollege}` });
+        return res.status(400).json({ 
+          message: `Category ${updateData.category} is not valid for college ${targetCollege}` 
+        });
       }
     } else {
+      // For colleges without categories, force category to N/A
       updateData.category = 'N/A';
     }
 
+    // Faculty ID validation
     if (updateData.facultyId) {
       if (targetRole === 'super_admin') {
         updateData.facultyId = 'N/A';
       } else if (updateData.facultyId === 'N/A') {
-        return res.status(400).json({ message: 'Faculty ID is required for non-super admin roles' });
+        return res.status(400).json({ 
+          message: 'Faculty ID is required for non-super admin roles' 
+        });
       }
     }
 
+    // Password update handling
     if (updateData.password) {
       const bcrypt = await import('bcrypt');
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
-    // Prevent email from being updated to an existing user's email (case-insensitive)
+    // Email update validation
     if (updateData.email && updateData.email !== userToUpdate.email) {
-      const existingEmailUser = await User.findOne({ email: { $regex: `^${updateData.email}$`, $options: 'i' } });
+      const existingEmailUser = await User.findOne({ 
+        email: { $regex: `^${updateData.email}$`, $options: 'i' } 
+      });
       if (existingEmailUser) {
-        return res.status(400).json({ message: 'User already exists' });
+        return res.status(400).json({ message: 'Email already in use' });
       }
     }
 
+    // Perform the update
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
       { new: true, runValidators: true }
     ).select('-password -__v');
 
-    res.json({ message: 'User updated successfully', user: updatedUser });
+    res.json({ 
+      message: 'User updated successfully', 
+      user: updatedUser 
+    });
+
   } catch (err) {
     if (err.name === 'ValidationError') {
       return res.status(400).json({ message: err.message });
     }
+    if (err.code === 11000) {
+      return res.status(400).json({ message: 'Email or faculty ID already exists' });
+    }
     console.error('Error updating user:', err);
-    res.status(500).json({ message: 'Error updating user', error: err.message });
+    res.status(500).json({ 
+      message: 'Error updating user', 
+      error: err.message 
+    });
   }
 });
 
@@ -507,5 +588,63 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
     res.status(500).json({ error: err.message || 'Bulk upload failed.' });
   }
 });
+
+
+
+
+//---------------------------------------
+//---------------------------------------
+//Settings page 
+//---------------------------------------
+//---------------------------------------
+
+// Add to admin.js routes
+router.get('/settings', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password -__v');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+
+
+// Add to admin.js routes
+router.post('/change-password', authenticate, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  // Use req.user.userId instead of req.user.id
+  const userId = req.user.userId;
+
+  try {
+    const user = await User.findById(userId).select('+password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Use bcrypt directly since it's now imported
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 
 export default router;
