@@ -8,7 +8,7 @@ import UploadPage from './pages/User/UploadPage';
 import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard';
 import CampusAdminDashboard from './pages/Admin/CampusAdminDashboard';
 import AdminDashboard from './pages/Admin/AdminDashboard';
-import SettingsPage from './pages/SettingsPage';
+import SettingsPage from '../src/pages/SettingsPage';
 import FacultyDashboard from './pages/User/FacultyDashboard';
 import ScholarDashboard from './pages/User/ScholarDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -57,7 +57,7 @@ export default function App() {
           
           {/* Common routes accessible to all authenticated users */}
           <Route element={<ProtectedRoute allowedRoles={['super_admin', 'campus_admin', 'admin', 'faculty', 'scholar']} />}>
-            <Route path="/settings" element={<SettingsPage/>} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
           
           {/* Redirect based on authentication status */}
