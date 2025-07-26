@@ -8,7 +8,7 @@ import UploadPage from './pages/User/UploadPage';
 import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard';
 import CampusAdminDashboard from './pages/Admin/CampusAdminDashboard';
 import AdminDashboard from './pages/Admin/AdminDashboard';
-import SettingsPage from '../src/pages/SettingsPage';
+import SettingsPage from './pages/Settings/SettingsPage';
 import FacultyDashboard from './pages/User/FacultyDashboard';
 import ScholarDashboard from './pages/User/ScholarDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
