@@ -7,10 +7,9 @@ import User from '../models/User.js';
 import { sendUserWelcomeEmail } from '../utils/sendUserWelcomeMail.js';
 import bcrypt from 'bcrypt';
 
-
 const router = express.Router();
 
-// Helper function to normalize college names
+// Helper functions
 const normalizeCollegeName = (college) => {
   if (!college || college === 'N/A') return 'N/A';
   const upperCollege = college.toUpperCase();
@@ -18,7 +17,6 @@ const normalizeCollegeName = (college) => {
   return validColleges.find(c => c === upperCollege) || 'N/A';
 };
 
-// Helper function to validate college-category relationship
 const validateCollegeCategory = (college, category) => {
   const collegeData = {
     'SRMIST RAMAPURAM': ['Science and Humanities', 'Engineering and Technology', 'Management', 'Dental'],
@@ -34,6 +32,7 @@ const collegeRequiresCategory = (college) => {
   return ['SRMIST RAMAPURAM', 'SRM TRICHY'].includes(college);
 };
 
+// Authentication middleware
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -49,6 +48,7 @@ function authenticate(req, res, next) {
   }
 }
 
+// Authorization helpers
 function canCreateRole(creatorRole, targetRole) {
   const rolePermissions = {
     super_admin: ['campus_admin', 'admin', 'faculty'],
@@ -81,8 +81,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: function (req, file, cb) {
     if (
-      file.mimetype ===
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
       file.mimetype === 'application/vnd.ms-excel' ||
       file.mimetype === 'text/csv'
     ) {
@@ -193,7 +192,6 @@ router.post('/users', authenticate, async (req, res) => {
       }
     }
 
-    const bcrypt = await import('bcrypt');
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
@@ -367,7 +365,6 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     // Password update handling
     if (updateData.password) {
-      const bcrypt = await import('bcrypt');
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
@@ -535,7 +532,6 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
           // Auto-generate password if missing
           password = Math.random().toString(36).slice(-8);
         }
-        const bcrypt = await import('bcrypt');
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = new User({
@@ -588,63 +584,5 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
     res.status(500).json({ error: err.message || 'Bulk upload failed.' });
   }
 });
-
-
-
-
-//---------------------------------------
-//---------------------------------------
-//Settings page 
-//---------------------------------------
-//---------------------------------------
-
-// Add to admin.js routes
-router.get('/settings', authenticate, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId).select('-password -__v');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-
-
-// Add to admin.js routes
-router.post('/change-password', authenticate, async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  
-  // Use req.user.userId instead of req.user.id
-  const userId = req.user.userId;
-
-  try {
-    const user = await User.findById(userId).select('+password');
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Current password is incorrect' });
-    }
-
-    // Use bcrypt directly since it's now imported
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-
-    await user.save();
-
-    res.status(200).json({ message: 'Password updated successfully' });
-  } catch (err) {
-    console.error('Change password error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
 
 export default router;
