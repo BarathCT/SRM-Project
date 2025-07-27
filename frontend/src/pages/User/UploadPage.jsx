@@ -35,16 +35,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 
+// Updated schema for requirements
 const formSchema = z.object({
   authors: z.array(z.object({ 
       name: z.string().min(1, "Author name is required."),
       isCorresponding: z.boolean().default(false),
     })
-  ).min(1, "At least one author is required."),
+  ).min(1, "At least one author is required.").max(15, "You can add up to 15 authors only."),
   title: z.string().min(1, "Title is required."),
-  volumeName: z.string().min(1, "Volume name is required."),
+  journalName: z.string().min(1, "Journal name is required."),
   publisherName: z.string().min(1, "Publisher name is required."),
-  volume: z.string().min(1, "Volume is required."),
+  volume: z.string().optional(),
   issue: z.string().optional(),
   pageNo: z.string().optional(),
   doi: z.string().min(1, "A valid DOI is required."),
@@ -110,7 +111,7 @@ export default function UploadPage() {
     defaultValues: {
       authors: [{ name: "", isCorresponding: false }],
       title: "",
-      volumeName: "",
+      journalName: "",
       publisherName: "",
       volume: "",
       issue: "",
@@ -140,6 +141,22 @@ export default function UploadPage() {
 
   const watchAuthors = form.watch("authors");
   const watchIsStudentScholar = form.watch("isStudentScholar");
+
+  // Auto set Author No. when Claimed By changes
+  useEffect(() => {
+    const subscription = form.watch((values, { name }) => {
+      if (name === "claimedBy") {
+        if (values.claimedBy && watchAuthors && watchAuthors.length > 0) {
+          const foundIndex = watchAuthors.findIndex(a => a.name === values.claimedBy);
+          if (foundIndex !== -1) {
+            form.setValue("authorNo", (foundIndex + 1).toString());
+          }
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line
+  }, [form, watchAuthors]);
 
   const debouncedDoiCheck = useCallback(
     debounce((doi) => {
@@ -227,7 +244,7 @@ export default function UploadPage() {
                                   onCheckedChange={field.onChange}
                                 />
                               </FormControl>
-                              <FormLabel className="!mt-0 text-sm">Corresponding (c)</FormLabel>
+                              <FormLabel className="!mt-0 text-sm">Corresponding (C)</FormLabel>
                             </FormItem>
                           )}
                         />
@@ -238,15 +255,18 @@ export default function UploadPage() {
                         )}
                       </div>
                     ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => append({ name: "", isCorresponding: false })}
-                    >
-                      Add Author
-                    </Button>
+                    {/* Add Author button: hide if 15 authors are present */}
+                    {fields.length < 15 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => append({ name: "", isCorresponding: false })}
+                      >
+                        Add Author
+                      </Button>
+                    )}
                   </div>
 
                   {/* Publication Details */}
@@ -267,10 +287,10 @@ export default function UploadPage() {
 
                     <FormField 
                       control={form.control}
-                      name="volumeName"
+                      name="journalName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Volume Name</FormLabel>
+                          <FormLabel>Journal Name</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., Proceedings of Science" {...field} />
                           </FormControl>
@@ -441,7 +461,10 @@ export default function UploadPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Claimed By</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select an author" />
@@ -464,7 +487,7 @@ export default function UploadPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Author No.</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select author number" />
@@ -475,7 +498,7 @@ export default function UploadPage() {
                                 author.name && <SelectItem key={index} value={(index + 1).toString()}>{index + 1}</SelectItem>
                               ))}
                               {correspondingAuthor && correspondingAuthor.name && (
-                                <SelectItem value="c">c (Corresponding)</SelectItem>
+                                <SelectItem value="C">C (Corresponding)</SelectItem>
                               )}
                             </SelectContent>
                           </Select>

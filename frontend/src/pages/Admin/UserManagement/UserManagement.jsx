@@ -67,7 +67,7 @@ export default function UserManagement() {
     email: '',
     password: '',
     role: 'faculty',
-    college: 'N/A',
+    college: '',
     category: 'N/A'
   });
   const [editMode, setEditMode] = useState(false);

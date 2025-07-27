@@ -3,28 +3,32 @@ import { jwtDecode } from 'jwt-decode';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
+/**
+ * ProtectedRoute ensures only authenticated users with allowedRoles can access the route.
+ * - Reads token & user from localStorage (set at login).
+ * - If not authenticated, redirects to login.
+ * - If not authorized for role, redirects to the correct dashboard.
+ * - Handles token expiration and structure.
+ */
 export default function ProtectedRoute({ allowedRoles }) {
   const location = useLocation();
-  const [isValidating, setIsValidating] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [status, setStatus] = useState('validating'); // 'validating', 'authorized', 'unauthorized', 'forbidden'
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
-    const validateAuth = async () => {
+    const checkAuth = () => {
       try {
         const token = localStorage.getItem('token');
         const user = localStorage.getItem('user') 
           ? JSON.parse(localStorage.getItem('user')) 
           : null;
 
-        // No token case
-        if (!token) {
-          toast.error('Please log in to access this page');
-          setIsAuthorized(false);
-          setIsValidating(false);
+        if (!token || !user) {
+          setStatus('unauthorized');
+          setUserRole(null);
           return;
         }
 
-        // Verify token structure and expiration
         const decoded = jwtDecode(token);
         const currentTime = Date.now() / 1000;
 
@@ -32,51 +36,39 @@ export default function ProtectedRoute({ allowedRoles }) {
         if (decoded.exp < currentTime) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          toast.warning('Your session has expired. Please log in again.');
-          setIsAuthorized(false);
-          setIsValidating(false);
+          setStatus('unauthorized');
+          setUserRole(null);
           return;
         }
 
-        // Verify token has required data
+        // Token structure check
         if (!decoded.role || !decoded.userId || !decoded.email) {
-          throw new Error('Invalid token structure');
+          setStatus('unauthorized');
+          setUserRole(null);
+          return;
         }
 
-        // Update user data if needed
-        if (!user || user._id !== decoded.userId) {
-          const updatedUser = {
-            _id: decoded.userId,
-            email: decoded.email,
-            role: decoded.role,
-            college: decoded.college || 'N/A',
-            category: decoded.category || 'N/A'
-          };
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-        }
-
-        // Check role permissions
+        // Role check
         if (!allowedRoles || allowedRoles.includes(decoded.role)) {
-          setIsAuthorized(true);
+          setStatus('authorized');
+          setUserRole(decoded.role);
         } else {
-          toast.warning(`You don't have permission to access this page.`);
-          setIsAuthorized(false);
+          setStatus('forbidden');
+          setUserRole(decoded.role);
         }
       } catch (err) {
-        console.error('Authentication error:', err);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        toast.error('Invalid session. Please log in again.');
-        setIsAuthorized(false);
-      } finally {
-        setIsValidating(false);
+        setStatus('unauthorized');
+        setUserRole(null);
       }
     };
 
-    validateAuth();
+    checkAuth();
   }, [location.pathname, allowedRoles]);
 
-  if (isValidating) {
+  // Loading spinner while checking
+  if (status === 'validating') {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -84,18 +76,28 @@ export default function ProtectedRoute({ allowedRoles }) {
     );
   }
 
-  if (!isAuthorized) {
-    // Get the appropriate redirect path based on user role
-    const user = localStorage.getItem('user') 
-      ? JSON.parse(localStorage.getItem('user')) 
-      : null;
-    
-    const redirectPath = user?.role 
-      ? `/${user.role.replace('_', '-')}`
-      : '/login';
-
-    return <Navigate to={redirectPath} replace state={{ from: location }} />;
+  // Not logged in: always go to /login
+  if (status === 'unauthorized') {
+    toast.error('Please log in to access this page');
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  // Role not allowed: redirect to user's dashboard
+  if (status === 'forbidden') {
+    toast.warning("You don't have permission to access this page.");
+    // Map role to dashboard path:
+    let dashboard = '/';
+    if (userRole) {
+      dashboard = {
+        super_admin: '/super-admin',
+        campus_admin: '/campus-admin',
+        admin: '/admin',
+        faculty: '/faculty',
+      }[userRole] || '/';
+    }
+    return <Navigate to={dashboard} replace />;
+  }
+
+  // All good!
   return <Outlet />;
 }

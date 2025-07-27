@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/Toast';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,35 +12,30 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
+import ForgotPassword from './ForgotPassword';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Remove browser default validation
-    e.stopPropagation();
-
-    // Field required validation
-    let isValid = true;
+    // Validate inputs
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
       toast.error('Email is required');
-      isValid = false;
+      return;
     }
     if (!password) {
       toast.error('Password is required');
-      isValid = false;
+      return;
     }
-    if (!isValid) return;
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast.error('Please enter a valid email address');
       return;
@@ -51,25 +46,31 @@ export default function Login() {
     try {
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include', // For HTTP-only cookies if used in backend
+        body: JSON.stringify({ 
+          email: email.trim(), 
+          password: password.trim() 
+        }),
       });
 
       const data = await response.json();
-
+      
       if (!response.ok) {
-        if (response.status === 400) {
-          toast.error('User not found');
-        } else if (response.status === 401) {
-          toast.error('Invalid credentials');
-        } else {
-          toast.error(data.message || 'Login failed');
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error(data.message || 'Invalid email or password');
         }
         throw new Error(data.message || 'Login failed');
       }
 
-      // Store token and user data
-      localStorage.setItem('token', data.token);
+      // Store token and user info in localStorage
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
       localStorage.setItem('user', JSON.stringify(data.user));
       toast.success('Login successful');
 
@@ -89,17 +90,18 @@ export default function Login() {
           break;
         default:
           toast.warning('Unknown role. Contact admin.');
+          navigate('/');
           break;
       }
     } catch (err) {
-      // Error already handled in the response.ok block
+      let errorMessage = err.message;
+      if (err.message.includes('Failed to fetch')) {
+        errorMessage = 'Cannot connect to server. Please try again later.';
+      }
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleForgotPassword = () => {
-    toast.info('Please contact your administrator to reset your password', { duration: 8000 });
   };
 
   const handleContactSupport = () => {
@@ -146,6 +148,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="username"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -160,7 +163,8 @@ export default function Login() {
                   variant="link"
                   type="button"
                   className="text-blue-600 hover:text-blue-800 text-xs h-auto px-0"
-                  onClick={handleForgotPassword}
+                  onClick={() => setShowForgot(true)}
+                  disabled={loading}
                 >
                   Forgot password?
                 </Button>
@@ -178,11 +182,15 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={8}
                   autoComplete="current-password"
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -196,17 +204,14 @@ export default function Login() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full h-11 bg-blue-500 hover:bg-blue-600 text-white font-medium text-base shadow-sm transition-colors duration-200"
+              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
               disabled={loading}
             >
               {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...
-                </span>
+                </>
               ) : 'Sign In'}
             </Button>
 
@@ -218,6 +223,7 @@ export default function Login() {
                   variant="link" 
                   className="text-blue-500 hover:text-blue-600 text-xs h-auto px-0"
                   onClick={handleContactSupport}
+                  disabled={loading}
                 >
                   Contact support
                 </Button>
@@ -226,6 +232,13 @@ export default function Login() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Forgot Password Modal */}
+      {showForgot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <ForgotPassword onClose={() => setShowForgot(false)} />
+        </div>
+      )}
     </div>
   );
 }
