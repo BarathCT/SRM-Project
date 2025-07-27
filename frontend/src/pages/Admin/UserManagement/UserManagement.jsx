@@ -67,7 +67,7 @@ export default function UserManagement() {
     email: '',
     password: '',
     role: 'faculty',
-    college: '',
+    college: 'N/A',
     category: 'N/A'
   });
   const [editMode, setEditMode] = useState(false);
@@ -208,38 +208,27 @@ export default function UserManagement() {
     return roleOptions.filter(role => canCreateRole(role.value));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (payload) => {
     try {
       setIsSubmitting(true);
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication required');
-      if (!form.fullName) throw new Error('Full name is required');
-      if (!form.email) throw new Error('Email is required');
-      if (!editMode && !form.password) throw new Error('Password is required');
-      let payload = {
-        fullName: form.fullName,
-        email: form.email,
-        role: form.role,
-        ...(form.password && { password: form.password })
-      };
-      // Handle faculty ID
-      if (form.role !== 'super_admin') {
-        payload.facultyId = form.facultyId;
-      } else {
-        payload.facultyId = 'N/A';
-      }
+      if (!payload.fullName) throw new Error('Full name is required');
+      if (!payload.email) throw new Error('Email is required');
+      if (!editMode && !payload.password) throw new Error('Password is required');
+
       // College and category logic based on role
       if (currentUser.role === 'super_admin') {
-        payload.college = form.college;
+        payload.college = payload.college;
         // For super admin, validate category requirements
-        if (form.role !== 'super_admin') {
-          const college = collegeOptions.find(c => c.name === form.college);
+        if (payload.role !== 'super_admin') {
+          const college = collegeOptions.find(c => c.name === payload.college);
           if (college && college.hasCategories) {
-            if (['faculty', 'campus_admin', 'admin'].includes(form.role)) {
-              if (!form.category || form.category === 'N/A') {
+            if (['faculty', 'campus_admin', 'admin'].includes(payload.role)) {
+              if (!payload.category || payload.category === 'N/A') {
                 throw new Error('Category is required for this role in this college');
               }
-              payload.category = form.category;
+              // payload.category is already set
             } else {
               payload.category = 'N/A';
             }
@@ -253,6 +242,14 @@ export default function UserManagement() {
         payload.college = currentUser.college;
         payload.category = collegesWithCategories.includes(currentUser.college) ? currentUser.category : 'N/A';
       }
+
+      // Handle faculty ID
+      if (payload.role !== 'super_admin') {
+        payload.facultyId = payload.facultyId;
+      } else {
+        payload.facultyId = 'N/A';
+      }
+
       const url = editMode 
         ? `http://localhost:5000/api/admin/users/${currentUserId}`
         : 'http://localhost:5000/api/admin/users';
@@ -276,14 +273,13 @@ export default function UserManagement() {
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
 
-      // Updated Error Handling for existing email
       if (!res.ok) {
         if (result.message?.toLowerCase().includes('user already exists')) {
           toast.error('Email already exists');
         } else {
           toast.error(result.error || result.message || (editMode ? 'Failed to update user' : 'Failed to create user'));
         }
-        return; // Prevent showing success toast
+        return;
       }
 
       toast.success(editMode ? 'User updated successfully' : 'User created successfully');

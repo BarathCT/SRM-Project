@@ -66,6 +66,7 @@ export default function AddUserDialog({
         setForm({ ...form, email: newEmail });
       }
     }
+    // eslint-disable-next-line
   }, [form.college]);
 
   // Determine if we should show category field
@@ -98,7 +99,6 @@ export default function AddUserDialog({
   // Handle role change with proper validation
   const handleRoleChangeWithReset = (value) => {
     const selectedCollege = currentUser?.role === 'super_admin' ? form.college : currentUser?.college;
-    const categories = getCategoriesForCollege(selectedCollege);
     const hasCat = collegeHasCategories(selectedCollege);
 
     let category = form.category;
@@ -123,7 +123,6 @@ export default function AddUserDialog({
 
   // Handle college change with validation
   const handleCollegeChangeWithReset = (value) => {
-    const categories = getCategoriesForCollege(value);
     const hasCat = collegeHasCategories(value);
 
     let category = form.category;
@@ -148,10 +147,20 @@ export default function AddUserDialog({
     toast.info(`Category set to ${value}`);
   };
 
-  // Enhanced submit handler with complete validation and duplicate email check
+  // Generate a random password (8-10 chars, alphanumeric+symbols)
+  const generatePassword = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$!';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pwd;
+  };
+
+  // Enhanced submit handler with complete validation and auto password generation
   const handleSubmitWithToast = async () => {
     try {
-      // Basic validation
+      // Basic validation (no password check for new users)
       if (!form.fullName) {
         toast.error('Full name is required');
         return;
@@ -164,31 +173,27 @@ export default function AddUserDialog({
         toast.error(`Email must end with @${collegeDomains[form.college]}`);
         return;
       }
-      if (!editMode && !form.password) {
-        toast.error('Password is required for new users');
-        return;
-      }
       if (form.role !== 'super_admin' && !form.facultyId) {
         toast.error('Faculty ID is required');
         return;
       }
-
-      // College validation for non-super_admin roles
       if (currentUser?.role === 'super_admin' && form.role !== 'super_admin' && !form.college) {
         toast.error('College selection is required');
         return;
       }
-
-      // Category validation when required
       if (shouldShowCategoryField() && (!form.category || form.category === 'N/A')) {
         toast.error('Category selection is required for this college');
         return;
       }
 
-      // Await the handleSubmit function and handle error responses
-      const result = await handleSubmit();
+      // For new users, always generate a random password and send
+      let payload = { ...form };
+      if (!editMode) {
+        payload.password = generatePassword();
+      }
+      // Pass payload to handleSubmit
+      const result = await handleSubmit(payload);
 
-      // If handleSubmit returns an error (not throws)
       if (result && typeof result === "object" && result.error) {
         if (result.error.toLowerCase().includes('user already exists')) {
           toast.error('Email already exists');
@@ -202,15 +207,13 @@ export default function AddUserDialog({
         return;
       }
 
-      // If no error, show success toast
       toast.success(
         editMode
           ? 'User updated successfully'
-          : 'User created successfully'
+          : 'User created and welcome email sent.'
       );
       onOpenChange(false);
     } catch (error) {
-      // Catch thrown errors
       if (error.message && error.message.toLowerCase().includes('user already exists')) {
         toast.error('Email already exists');
       } else {
@@ -225,27 +228,22 @@ export default function AddUserDialog({
   // Helper: Determines if all required fields are filled (for button disable logic)
   const isFormValid = () => {
     // For edit mode, password is not required
-    const passwordRequired = !editMode;
-    // If creating/editing super_admin, college/category not required
+    // For create, password is always generated automatically
     if (form.role === 'super_admin') {
       return (
         !!form.fullName &&
         !!form.email &&
-        (!!form.password || !passwordRequired) &&
         !!form.facultyId
       );
     }
-    // For super_admin adding other users, must select college and (maybe) category
     if (currentUser?.role === 'super_admin') {
       if (!form.college || form.college === 'N/A') return false;
       if (shouldShowCategoryField() && (!form.category || form.category === 'N/A' || form.category === '')) return false;
     }
-    // Common required fields plus email domain validation
     return (
       !!form.fullName &&
       !!form.email &&
       (form.college ? validateEmailDomain(form.email, form.college) : true) &&
-      (!!form.password || !passwordRequired) &&
       !!form.facultyId &&
       !!form.role &&
       (currentUser?.role !== 'super_admin' || !!form.college)
@@ -290,7 +288,6 @@ export default function AddUserDialog({
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                 />
               </div>
-
               {/* Faculty ID (hidden for super admin) */}
               {form.role !== 'super_admin' && (
                 <div className="space-y-2">
@@ -306,7 +303,6 @@ export default function AddUserDialog({
                   />
                 </div>
               )}
-
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center">
@@ -338,27 +334,25 @@ export default function AddUserDialog({
 
             {/* Right Column */}
             <div className="space-y-4">
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center">
-                  <Lock className="h-4 w-4 mr-2 text-gray-500" />
-                  {editMode ? 'New Password (leave blank to keep current)' : 'Password'}
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={editMode ? '********' : 'Enter password'}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required={!editMode}
-                />
-                {editMode && (
+              {/* Password: removed for create; for edit, show only if wanted */}
+              {editMode && (
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="flex items-center">
+                    <Lock className="h-4 w-4 mr-2 text-gray-500" />
+                    New Password (leave blank to keep current)
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="********"
+                    value={form.password || ''}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  />
                   <p className="text-xs text-muted-foreground">
                     Only enter a password if you want to change it
                   </p>
-                )}
-              </div>
-
+                </div>
+              )}
               {/* Role */}
               <div className="space-y-2">
                 <Label htmlFor="role" className="flex items-center">
@@ -382,7 +376,6 @@ export default function AddUserDialog({
                   </SelectContent>
                 </Select>
               </div>
-
               {/* College (for super admin creating non-super admin users) */}
               {(currentUser?.role === 'super_admin' && form.role !== 'super_admin') && (
                 <div className="space-y-2">
@@ -411,7 +404,6 @@ export default function AddUserDialog({
               )}
             </div>
           </div>
-
           {/* Category (when applicable) */}
           {shouldShowCategoryField() && (
             <div className="space-y-2">
