@@ -4,7 +4,6 @@ import Navbar from './components/Navbar';
 import UserManagement from './pages/Admin/UserManagement/UserManagement';
 import UploadPage from './pages/User/UploadPage';
 
-
 import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard';
 import CampusAdminDashboard from './pages/Admin/CampusAdminDashboard';
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -19,47 +18,46 @@ export default function App() {
     <ToastProvider>
       <Router>
         <Navbar />
-        
         <Routes>
           {/* Public route */}
           <Route path="/login" element={<Login />} />
-          
+
           {/* Super Admin routes */}
           <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
             <Route path="/super-admin" element={<SuperAdminDashboard />} />
             <Route path="/super-admin/users" element={<UserManagement />} />
           </Route>
-          
+
           {/* Campus Admin routes */}
           <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
             <Route path="/campus-admin" element={<CampusAdminDashboard />} />
             <Route path="/campus-admin/users" element={<UserManagement />} />
           </Route>
-          
+
           {/* Admin routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/upload" element={<UploadPage />} />
           </Route>
-          
+
           {/* Faculty routes */}
           <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
             <Route path="/faculty" element={<FacultyDashboard />} />
             <Route path="/faculty/upload" element={<UploadPage />} />
           </Route>
-          
+
           {/* Scholar routes */}
           <Route element={<ProtectedRoute allowedRoles={['scholar']} />}>
-            <Route path="/scholar" element={<ScholarDashboard/>} />
+            <Route path="/scholar" element={<ScholarDashboard />} />
             <Route path="/scholar/upload" element={<UploadPage />} />
           </Route>
-          
+
           {/* Common routes accessible to all authenticated users */}
           <Route element={<ProtectedRoute allowedRoles={['super_admin', 'campus_admin', 'admin', 'faculty', 'scholar']} />}>
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
-          
+
           {/* Redirect based on authentication status */}
           <Route path="/" element={
             localStorage.getItem('token') ? (
@@ -74,9 +72,9 @@ export default function App() {
               <Navigate to="/login" />
             )
           } />
-          
-          {/* Catch-all route */}
-          {/* <Route path="*" element={
+
+          {/* Catch-all route for unmatched URLs */}
+          <Route path="*" element={
             localStorage.getItem('token') ? (
               <Navigate to={
                 JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
@@ -88,7 +86,7 @@ export default function App() {
             ) : (
               <Navigate to="/login" />
             )
-          } /> */}
+          } />
         </Routes>
       </Router>
     </ToastProvider>

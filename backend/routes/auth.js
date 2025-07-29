@@ -26,8 +26,8 @@ const validateInstitutionalEmail = (email) => {
   const institutionalDomains = [
     'srmist.edu.in',
     'srmtrichy.edu.in',
-    'eswari.edu.in',
-    'trp.edu.in'
+    'eec.srmrmp.edu.in',
+    'trp.srmtrichy.edu.in'
   ];
   const domain = email.split('@')[1];
   return institutionalDomains.includes(domain);
@@ -75,7 +75,7 @@ router.post('/login', [
         role: user.role,
         email: user.email,
         college: user.college || null,
-        category: user.category || null
+        institute: user.institute || null
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }

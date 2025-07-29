@@ -55,8 +55,10 @@ router.get('/', authenticate, async (req, res) => {
       facultyId: req.user.facultyId,
       role: req.user.role,
       college: req.user.college,
-      category: req.user.category,
-      createdAt: req.user.createdAt
+      institute: req.user.institute,
+      department: req.user.department,
+      createdAt: req.user.createdAt,
+      lastLogin: req.user.lastLogin
     };
 
     res.status(200).json({
@@ -79,13 +81,13 @@ router.get('/', authenticate, async (req, res) => {
  */
 router.post('/change-password', authenticate, async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
 
     // Validate input
-    if (!currentPassword || !newPassword) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Both current and new passwords are required'
+        message: 'Current password, new password and confirmation are required'
       });
     }
 
@@ -93,6 +95,13 @@ router.post('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Password must be at least 8 characters long'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password and confirmation do not match'
       });
     }
 
@@ -104,6 +113,15 @@ router.post('/change-password', authenticate, async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Current password is incorrect'
+      });
+    }
+
+    // Check if new password is same as current
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password cannot be the same as current password'
       });
     }
 
@@ -137,17 +155,23 @@ router.put('/profile', authenticate, async (req, res) => {
     const updates = {};
 
     // Validate input
-    if (fullName) updates.fullName = fullName;
-    if (email) {
+    if (fullName && fullName.trim() !== '') {
+      updates.fullName = fullName.trim();
+    }
+    
+    if (email && email.trim() !== '') {
       // Check if email is already in use
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne({ 
+        email: { $regex: `^${email.trim()}$`, $options: 'i' } 
+      });
+      
       if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
         return res.status(400).json({
           success: false,
           message: 'Email already in use'
         });
       }
-      updates.email = email;
+      updates.email = email.trim().toLowerCase();
     }
 
     if (Object.keys(updates).length === 0) {
@@ -164,16 +188,90 @@ router.put('/profile', authenticate, async (req, res) => {
       { new: true, runValidators: true }
     ).select('-password -__v');
 
+    // Generate new token if email was changed
+    let newToken = null;
+    if (updates.email) {
+      newToken = jwt.sign(
+        { userId: updatedUser._id, email: updatedUser.email, role: updatedUser.role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE || '30d' }
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      data: updatedUser
+      data: updatedUser,
+      token: newToken || undefined
+    });
+
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        error: error.message
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/settings/departments
+ * @desc Get available departments based on user's college and institute
+ * @access Private
+ */
+router.get('/departments', authenticate, async (req, res) => {
+  try {
+    const { college, institute } = req.user;
+    
+    if (college === 'N/A') {
+      return res.status(200).json({
+        success: true,
+        data: ['N/A']
+      });
+    }
+
+    const collegeData = {
+      'SRMIST RAMAPURAM': {
+        'Science and Humanities': ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A'],
+        'Engineering and Technology': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
+        'Management': ['Business Administration', 'Commerce', 'N/A'],
+        'Dental': ['General Dentistry', 'Orthodontics', 'N/A']
+      },
+      'SRM TRICHY': {
+        'Science and Humanities': ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A'],
+        'Engineering and Technology': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+      },
+      'EASWARI ENGINEERING COLLEGE': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
+      'TRP ENGINEERING COLLEGE': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
+      'N/A': ['N/A']
+    };
+
+    let departments = [];
+    
+    if (college === 'EASWARI ENGINEERING COLLEGE' || college === 'TRP ENGINEERING COLLEGE') {
+      departments = collegeData[college];
+    } else if (collegeData[college] && institute && collegeData[college][institute]) {
+      departments = collegeData[college][institute];
+    } else {
+      departments = ['N/A'];
+    }
+
+    res.status(200).json({
+      success: true,
+      data: departments
     });
 
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to update profile',
+      message: 'Failed to fetch departments',
       error: error.message
     });
   }

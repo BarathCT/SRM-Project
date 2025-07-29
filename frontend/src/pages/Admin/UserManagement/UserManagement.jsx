@@ -4,58 +4,77 @@ import { toast } from 'sonner';
 import { jwtDecode } from 'jwt-decode';
 
 import { DeleteConfirmationDialog } from './components/DeleteConfirmationDialog';
-import AddUserDialog from './components/AddUserDialog';
+import AddUserDialog from './components/AddUserDialog.jsx';
 import UserTable from './components/UserTable';
 import UserFilters from './components/UserFilter';
 import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
 import BulkUploadDialog from './components/BulkUploadDialog';
 
-// College options with their specific categories
-const collegeOptions = [
+// College options with their specific institutes and departments
+const COLLEGE_OPTIONS = [
   { 
     name: 'SRMIST RAMAPURAM',
-    categories: [
-      'Science and Humanities',
-      'Engineering and Technology',
-      'Management',
-      'Dental'
-    ],
-    hasCategories: true
+    hasInstitutes: true,
+    institutes: [
+      { 
+        name: 'Science and Humanities',
+        departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A']
+      },
+      { 
+        name: 'Engineering and Technology',
+        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+      },
+      { 
+        name: 'Management',
+        departments: ['Business Administration', 'Commerce', 'N/A']
+      },
+      { 
+        name: 'Dental',
+        departments: ['General Dentistry', 'Orthodontics', 'N/A']
+      }
+    ]
   },
   { 
     name: 'SRM TRICHY',
-    categories: [
-      'Science and Humanities',
-      'Engineering and Technology'
-    ],
-    hasCategories: true
+    hasInstitutes: true,
+    institutes: [
+      { 
+        name: 'Science and Humanities',
+        departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A']
+      },
+      { 
+        name: 'Engineering and Technology',
+        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+      }
+    ]
   },
   { 
     name: 'EASWARI ENGINEERING COLLEGE',
-    categories: ['N/A'],
-    hasCategories: false
+    hasInstitutes: false,
+    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
   },
   { 
     name: 'TRP ENGINEERING COLLEGE',
-    categories: ['N/A'],
-    hasCategories: false
+    hasInstitutes: false,
+    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
   },
   { 
     name: 'N/A',
-    categories: ['N/A'],
-    hasCategories: false
+    hasInstitutes: false,
+    departments: ['N/A']
   }
 ];
 
-const roleOptions = [
+const ROLE_OPTIONS = [
   { value: 'super_admin', label: 'Super Admin' },
   { value: 'campus_admin', label: 'Campus Admin' },
   { value: 'admin', label: 'Admin' },
   { value: 'faculty', label: 'Faculty' }
 ];
 
-const collegesWithCategories = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
+const COLLEGES_WITH_INSTITUTES = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
+const API_BASE_URL = 'http://localhost:5000/api/admin';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -68,7 +87,8 @@ export default function UserManagement() {
     password: '',
     role: 'faculty',
     college: 'N/A',
-    category: 'N/A'
+    institute: 'N/A',
+    department: 'N/A'
   });
   const [editMode, setEditMode] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -78,8 +98,9 @@ export default function UserManagement() {
   const [openBulkDialog, setOpenBulkDialog] = useState(false);
   const [filters, setFilters] = useState({
     role: 'all',
-    category: 'all',
-    college: 'all'
+    institute: 'all',
+    college: 'all',
+    department: 'all'
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -114,7 +135,7 @@ export default function UserManagement() {
     // eslint-disable-next-line
   }, [navigate]);
 
-  // Apply user filters
+  // Apply user filters whenever users, filters, or search term changes
   useEffect(() => {
     applyFilters();
     // eslint-disable-next-line
@@ -122,22 +143,37 @@ export default function UserManagement() {
 
   const applyFilters = () => {
     let result = [...users];
-    if (filters.role && filters.role !== 'all') {
+    
+    // Apply role filter
+    if (filters.role !== 'all') {
       result = result.filter(user => user.role === filters.role);
     }
-    if (filters.category && filters.category !== 'all') {
-      result = result.filter(user => user.category === filters.category);
+    
+    // Apply institute filter
+    if (filters.institute !== 'all') {
+      result = result.filter(user => user.institute === filters.institute);
     }
-    if (filters.college && filters.college !== 'all') {
+    
+    // Apply college filter
+    if (filters.college !== 'all') {
       result = result.filter(user => user.college === filters.college);
     }
+    
+    // Apply department filter
+    if (filters.department !== 'all') {
+      result = result.filter(user => user.department === filters.department);
+    }
+    
+    // Apply search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(user => 
         user.fullName.toLowerCase().includes(term) || 
-        (user.facultyId && user.facultyId.toLowerCase().includes(term))
+        (user.facultyId && user.facultyId.toLowerCase().includes(term)) ||
+        (user.email && user.email.toLowerCase().includes(term))
       );
     }
+    
     setFilteredUsers(result);
   };
 
@@ -146,21 +182,26 @@ export default function UserManagement() {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      let url = 'http://localhost:5000/api/admin/users';
+      let url = `${API_BASE_URL}/users`;
       const params = new URLSearchParams();
+      
+      // Add filters based on user role
       if (user.role === 'campus_admin') {
         params.append('college', user.college);
-        if (collegesWithCategories.includes(user.college)) {
-          params.append('category', user.category);
+        if (COLLEGES_WITH_INSTITUTES.includes(user.college)) {
+          params.append('institute', user.institute);
         }
       } else if (user.role === 'admin') {
         params.append('college', user.college);
-        params.append('category', user.category);
+        params.append('institute', user.institute);
         params.append('role', 'faculty');
       }
+      
+      // Append params to URL if any exist
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
+      
       const res = await fetch(url, {
         method: 'GET',
         headers: {
@@ -168,17 +209,21 @@ export default function UserManagement() {
           'Content-Type': 'application/json'
         }
       });
+      
+      // Handle response
       const contentType = res.headers.get('content-type');
       let data;
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType?.includes('application/json')) {
         data = await res.json();
       } else {
         const text = await res.text();
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
+      
       if (!Array.isArray(data)) {
         throw new Error('Invalid data format: Expected array of users');
       }
+      
       setUsers(data);
     } catch (err) {
       console.error('Fetch users error:', err);
@@ -189,14 +234,31 @@ export default function UserManagement() {
     }
   };
 
-  const getCategoriesForCollege = (collegeName) => {
-    const college = collegeOptions.find(c => c.name === collegeName);
-    return college ? college.categories : ['N/A'];
+  // Helper functions
+  const getInstitutesForCollege = (collegeName) => {
+    const college = COLLEGE_OPTIONS.find(c => c.name === collegeName);
+    if (!college || !college.hasInstitutes) return ['N/A'];
+    return college.institutes.map(i => i.name);
+  };
+
+  const getDepartmentsForCollegeAndInstitute = (collegeName, instituteName = 'N/A') => {
+    if (collegeName === 'N/A') return ['N/A'];
+    
+    const college = COLLEGE_OPTIONS.find(c => c.name === collegeName);
+    if (!college) return ['N/A'];
+    
+    if (!college.hasInstitutes) {
+      return college.departments || ['N/A'];
+    }
+    
+    const institute = college.institutes.find(i => i.name === instituteName);
+    return institute?.departments || ['N/A'];
   };
 
   const canCreateRole = (role) => {
     if (!currentUser) return false;
     const creatorRole = currentUser.role;
+    
     if (creatorRole === 'super_admin') return ['campus_admin', 'admin', 'faculty'].includes(role);
     if (creatorRole === 'campus_admin') return ['admin', 'faculty'].includes(role);
     if (creatorRole === 'admin') return role === 'faculty';
@@ -205,7 +267,7 @@ export default function UserManagement() {
 
   const getAvailableRoles = () => {
     if (!currentUser) return [];
-    return roleOptions.filter(role => canCreateRole(role.value));
+    return ROLE_OPTIONS.filter(role => canCreateRole(role.value));
   };
 
   const handleSubmit = async (payload) => {
@@ -217,42 +279,22 @@ export default function UserManagement() {
       if (!payload.email) throw new Error('Email is required');
       if (!editMode && !payload.password) throw new Error('Password is required');
 
-      // College and category logic based on role
-      if (currentUser.role === 'super_admin') {
-        payload.college = payload.college;
-        // For super admin, validate category requirements
-        if (payload.role !== 'super_admin') {
-          const college = collegeOptions.find(c => c.name === payload.college);
-          if (college && college.hasCategories) {
-            if (['faculty', 'campus_admin', 'admin'].includes(payload.role)) {
-              if (!payload.category || payload.category === 'N/A') {
-                throw new Error('Category is required for this role in this college');
-              }
-              // payload.category is already set
-            } else {
-              payload.category = 'N/A';
-            }
-          } else {
-            payload.category = 'N/A';
+      // Validate department based on college and institute
+      const collegeData = COLLEGE_OPTIONS.find(c => c.name === payload.college);
+      if (collegeData) {
+        if (collegeData.hasInstitutes) {
+          const instituteData = collegeData.institutes.find(i => i.name === payload.institute);
+          if (instituteData && !instituteData.departments.includes(payload.department)) {
+            throw new Error(`Invalid department for selected institute`);
           }
-        } else {
-          payload.category = 'N/A';
+        } else if (!collegeData.departments.includes(payload.department)) {
+          throw new Error(`Invalid department for selected college`);
         }
-      } else {
-        payload.college = currentUser.college;
-        payload.category = collegesWithCategories.includes(currentUser.college) ? currentUser.category : 'N/A';
-      }
-
-      // Handle faculty ID
-      if (payload.role !== 'super_admin') {
-        payload.facultyId = payload.facultyId;
-      } else {
-        payload.facultyId = 'N/A';
       }
 
       const url = editMode 
-        ? `http://localhost:5000/api/admin/users/${currentUserId}`
-        : 'http://localhost:5000/api/admin/users';
+        ? `${API_BASE_URL}/users/${currentUserId}`
+        : `${API_BASE_URL}/users`;
       const method = editMode ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -266,7 +308,7 @@ export default function UserManagement() {
 
       const contentType = res.headers.get('content-type');
       let result;
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType?.includes('application/json')) {
         result = await res.json();
       } else {
         const text = await res.text();
@@ -303,37 +345,40 @@ export default function UserManagement() {
       password: '',
       role: 'faculty',
       college: currentUser?.role === 'super_admin' ? 'N/A' : currentUser?.college || 'N/A',
-      category: 'N/A'
+      institute: 'N/A',
+      department: 'N/A'
     });
     setEditMode(false);
     setCurrentUserId(null);
   };
 
-  // --------- MAIN CHANGE HERE: only update users state, do not refetch all users!
   const handleDelete = async (id) => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/admin/users/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      
       const contentType = res.headers.get('content-type');
       let result;
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType?.includes('application/json')) {
         result = await res.json();
       } else {
         const text = await res.text();
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
+      
       if (!res.ok) {
         toast.error(result.error || result.message || 'Failed to delete user');
         return;
       }
-      // Only update local users array!
+      
+      // Update local users array
       setUsers(prevUsers => prevUsers.filter(user => user._id !== id));
       toast.success('User deleted successfully');
     } catch (err) {
@@ -358,40 +403,12 @@ export default function UserManagement() {
       password: '',
       role: user.role,
       college: user.college || 'N/A',
-      category: user.category || 'N/A',
+      institute: user.institute || 'N/A',
+      department: user.department || 'N/A'
     });
     setEditMode(true);
     setCurrentUserId(user._id);
     setOpenDialog(true);
-  };
-
-  const handleCollegeChange = (value) => {
-    const newForm = {
-      ...form,
-      college: value,
-      category: value === 'N/A' ? 'N/A' : (form.category || 'N/A')
-    };
-    const selectedCollege = collegeOptions.find(c => c.name === value);
-    if (['campus_admin', 'admin', 'faculty'].includes(form.role)) {
-      if (selectedCollege && !selectedCollege.hasCategories) {
-        newForm.category = 'N/A';
-      }
-    }
-    setForm(newForm);
-  };
-
-  const handleRoleChange = (value) => {
-    const newForm = {
-      ...form,
-      role: value,
-      category: value === 'faculty' ? (form.category || 'N/A') : 'N/A',
-      facultyId: value === 'super_admin' ? 'N/A' : (form.facultyId)
-    };
-    const selectedCollege = collegeOptions.find(c => c.name === newForm.college);
-    if ((['campus_admin', 'admin', 'faculty'].includes(value)) && selectedCollege && !selectedCollege.hasCategories) {
-      newForm.category = 'N/A';
-    }
-    setForm(newForm);
   };
 
   const canModifyUser = (targetUser) => {
@@ -400,14 +417,14 @@ export default function UserManagement() {
     if (currentUser.role === 'super_admin') return true;
     if (currentUser.role === 'campus_admin') {
       if (currentUser.college !== targetUser.college) return false;
-      if (!collegesWithCategories.includes(currentUser.college)) {
+      if (!COLLEGES_WITH_INSTITUTES.includes(currentUser.college)) {
         return true;
       }
-      return currentUser.category === targetUser.category;
+      return currentUser.institute === targetUser.institute;
     }
     if (currentUser.role === 'admin') {
       return currentUser.college === targetUser.college && 
-             currentUser.category === targetUser.category &&
+             currentUser.institute === targetUser.institute &&
              targetUser.role === 'faculty';
     }
     return false;
@@ -416,8 +433,9 @@ export default function UserManagement() {
   const resetFilters = () => {
     setFilters({
       role: 'all',
-      category: 'all',
-      college: 'all'
+      institute: 'all',
+      college: 'all',
+      department: 'all'
     });
     setSearchTerm('');
   };
@@ -432,41 +450,50 @@ export default function UserManagement() {
     }
   };
 
+  // Get available filter options from current users
   const availableRoles = [...new Set(users.map(user => user.role))];
-  const availableCategories = [...new Set(
+  const availableInstitutes = [...new Set(
     users
-      .filter(user => user.category && user.category !== 'N/A')
-      .map(user => user.category)
+      .filter(user => user.institute && user.institute !== 'N/A')
+      .map(user => user.institute)
   )];
   const availableColleges = [...new Set(
     users
       .filter(user => user.college && user.college !== 'N/A')
       .map(user => user.college)
   )];
+  const availableDepartments = [...new Set(
+    users
+      .filter(user => user.department && user.department !== 'N/A')
+      .map(user => user.department)
+  )];
 
-  // Bulk Upload Function (local, not helper)
+  // Bulk Upload Function
   const handleBulkUpload = async (formData) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:5000/api/admin/bulk-upload-users', {
+      const res = await fetch(`${API_BASE_URL}/bulk-upload-users`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         },
         body: formData
       });
+      
       const contentType = res.headers.get('content-type');
       let result;
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType?.includes('application/json')) {
         result = await res.json();
       } else {
         const text = await res.text();
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
+      
       if (!res.ok) {
         toast.error(result.error || result.message || 'Bulk upload failed');
         return;
       }
+      
       toast.success('Bulk upload successful!');
       await fetchUsers(currentUser);
       return result;
@@ -478,28 +505,32 @@ export default function UserManagement() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-
       {/* Header Section */}
       <UserHeader
         currentUser={currentUser}
         getAvailableRoles={getAvailableRoles}
         setOpenDialog={setOpenDialog}
         setOpenBulkDialog={setOpenBulkDialog}
+        collegeOptions={COLLEGE_OPTIONS}
       />
 
+      {/* Bulk Upload Dialog */}
       <BulkUploadDialog
         open={openBulkDialog}
         onClose={() => setOpenBulkDialog(false)}
         currentUser={currentUser}
         getAvailableRoles={getAvailableRoles}
         onBulkUpload={handleBulkUpload}
+        collegeOptions={COLLEGE_OPTIONS}
       />
 
       {/* Stats Card */}
       <UserStatsCard
         users={users}
         filteredUsers={filteredUsers}
-        roleOptions={roleOptions}
+        roleOptions={ROLE_OPTIONS}
+        loading={isLoading}
+        activeUsers={users.filter(u => u.isActive).length}
       />
 
       {/* Filters */}
@@ -509,8 +540,9 @@ export default function UserManagement() {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         availableRoles={availableRoles}
-        availableCategories={availableCategories}
+        availableInstitutes={availableInstitutes}
         availableColleges={availableColleges}
+        availableDepartments={availableDepartments}
         currentUser={currentUser}
         resetFilters={resetFilters}
       />
@@ -533,6 +565,7 @@ export default function UserManagement() {
         setOpenDialog={setOpenDialog}
       />
 
+      {/* Add/Edit User Dialog */}
       <AddUserDialog
         open={openDialog}
         onOpenChange={(open) => {
@@ -546,10 +579,9 @@ export default function UserManagement() {
         handleSubmit={handleSubmit}
         getAvailableRoles={getAvailableRoles}
         currentUser={currentUser}
-        collegeOptions={collegeOptions}
-        getCategoriesForCollege={getCategoriesForCollege}
-        handleRoleChange={handleRoleChange}
-        handleCollegeChange={handleCollegeChange}
+        collegeOptions={COLLEGE_OPTIONS}
+        getInstitutesForCollege={getInstitutesForCollege}
+        getDepartmentsForCollegeAndInstitute={getDepartmentsForCollegeAndInstitute}
       />
 
       {/* Delete Confirmation Dialog */}

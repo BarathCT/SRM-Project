@@ -10,7 +10,7 @@ import nodemailer from 'nodemailer';
  * @param {string} params.password
  * @param {string} params.role
  * @param {string} params.collegeName
- * @param {string} [params.category]
+ * @param {string} [params.institute]
  * @param {string} params.appUrl
  */
 export async function sendUserWelcomeEmail({
@@ -20,16 +20,16 @@ export async function sendUserWelcomeEmail({
   password,
   role,
   collegeName,
-  category,
+  institute,
   appUrl,
 }) {
   const roleLabel = role
     ? role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : '';
 
-  // Institute/Category block
+  // Institute/institute block
   let instituteRow = '';
-  if (category && category !== 'N/A') {
+  if (institute && institute !== 'N/A') {
     instituteRow = `
       <tr>
         <td align="center" style="padding:14px 0;">
@@ -39,8 +39,8 @@ export async function sendUserWelcomeEmail({
                 <img src="https://img.icons8.com/ios-filled/50/2563eb/university.png" width="24" height="24" style="display:block;margin:auto;" alt="Institute"/>
               </td>
               <td align="left" style="padding-left:14px;">
-                <div style="color:#64748b;font-size:14px;">Institute / Category</div>
-                <div style="font-weight:500;color:#1e293b;font-size:16px;">${category}</div>
+                <div style="color:#64748b;font-size:14px;">Institute / institute</div>
+                <div style="font-weight:500;color:#1e293b;font-size:16px;">${institute}</div>
               </td>
             </tr>
           </table>
@@ -152,7 +152,7 @@ export async function sendUserWelcomeEmail({
                       </table>
                     </td>
                   </tr>
-                  <!-- Institute/Category row -->
+                  <!-- Institute/institute row -->
                   ${instituteRow}
                 </table>
                 <!-- Button -->

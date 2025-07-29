@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/Toast'; // Adjust this import path as needed
+import { useToast } from '@/components/Toast';
 
-const collegesWithCategories = [
+const collegesWithInstitutes = [
   'SRMIST RAMAPURAM',
   'SRM TRICHY'
+];
+
+const collegesWithoutInstitutes = [
+  'EASWARI ENGINEERING COLLEGE',
+  'TRP ENGINEERING COLLEGE'
 ];
 
 const SettingsPage = () => {
@@ -17,7 +22,13 @@ const SettingsPage = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [profileForm, setProfileForm] = useState({
+    fullName: '',
+    email: ''
+  });
+  const [editMode, setEditMode] = useState(false);
   const [errors, setErrors] = useState({});
+  const [departments, setDepartments] = useState([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,10 +49,24 @@ const SettingsPage = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        setUser({
+        const userData = {
           ...decoded,
           ...(response.data.data || response.data)
+        };
+
+        setUser(userData);
+        setProfileForm({
+          fullName: userData.fullName || '',
+          email: userData.email || ''
         });
+
+        // Fetch departments based on user's college and institute
+        if (userData.college && userData.college !== 'N/A') {
+          const deptResponse = await axios.get('/api/settings/departments', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setDepartments(deptResponse.data.data || []);
+        }
       } catch (error) {
         const errorMsg = error.response?.data?.message ||
           'Failed to load user data. Please refresh the page.';
@@ -56,7 +81,7 @@ const SettingsPage = () => {
     };
 
     fetchUserData();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
@@ -64,6 +89,11 @@ const SettingsPage = () => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileForm(prev => ({ ...prev, [name]: value }));
   };
 
   const validatePasswordForm = () => {
@@ -83,6 +113,20 @@ const SettingsPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateProfileForm = () => {
+    const newErrors = {};
+    if (!profileForm.fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+    if (!profileForm.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (!validatePasswordForm()) return;
@@ -93,7 +137,8 @@ const SettingsPage = () => {
         '/api/settings/change-password',
         {
           currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword
+          newPassword: passwordForm.newPassword,
+          confirmPassword: passwordForm.confirmPassword
         },
         {
           headers: {
@@ -117,6 +162,44 @@ const SettingsPage = () => {
     }
   };
 
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateProfileForm()) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        '/api/settings/profile',
+        profileForm,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Update token if email was changed
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+      }
+
+      setUser(prev => ({
+        ...prev,
+        fullName: profileForm.fullName,
+        email: profileForm.email
+      }));
+      
+      toast.success('Profile updated successfully!');
+      setEditMode(false);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+        'Failed to update profile. Please try again.'
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[300px]">
@@ -135,11 +218,13 @@ const SettingsPage = () => {
     );
   }
 
-  // Decide if we show the category field:
-  const showCategory =
-    user.role !== 'super_admin' &&
-    user.college &&
-    collegesWithCategories.includes(user.college);
+  const showInstitute = user.role !== 'super_admin' && 
+                       user.college && 
+                       collegesWithInstitutes.includes(user.college);
+
+  const showDepartment = user.role !== 'super_admin' && 
+                        user.college && 
+                        user.college !== 'N/A';
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
@@ -147,43 +232,146 @@ const SettingsPage = () => {
 
       {/* Profile Section */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b">
-          Profile Information
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-          <div>
-            <label className="block text-gray-700 mb-2">Full Name</label>
-            <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
-              {user.fullName || 'Not specified'}
-            </div>
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-2">Email</label>
-            <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
-              {user.email || 'Not specified'}
-            </div>
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-2">Institution</label>
-            <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
-              {user.college || 'Not specified'}
-            </div>
-          </div>
-          {showCategory && (
-            <div>
-              <label className="block text-gray-700 mb-2">Category</label>
-              <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
-                {user.category || 'Not specified'}
+        <div className="flex justify-between items-center mb-4 pb-2 border-b">
+          <h2 className="text-xl font-semibold text-gray-700">Profile Information</h2>
+          {!editMode && (
+            <button
+              onClick={() => setEditMode(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm"
+            >
+              Edit Profile
+            </button>
+          )}
+        </div>
+
+        {editMode ? (
+          <form onSubmit={handleProfileSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+              <div>
+                <label className="block text-gray-700 mb-2" htmlFor="fullName">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  id="fullName"
+                  name="fullName"
+                  value={profileForm.fullName}
+                  onChange={handleProfileChange}
+                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    errors.fullName ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'
+                  }`}
+                />
+                {errors.fullName && (
+                  <p className="mt-1 text-sm text-red-500">{errors.fullName}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-2" htmlFor="email">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={profileForm.email}
+                  onChange={handleProfileChange}
+                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    errors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'
+                  }`}
+                />
+                {errors.email && (
+                  <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-2">Institution</label>
+                <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                  {user.college || 'Not specified'}
+                </div>
+              </div>
+              {showInstitute && (
+                <div>
+                  <label className="block text-gray-700 mb-2">Institute</label>
+                  <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                    {user.institute || 'Not specified'}
+                  </div>
+                </div>
+              )}
+              {showDepartment && (
+                <div>
+                  <label className="block text-gray-700 mb-2">Department</label>
+                  <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                    {user.department || 'Not specified'}
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-gray-700 mb-2">Role</label>
+                <div className="w-full px-4 py-2 bg-gray-100 rounded-md capitalize">
+                  {user.role ? user.role.replace(/_/g, ' ') : 'Not specified'}
+                </div>
               </div>
             </div>
-          )}
-          <div>
-            <label className="block text-gray-700 mb-2">Role</label>
-            <div className="w-full px-4 py-2 bg-gray-100 rounded-md capitalize">
-              {user.role ? user.role.replace(/_/g, ' ') : 'Not specified'}
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={() => setEditMode(false)}
+                className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div>
+              <label className="block text-gray-700 mb-2">Full Name</label>
+              <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                {user.fullName || 'Not specified'}
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Email</label>
+              <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                {user.email || 'Not specified'}
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Institution</label>
+              <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                {user.college || 'Not specified'}
+              </div>
+            </div>
+            {showInstitute && (
+              <div>
+                <label className="block text-gray-700 mb-2">Institute</label>
+                <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                  {user.institute || 'Not specified'}
+                </div>
+              </div>
+            )}
+            {showDepartment && (
+              <div>
+                <label className="block text-gray-700 mb-2">Department</label>
+                <div className="w-full px-4 py-2 bg-gray-100 rounded-md">
+                  {user.department || 'Not specified'}
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-gray-700 mb-2">Role</label>
+              <div className="w-full px-4 py-2 bg-gray-100 rounded-md capitalize">
+                {user.role ? user.role.replace(/_/g, ' ') : 'Not specified'}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Password Section */}
