@@ -9,9 +9,6 @@ const run = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB');
-
-
-
     
     // Optional: clean slate
     await User.deleteMany({});
@@ -22,138 +19,228 @@ const run = async () => {
       return await bcrypt.hash(password, 12);
     };
 
-    // Generate faculty IDs
-    const generateFacultyId = () => {
-      return 'FAC-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+    // Generate simple faculty IDs
+    const generateFacultyId = (role, index) => {
+      return `${role.toUpperCase().substr(0, 3)}-${index.toString().padStart(3, '0')}`;
     };
 
     // Test users
     const users = [
-      // Super Admin
+      // Super Admin (1)
       {
         fullName: 'Super Admin',
         facultyId: 'N/A',
         email: 'superadmin@srmist.edu.in',
-        password: await hashPassword('superadmin123'),
+        password: await hashPassword('superadmin'),
         role: 'super_admin',
         college: 'N/A',
-        category: 'N/A',
+        institute: 'N/A',
+        department: 'N/A',
         createdBy: null
       },
 
-      // Campus Admins
+      // Campus Admins (2 per college)
+      // SRMIST RAMAPURAM
       {
-        fullName: 'Ramapuram Campus Admin',
-        facultyId: generateFacultyId(),
-        email: 'ramapuram.campusadmin@srmist.edu.in',
-        password: await hashPassword('ramapuram123'),
+        fullName: 'Ramapuram Campus Admin 1',
+        facultyId: generateFacultyId('campus_admin', 1),
+        email: 'campusadmin1@ramapuram.edu.in',
+        password: await hashPassword('campusadmin'),
         role: 'campus_admin',
         college: 'SRMIST RAMAPURAM',
-        category: 'Engineering and Technology',
+        institute: 'Engineering and Technology',
+        department: 'Computer Science',
         createdBy: null
       },
       {
-        fullName: 'Trichy Campus Admin',
-        facultyId: generateFacultyId(),
-        email: 'trichy.campusadmin@srmist.edu.in',
-        password: await hashPassword('trichy123'),
+        fullName: 'Ramapuram Campus Admin 2',
+        facultyId: generateFacultyId('campus_admin', 2),
+        email: 'campusadmin2@ramapuram.edu.in',
+        password: await hashPassword('campusadmin'),
+        role: 'campus_admin',
+        college: 'SRMIST RAMAPURAM',
+        institute: 'Science and Humanities',
+        department: 'Physics',
+        createdBy: null
+      },
+
+      // SRM TRICHY
+      {
+        fullName: 'Trichy Campus Admin 1',
+        facultyId: generateFacultyId('campus_admin', 3),
+        email: 'campusadmin1@trichy.edu.in',
+        password: await hashPassword('campusadmin'),
         role: 'campus_admin',
         college: 'SRM TRICHY',
-        category: 'Engineering and Technology',
-        createdBy: null
-      },
-      {
-        fullName: 'Eswari Campus Admin',
-        facultyId: generateFacultyId(),
-        email: 'eswari.campusadmin@srmist.edu.in',
-        password: await hashPassword('eswari123'),
-        role: 'campus_admin',
-        college: 'EASWARI ENGINEERING COLLEGE',
-        category: 'N/A',
-        createdBy: null
-      },
-      {
-        fullName: 'TRP Campus Admin',
-        facultyId: generateFacultyId(),
-        email: 'trp.campusadmin@srmist.edu.in',
-        password: await hashPassword('trp123'),
-        role: 'campus_admin',
-        college: 'TRP ENGINEERING COLLEGE',
-        category: 'N/A',
+        institute: 'Engineering and Technology',
+        department: 'Information Technology',
         createdBy: null
       },
 
-      // Admins
+      // EASWARI ENGINEERING COLLEGE
       {
-        fullName: 'Engineering Admin',
-        facultyId: generateFacultyId(),
-        email: 'eng.admin@ramapuram.edu.in',
-        password: await hashPassword('engadmin123'),
-        role: 'admin',
-        college: 'SRMIST RAMAPURAM',
-        category: 'Engineering and Technology',
-        createdBy: null
-      },
-      {
-        fullName: 'Science Admin',
-        facultyId: generateFacultyId(),
-        email: 'science.admin@ramapuram.edu.in',
-        password: await hashPassword('scienceadmin123'),
-        role: 'admin',
-        college: 'SRMIST RAMAPURAM',
-        category: 'Science and Humanities',
+        fullName: 'Eswari Campus Admin 1',
+        facultyId: generateFacultyId('campus_admin', 4),
+        email: 'campusadmin1@eswari.edu.in',
+        password: await hashPassword('campusadmin'),
+        role: 'campus_admin',
+        college: 'EASWARI ENGINEERING COLLEGE',
+        institute: 'N/A',
+        department: 'Electronics',
         createdBy: null
       },
 
-      // Faculty
+      // TRP ENGINEERING COLLEGE
       {
-        fullName: 'CS Faculty',
-        facultyId: generateFacultyId(),
-        email: 'cs.faculty@ramapuram.edu.in',
-        password: await hashPassword('csfaculty123'),
-        role: 'faculty',
+        fullName: 'TRP Campus Admin 1',
+        facultyId: generateFacultyId('campus_admin', 5),
+        email: 'campusadmin1@trp.edu.in',
+        password: await hashPassword('campusadmin'),
+        role: 'campus_admin',
+        college: 'TRP ENGINEERING COLLEGE',
+        institute: 'N/A',
+        department: 'Mechanical',
+        createdBy: null
+      },
+
+      // Admins (2 per institute where applicable)
+      // SRMIST RAMAPURAM - Engineering
+      {
+        fullName: 'Engineering Admin 1',
+        facultyId: generateFacultyId('admin', 1),
+        email: 'admin1@ramapuram.edu.in',
+        password: await hashPassword('admin'),
+        role: 'admin',
         college: 'SRMIST RAMAPURAM',
-        category: 'Engineering and Technology',
+        institute: 'Engineering and Technology',
+        department: 'Computer Science',
         createdBy: null
       },
       {
-        fullName: 'ECE Faculty',
-        facultyId: generateFacultyId(),
-        email: 'ece.faculty@ramapuram.edu.in',
-        password: await hashPassword('ecefaculty123'),
+        fullName: 'Engineering Admin 2',
+        facultyId: generateFacultyId('admin', 2),
+        email: 'admin2@ramapuram.edu.in',
+        password: await hashPassword('admin'),
+        role: 'admin',
+        college: 'SRMIST RAMAPURAM',
+        institute: 'Engineering and Technology',
+        department: 'Civil',
+        createdBy: null
+      },
+
+      // SRMIST RAMAPURAM - Science
+      {
+        fullName: 'Science Admin 1',
+        facultyId: generateFacultyId('admin', 3),
+        email: 'admin1@science.edu.in',
+        password: await hashPassword('admin'),
+        role: 'admin',
+        college: 'SRMIST RAMAPURAM',
+        institute: 'Science and Humanities',
+        department: 'Physics',
+        createdBy: null
+      },
+
+      // SRM TRICHY - Engineering
+      {
+        fullName: 'Trichy Admin 1',
+        facultyId: generateFacultyId('admin', 4),
+        email: 'admin1@trichy.edu.in',
+        password: await hashPassword('admin'),
+        role: 'admin',
+        college: 'SRM TRICHY',
+        institute: 'Engineering and Technology',
+        department: 'Mechanical',
+        createdBy: null
+      },
+
+      // Faculty (3 per department)
+      // SRMIST RAMAPURAM - Engineering - Computer Science
+      {
+        fullName: 'CS Faculty 1',
+        facultyId: generateFacultyId('faculty', 1),
+        email: 'faculty1@cs.ramapuram.edu.in',
+        password: await hashPassword('faculty'),
         role: 'faculty',
         college: 'SRMIST RAMAPURAM',
-        category: 'Engineering and Technology',
+        institute: 'Engineering and Technology',
+        department: 'Computer Science',
         createdBy: null
       },
       {
-        fullName: 'Physics Faculty',
-        facultyId: generateFacultyId(),
-        email: 'physics.faculty@ramapuram.edu.in',
-        password: await hashPassword('physics123'),
+        fullName: 'CS Faculty 2',
+        facultyId: generateFacultyId('faculty', 2),
+        email: 'faculty2@cs.ramapuram.edu.in',
+        password: await hashPassword('faculty'),
         role: 'faculty',
         college: 'SRMIST RAMAPURAM',
-        category: 'Science and Humanities',
+        institute: 'Engineering and Technology',
+        department: 'Computer Science',
         createdBy: null
       },
+
+      // SRMIST RAMAPURAM - Engineering - Electronics
       {
-        fullName: 'Eswari Faculty',
-        facultyId: generateFacultyId(),
-        email: 'eswari.faculty@eswari.edu.in',
-        password: await hashPassword('eswarifaculty123'),
+        fullName: 'ECE Faculty 1',
+        facultyId: generateFacultyId('faculty', 3),
+        email: 'faculty1@ece.ramapuram.edu.in',
+        password: await hashPassword('faculty'),
+        role: 'faculty',
+        college: 'SRMIST RAMAPURAM',
+        institute: 'Engineering and Technology',
+        department: 'Electronics',
+        createdBy: null
+      },
+
+      // SRMIST RAMAPURAM - Science - Physics
+      {
+        fullName: 'Physics Faculty 1',
+        facultyId: generateFacultyId('faculty', 4),
+        email: 'faculty1@physics.ramapuram.edu.in',
+        password: await hashPassword('faculty'),
+        role: 'faculty',
+        college: 'SRMIST RAMAPURAM',
+        institute: 'Science and Humanities',
+        department: 'Physics',
+        createdBy: null
+      },
+
+      // SRM TRICHY - Engineering - IT
+      {
+        fullName: 'IT Faculty 1',
+        facultyId: generateFacultyId('faculty', 5),
+        email: 'faculty1@it.trichy.edu.in',
+        password: await hashPassword('faculty'),
+        role: 'faculty',
+        college: 'SRM TRICHY',
+        institute: 'Engineering and Technology',
+        department: 'Information Technology',
+        createdBy: null
+      },
+
+      // EASWARI ENGINEERING COLLEGE - Electronics
+      {
+        fullName: 'Eswari Faculty 1',
+        facultyId: generateFacultyId('faculty', 6),
+        email: 'faculty1@eswari.edu.in',
+        password: await hashPassword('faculty'),
         role: 'faculty',
         college: 'EASWARI ENGINEERING COLLEGE',
-        category: 'N/A',
+        institute: 'N/A',
+        department: 'Electronics',
         createdBy: null
       },
+
+      // TRP ENGINEERING COLLEGE - Mechanical
       {
-        fullName: 'TRP Faculty',
-        facultyId: generateFacultyId(),
-        email: 'trp.faculty@trp.edu.in',
-        password: await hashPassword('trpfaculty123'),
+        fullName: 'TRP Faculty 1',
+        facultyId: generateFacultyId('faculty', 7),
+        email: 'faculty1@trp.edu.in',
+        password: await hashPassword('faculty'),
         role: 'faculty',
         college: 'TRP ENGINEERING COLLEGE',
-        category: 'N/A',
+        institute: 'N/A',
+        department: 'Mechanical',
         createdBy: null
       }
     ];

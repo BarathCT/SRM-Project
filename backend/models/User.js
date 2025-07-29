@@ -12,12 +12,11 @@ const userSchema = new mongoose.Schema({
       'Please fill a valid email address'
     ]
   },
-password: { 
-  type: String, 
-  required: true,
-  minlength: [8, 'Password must be at least 8 characters long']
-}
-,
+  password: { 
+    type: String, 
+    required: true,
+    minlength: [8, 'Password must be at least 8 characters long']
+  },
   fullName: {
     type: String,
     required: true,
@@ -43,8 +42,7 @@ password: {
     ],
     default: 'N/A'
   },
-  // For Eswari and TRP college, category will always be 'N/A'
-  category: {
+  institute: {
     type: String,
     enum: [
       'Science and Humanities',
@@ -53,6 +51,10 @@ password: {
       'Dental',
       'N/A'
     ],
+    default: 'N/A'
+  },
+  department: {
+    type: String,
     default: 'N/A'
   },
   createdBy: {
@@ -87,10 +89,113 @@ password: {
   }
 });
 
-// List of colleges which do not have category
-const collegesWithoutCategories = [
+// List of colleges which do not have institutes
+const collegesWithoutInstitutes = [
   'EASWARI ENGINEERING COLLEGE',
   'TRP ENGINEERING COLLEGE'
+];
+
+// College options with their institutes and departments
+const collegeOptions = [
+  { 
+    name: 'SRMIST RAMAPURAM',
+    hasInstitutes: true,
+    institutes: [
+      { 
+        name: 'Science and Humanities',
+        departments: [
+          'Mathematics',
+          'Physics',
+          'Chemistry',
+          'English',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Engineering and Technology',
+        departments: [
+          'Computer Science',
+          'Information Technology',
+          'Electronics',
+          'Mechanical',
+          'Civil',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Management',
+        departments: [
+          'Business Administration',
+          'Commerce',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Dental',
+        departments: [
+          'General Dentistry',
+          'Orthodontics',
+          'N/A'
+        ]
+      }
+    ]
+  },
+  { 
+    name: 'SRM TRICHY',
+    hasInstitutes: true,
+    institutes: [
+      { 
+        name: 'Science and Humanities',
+        departments: [
+          'Mathematics',
+          'Physics',
+          'Chemistry',
+          'English',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Engineering and Technology',
+        departments: [
+          'Computer Science',
+          'Information Technology',
+          'Electronics',
+          'Mechanical',
+          'Civil',
+          'N/A'
+        ]
+      }
+    ]
+  },
+  { 
+    name: 'EASWARI ENGINEERING COLLEGE',
+    hasInstitutes: false,
+    departments: [
+      'Computer Science',
+      'Information Technology',
+      'Electronics',
+      'Mechanical',
+      'Civil',
+      'N/A'
+    ]
+  },
+  { 
+    name: 'TRP ENGINEERING COLLEGE',
+    hasInstitutes: false,
+    departments: [
+      'Computer Science',
+      'Information Technology',
+      'Electronics',
+      'Mechanical',
+      'Civil',
+      'N/A'
+    ]
+  },
+  { 
+    name: 'N/A',
+    hasInstitutes: false,
+    departments: ['N/A']
+  }
 ];
 
 // Middleware to validate logical field consistency
@@ -98,107 +203,81 @@ userSchema.pre('validate', function(next) {
   // Super admin must have N/A values
   if (this.role === 'super_admin') {
     this.college = 'N/A';
-    this.category = 'N/A';
+    this.institute = 'N/A';
+    this.department = 'N/A';
     this.facultyId = 'N/A';
-  } else {
-    // All other roles must have facultyId
-    if (this.facultyId === 'N/A') {
-      return next(new Error('Faculty ID is required for non-super admin roles'));
-    }
-
-    // College must not be N/A
-    if (this.college === 'N/A') {
-      return next(new Error('College is required for non-super admin roles'));
-    }
+    return next();
   }
 
-  // If college doesn't have categories, always set category to 'N/A'
-  if (collegesWithoutCategories.includes(this.college)) {
-    this.category = 'N/A';
+  // All other roles must have facultyId
+  if (this.facultyId === 'N/A') {
+    return next(new Error('Faculty ID is required for non-super admin roles'));
   }
 
-  // Category-specific rules
-  if (this.role === 'faculty' && !collegesWithoutCategories.includes(this.college)) {
-    if (this.category === 'N/A') {
-      return next(new Error('Category is required for faculty'));
-    }
+  // College must not be N/A
+  if (this.college === 'N/A') {
+    return next(new Error('College is required for non-super admin roles'));
   }
 
-  if (this.role === 'campus_admin') {
-    if (collegesWithoutCategories.includes(this.college)) {
-      if (this.category !== 'N/A') {
-        return next(new Error(`Campus admins in ${this.college} must have category set to N/A`));
-      }
-    } else {
-      if (this.category === 'N/A') {
-        return next(new Error(`Campus admins in ${this.college} must have a valid category`));
-      }
+  const collegeData = collegeOptions.find(c => c.name === this.college);
+  if (!collegeData) {
+    return next(new Error('Invalid college specified'));
+  }
+
+  // Handle colleges without institutes
+  if (collegesWithoutInstitutes.includes(this.college)) {
+    this.institute = 'N/A';
+    
+    // Validate department for colleges without institutes
+    if (!collegeData.departments.includes(this.department)) {
+      return next(new Error(`Invalid department '${this.department}' for college '${this.college}'`));
     }
+    
+    return next();
+  }
+
+  // For colleges with institutes
+  if (this.institute === 'N/A') {
+    return next(new Error('Institute is required for this college'));
+  }
+
+  // Find the institute data
+  const instituteData = collegeData.institutes.find(i => i.name === this.institute);
+  if (!instituteData) {
+    return next(new Error(`Institute '${this.institute}' is not valid for college '${this.college}'`));
+  }
+
+  // Validate department
+  if (!instituteData.departments.includes(this.department)) {
+    return next(new Error(`Invalid department '${this.department}' for institute '${this.institute}' in college '${this.college}'`));
   }
 
   next();
 });
 
-// College options for validation
-const collegeOptions = [
-  { 
-    name: 'SRMIST RAMAPURAM',
-    categories: [
-      'Science and Humanities',
-      'Engineering and Technology',
-      'Management',
-      'Dental'
-    ],
-    hasCategories: true
-  },
-  { 
-    name: 'SRM TRICHY',
-    categories: [
-      'Science and Humanities',
-      'Engineering and Technology'
-    ],
-    hasCategories: true
-  },
-  { 
-    name: 'EASWARI ENGINEERING COLLEGE',
-    categories: ['N/A'],
-    hasCategories: false
-  },
-  { 
-    name: 'TRP ENGINEERING COLLEGE',
-    categories: ['N/A'],
-    hasCategories: false
-  },
-  { 
-    name: 'N/A',
-    categories: ['N/A'],
-    hasCategories: false
-  }
-];
-
-// Middleware to validate category-college match
+// Middleware to validate institute-college-department match
 userSchema.pre('save', function(next) {
   const collegeData = collegeOptions.find(c => c.name === this.college);
 
-  // If college doesn't have categories, always set category to 'N/A'
-  if (collegesWithoutCategories.includes(this.college)) {
-    this.category = 'N/A';
-  }
-
-  if (this.college !== 'N/A' && collegeData) {
-    // Validate category belongs to college for colleges with categories
-    if (collegeData.hasCategories) {
-      if (this.category !== 'N/A' && !collegeData.categories.includes(this.category)) {
-        return next(
-          new Error(`Category '${this.category}' is not valid for college '${this.college}'`)
-        );
-      }
+  // If college doesn't have institutes, ensure institute is 'N/A'
+  if (collegesWithoutInstitutes.includes(this.college)) {
+    this.institute = 'N/A';
+    
+    // Validate department for colleges without institutes
+    if (!collegeData.departments.includes(this.department)) {
+      return next(new Error(`Invalid department '${this.department}' for college '${this.college}'`));
     }
-    // Campus admins in colleges without categories must have category N/A
-    if (this.role === 'campus_admin' && !collegeData.hasCategories && this.category !== 'N/A') {
-      return next(
-        new Error(`Campus admins in ${this.college} must have category set to N/A`)
-      );
+  } else {
+    // For colleges with institutes, validate the institute-department relationship
+    if (this.institute !== 'N/A') {
+      const instituteData = collegeData.institutes.find(i => i.name === this.institute);
+      if (!instituteData) {
+        return next(new Error(`Institute '${this.institute}' is not valid for college '${this.college}'`));
+      }
+      
+      if (!instituteData.departments.includes(this.department)) {
+        return next(new Error(`Department '${this.department}' is not valid for institute '${this.institute}'`));
+      }
     }
   }
 
@@ -211,7 +290,8 @@ userSchema.index({ facultyId: 1 });
 userSchema.index({ fullName: 'text' });
 userSchema.index({ role: 1 });
 userSchema.index({ college: 1 });
-userSchema.index({ category: 1 });
+userSchema.index({ institute: 1 });
+userSchema.index({ department: 1 });
 userSchema.index({ createdBy: 1 });
 
 const User = mongoose.model('User', userSchema);

@@ -17,18 +17,79 @@ const normalizeCollegeName = (college) => {
   return validColleges.find(c => c === upperCollege) || 'N/A';
 };
 
-const validateCollegeCategory = (college, category) => {
-  const collegeData = {
-    'SRMIST RAMAPURAM': ['Science and Humanities', 'Engineering and Technology', 'Management', 'Dental'],
-    'SRM TRICHY': ['Science and Humanities', 'Engineering and Technology'],
-    'EASWARI ENGINEERING COLLEGE': ['N/A'],
-    'TRP ENGINEERING COLLEGE': ['N/A'],
-    'N/A': ['N/A']
-  };
-  return collegeData[college]?.includes(category) || false;
+const getCollegeData = (college) => {
+  const collegeOptions = [
+    { 
+      name: 'SRMIST RAMAPURAM',
+      hasInstitutes: true,
+      institutes: [
+        { 
+          name: 'Science and Humanities',
+          departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A']
+        },
+        { 
+          name: 'Engineering and Technology',
+          departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+        },
+        { 
+          name: 'Management',
+          departments: ['Business Administration', 'Commerce', 'N/A']
+        },
+        { 
+          name: 'Dental',
+          departments: ['General Dentistry', 'Orthodontics', 'N/A']
+        }
+      ]
+    },
+    { 
+      name: 'SRM TRICHY',
+      hasInstitutes: true,
+      institutes: [
+        { 
+          name: 'Science and Humanities',
+          departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A']
+        },
+        { 
+          name: 'Engineering and Technology',
+          departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+        }
+      ]
+    },
+    { 
+      name: 'EASWARI ENGINEERING COLLEGE',
+      hasInstitutes: false,
+      departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+    },
+    { 
+      name: 'TRP ENGINEERING COLLEGE',
+      hasInstitutes: false,
+      departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+    },
+    { 
+      name: 'N/A',
+      hasInstitutes: false,
+      departments: ['N/A']
+    }
+  ];
+  return collegeOptions.find(c => c.name === college) || collegeOptions.find(c => c.name === 'N/A');
 };
 
-const collegeRequiresCategory = (college) => {
+const validateInstituteDepartment = (college, institute, department) => {
+  const collegeData = getCollegeData(college);
+  
+  if (!collegeData.hasInstitutes) {
+    // For colleges without institutes, validate department directly
+    return collegeData.departments.includes(department);
+  }
+  
+  // For colleges with institutes, find the institute and validate department
+  const instituteData = collegeData.institutes.find(i => i.name === institute);
+  if (!instituteData) return false;
+  
+  return instituteData.departments.includes(department);
+};
+
+const collegeRequiresInstitute = (college) => {
   return ['SRMIST RAMAPURAM', 'SRM TRICHY'].includes(college);
 };
 
@@ -41,7 +102,7 @@ function authenticate(req, res, next) {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // contains userId, role, email, college, category
+    req.user = decoded; // contains userId, role, email, college, institute, department
     next();
   } catch (err) {
     return res.status(403).json({ message: 'Invalid token' });
@@ -64,13 +125,13 @@ function canModifyUser(creator, targetUser) {
 
   if (creator.role === 'campus_admin') {
     if (creator.college !== targetUser.college) return false;
-    if (!collegeRequiresCategory(creator.college)) return true;
-    return creator.category === targetUser.category;
+    if (!collegeRequiresInstitute(creator.college)) return true;
+    return creator.institute === targetUser.institute;
   }
 
   if (creator.role === 'admin') {
     return creator.college === targetUser.college &&
-           creator.category === targetUser.category &&
+           creator.institute === targetUser.institute &&
            targetUser.role === 'faculty';
   }
   return false;
@@ -95,19 +156,19 @@ const upload = multer({
 // GET: Get all users
 router.get('/users', authenticate, async (req, res) => {
   try {
-    const { role, college, category } = req.user;
+    const { role, college, institute } = req.user;
 
     let filter = {};
     if (role === 'super_admin') {
       filter = {};
     } else if (role === 'campus_admin') {
       filter.college = college;
-      if (collegeRequiresCategory(college)) {
-        filter.category = category;
+      if (collegeRequiresInstitute(college)) {
+        filter.institute = institute;
       }
     } else if (role === 'admin') {
       filter.college = college;
-      filter.category = category;
+      filter.institute = institute;
       filter.role = 'faculty';
     } else {
       return res.status(403).json({ message: 'Access denied' });
@@ -129,8 +190,12 @@ router.get('/users', authenticate, async (req, res) => {
       filter.college = req.query.college;
     }
 
-    if (req.query.category && req.query.category !== 'all') {
-      filter.category = req.query.category;
+    if (req.query.institute && req.query.institute !== 'all') {
+      filter.institute = req.query.institute;
+    }
+
+    if (req.query.department && req.query.department !== 'all') {
+      filter.department = req.query.department;
     }
 
     const users = await User.find(filter).select('-password -__v');
@@ -142,7 +207,7 @@ router.get('/users', authenticate, async (req, res) => {
 
 // POST: Create a new user
 router.post('/users', authenticate, async (req, res) => {
-  const { email, password, fullName, facultyId, role, college, category } = req.body;
+  const { email, password, fullName, facultyId, role, college, institute, department } = req.body;
   const creator = req.user;
 
   try {
@@ -161,30 +226,58 @@ router.post('/users', authenticate, async (req, res) => {
     }
 
     let finalCollege = normalizeCollegeName(college);
-    let finalCategory = category;
+    let finalInstitute = institute;
+    let finalDepartment = department;
     let finalFacultyId = facultyId;
 
     if (role === 'super_admin') {
       finalCollege = 'N/A';
-      finalCategory = 'N/A';
+      finalInstitute = 'N/A';
+      finalDepartment = 'N/A';
       finalFacultyId = 'N/A';
     } else {
       if (creator.role !== 'super_admin') {
         finalCollege = creator.college;
-        finalCategory = collegeRequiresCategory(creator.college) ? creator.category : 'N/A';
+        if (collegeRequiresInstitute(creator.college)) {
+          finalInstitute = creator.institute;
+        } else {
+          finalInstitute = 'N/A';
+        }
       }
 
-      // Only require category for colleges that need it
-      if (collegeRequiresCategory(finalCollege)) {
-        if (!finalCategory || finalCategory === 'N/A') {
-          return res.status(400).json({ message: 'Category is required for this role in this college' });
+      // Validate institute and department based on college type
+      const collegeData = getCollegeData(finalCollege);
+      
+      if (collegeData.hasInstitutes) {
+        // For colleges with institutes
+        if (!finalInstitute || finalInstitute === 'N/A') {
+          return res.status(400).json({ message: 'Institute is required for this college' });
         }
-        if (!validateCollegeCategory(finalCollege, finalCategory)) {
-          return res.status(400).json({ message: `Category ${finalCategory} is not valid for college ${finalCollege}` });
+        
+        const validInstitute = collegeData.institutes.some(i => i.name === finalInstitute);
+        if (!validInstitute) {
+          return res.status(400).json({ message: `Institute '${finalInstitute}' is not valid for college '${finalCollege}'` });
+        }
+        
+        if (!finalDepartment || finalDepartment === 'N/A') {
+          return res.status(400).json({ message: 'Department is required for this institute' });
+        }
+        
+        const instituteData = collegeData.institutes.find(i => i.name === finalInstitute);
+        if (!instituteData.departments.includes(finalDepartment)) {
+          return res.status(400).json({ message: `Department '${finalDepartment}' is not valid for institute '${finalInstitute}'` });
         }
       } else {
-        // For Eswari/TRP, always set category to N/A for any role
-        finalCategory = 'N/A';
+        // For colleges without institutes
+        finalInstitute = 'N/A';
+        
+        if (!finalDepartment || finalDepartment === 'N/A') {
+          return res.status(400).json({ message: 'Department is required for this college' });
+        }
+        
+        if (!collegeData.departments.includes(finalDepartment)) {
+          return res.status(400).json({ message: `Department '${finalDepartment}' is not valid for college '${finalCollege}'` });
+        }
       }
 
       if (role !== 'super_admin') {
@@ -201,7 +294,8 @@ router.post('/users', authenticate, async (req, res) => {
       facultyId: finalFacultyId,
       role,
       college: finalCollege,
-      category: finalCategory,
+      institute: finalInstitute,
+      department: finalDepartment,
       createdBy: creator.userId
     });
 
@@ -216,7 +310,8 @@ router.post('/users', authenticate, async (req, res) => {
           password,
           role,
           collegeName: finalCollege,
-          category: finalCategory,
+          institute: finalInstitute,
+          department: finalDepartment,
           appUrl: process.env.APP_URL || 'https://scholarsync.example.com'
         });
       } catch (mailErr) {
@@ -240,7 +335,7 @@ router.post('/users', authenticate, async (req, res) => {
 
 // PUT: Update a user
 router.put('/users/:id', authenticate, async (req, res) => {
-  const { role: updaterRole, college: updaterCollege, category: updaterCategory, userId: updaterId } = req.user;
+  const { role: updaterRole, college: updaterCollege, institute: updaterInstitute, userId: updaterId } = req.user;
 
   try {
     const userToUpdate = await User.findById(req.params.id);
@@ -265,9 +360,9 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     // Handle self-updates (only allow name and email changes)
     if (isSelfUpdate) {
-      if (updateData.role || updateData.college || updateData.category || updateData.facultyId) {
+      if (updateData.role || updateData.college || updateData.institute || updateData.department || updateData.facultyId) {
         return res.status(403).json({ 
-          message: 'You cannot modify your own role, college, category, or faculty ID' 
+          message: 'You cannot modify your own role, college, institute, department, or faculty ID' 
         });
       }
 
@@ -315,9 +410,9 @@ router.put('/users/:id', authenticate, async (req, res) => {
         });
       }
 
-      // For colleges without categories, set category to N/A
-      if (updateData.role !== 'faculty' && !collegeRequiresCategory(targetCollege)) {
-        updateData.category = 'N/A';
+      // For colleges without institutes, set institute to 'N/A'
+      if (!collegeRequiresInstitute(targetCollege)) {
+        updateData.institute = 'N/A';
       }
     }
 
@@ -335,21 +430,51 @@ router.put('/users/:id', authenticate, async (req, res) => {
       }
     }
 
-    // Category validation for colleges that require it
-    if (collegeRequiresCategory(targetCollege)) {
-      if (!updateData.category || updateData.category === 'N/A') {
+    // Institute and department validation
+    const collegeData = getCollegeData(targetCollege);
+    
+    if (collegeData.hasInstitutes) {
+      // For colleges with institutes
+      if (!updateData.institute || updateData.institute === 'N/A') {
         return res.status(400).json({ 
-          message: 'Category is required for this role in this college' 
+          message: 'Institute is required for this college' 
         });
       }
-      if (!validateCollegeCategory(targetCollege, updateData.category)) {
+      
+      const validInstitute = collegeData.institutes.some(i => i.name === updateData.institute);
+      if (!validInstitute) {
         return res.status(400).json({ 
-          message: `Category ${updateData.category} is not valid for college ${targetCollege}` 
+          message: `Institute '${updateData.institute}' is not valid for college '${targetCollege}'` 
+        });
+      }
+      
+      if (!updateData.department || updateData.department === 'N/A') {
+        return res.status(400).json({ 
+          message: 'Department is required for this institute' 
+        });
+      }
+      
+      const instituteData = collegeData.institutes.find(i => i.name === updateData.institute);
+      if (!instituteData.departments.includes(updateData.department)) {
+        return res.status(400).json({ 
+          message: `Department '${updateData.department}' is not valid for institute '${updateData.institute}'` 
         });
       }
     } else {
-      // For colleges without categories, force category to N/A
-      updateData.category = 'N/A';
+      // For colleges without institutes
+      updateData.institute = 'N/A';
+      
+      if (!updateData.department || updateData.department === 'N/A') {
+        return res.status(400).json({ 
+          message: 'Department is required for this college' 
+        });
+      }
+      
+      if (!collegeData.departments.includes(updateData.department)) {
+        return res.status(400).json({ 
+          message: `Department '${updateData.department}' is not valid for college '${targetCollege}'` 
+        });
+      }
     }
 
     // Faculty ID validation
@@ -407,7 +532,7 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
 // DELETE: Delete a user
 router.delete('/users/:id', authenticate, async (req, res) => {
-  const { role: deleterRole, college: deleterCollege, category: deleterCategory, userId: deleterId } = req.user;
+  const { role: deleterRole, college: deleterCollege, institute: deleterInstitute, userId: deleterId } = req.user;
 
   try {
     const userToDelete = await User.findById(req.params.id);
@@ -454,7 +579,8 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
         let password = row.password || row.Password || row.PASSWORD;
         let role = creator.role === 'admin' ? 'faculty' : (row.role || row.Role || row.ROLE || defaultRole);
         let college = normalizeCollegeName(row.college || row.College || row.COLLEGE);
-        let category = row.category || row.Category || row.CATEGORY;
+        let institute = row.institute || row.Institute || row.INSTITUTE;
+        let department = row.department || row.Department || row.DEPARTMENT;
         let facultyId = row.facultyId || row.FacultyId || row.FACULTYID;
 
         if (!email || !fullName) {
@@ -485,46 +611,79 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
         }
 
         let finalCollege = college;
-        let finalCategory = category;
+        let finalInstitute = institute;
+        let finalDepartment = department;
         let finalFacultyId = facultyId;
 
         if (role === 'super_admin') {
           finalCollege = 'N/A';
-          finalCategory = 'N/A';
+          finalInstitute = 'N/A';
+          finalDepartment = 'N/A';
           finalFacultyId = 'N/A';
         } else {
-          // For campus_admin and admin, always use their own college and category
+          // For campus_admin and admin, always use their own college and institute
           if (['campus_admin', 'admin'].includes(creator.role)) {
             finalCollege = creator.college;
-            finalCategory = collegeRequiresCategory(creator.college) ? creator.category : 'N/A';
-          } else if (creator.role === 'super_admin') {
-            // super_admin can assign college/category from file
-            finalCollege = college;
-            finalCategory = category;
-            if (!collegeRequiresCategory(finalCollege)) {
-              finalCategory = 'N/A';
+            if (collegeRequiresInstitute(creator.college)) {
+              finalInstitute = creator.institute;
+            } else {
+              finalInstitute = 'N/A';
             }
+          } else if (creator.role === 'super_admin') {
+            // super_admin can assign college/institute from file
+            finalCollege = college;
+            finalInstitute = institute;
           }
 
           if (role !== 'super_admin') {
             finalFacultyId = facultyId;
           }
 
-          // Only require category for colleges that need it
-          if (collegeRequiresCategory(finalCollege)) {
-            if (!finalCategory || finalCategory === 'N/A') {
+          // Validate institute and department based on college type
+          const collegeData = getCollegeData(finalCollege);
+          
+          if (collegeData.hasInstitutes) {
+            // For colleges with institutes
+            if (!finalInstitute || finalInstitute === 'N/A') {
               failed++;
-              errors.push(`Row ${i + 2}: Category is required for college ${finalCollege}`);
+              errors.push(`Row ${i + 2}: Institute is required for college ${finalCollege}`);
               continue;
             }
-            if (!validateCollegeCategory(finalCollege, finalCategory)) {
+            
+            const validInstitute = collegeData.institutes.some(i => i.name === finalInstitute);
+            if (!validInstitute) {
               failed++;
-              errors.push(`Row ${i + 2}: Category ${finalCategory} is not valid for college ${finalCollege}`);
+              errors.push(`Row ${i + 2}: Institute '${finalInstitute}' is not valid for college '${finalCollege}'`);
+              continue;
+            }
+            
+            if (!finalDepartment || finalDepartment === 'N/A') {
+              failed++;
+              errors.push(`Row ${i + 2}: Department is required for institute '${finalInstitute}'`);
+              continue;
+            }
+            
+            const instituteData = collegeData.institutes.find(i => i.name === finalInstitute);
+            if (!instituteData.departments.includes(finalDepartment)) {
+              failed++;
+              errors.push(`Row ${i + 2}: Department '${finalDepartment}' is not valid for institute '${finalInstitute}'`);
               continue;
             }
           } else {
-            // For Eswari/TRP, always set category to N/A for any role
-            finalCategory = 'N/A';
+            // For colleges without institutes
+            finalInstitute = 'N/A';
+            
+            if (!finalDepartment || finalDepartment === 'N/A') {
+              failed++;
+              errors.push(`Row ${i + 2}: Department is required for college '${finalCollege}'`);
+              continue;
+            }
+            
+            if (!collegeData.departments.includes(finalDepartment)) {
+              failed++;
+              errors.push(`Row ${i + 2}: Department '${finalDepartment}' is not valid for college '${finalCollege}'`);
+              continue;
+            }
           }
         }
 
@@ -541,7 +700,8 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
           facultyId: finalFacultyId,
           role,
           college: finalCollege,
-          category: finalCategory,
+          institute: finalInstitute,
+          department: finalDepartment,
           createdBy: creator.userId
         });
 
@@ -556,7 +716,8 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
               password,
               role,
               collegeName: finalCollege,
-              category: finalCategory,
+              institute: finalInstitute,
+              department: finalDepartment,
               appUrl: process.env.APP_URL || 'https://scholarsync.example.com'
             });
           } catch (mailErr) {

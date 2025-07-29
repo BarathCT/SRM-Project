@@ -1,4 +1,4 @@
-import { UserCog, UserPlus, Info } from 'lucide-react';
+import { UserCog, UserPlus, Info, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,281 +8,312 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/Toast';
 
 export default function UserHeader({
   currentUser = {},
   getAvailableRoles = () => [],
   setOpenDialog,
   setOpenBulkDialog,
+  collegeOptions = [],
 }) {
+  const { toast } = useToast();
   const safeUser = currentUser || {};
   const college = safeUser.college || '';
   const role = safeUser.role || '';
-  const category = safeUser.category || '';
+  const institute = safeUser.institute || '';
+  const department = safeUser.department || '';
 
-  // Helper to determine if the user is from SRM college
-  const srmColleges = ['SRMIST RAMAPURAM', 'SRM RAMAPURAM', 'RAMAPURAM', 'SRMIST TRICHY', 'SRM TRICHY', 'TRICHY'];
+  // Helper to determine SRM colleges
+  const srmColleges = ['SRMIST RAMAPURAM', 'SRM RAMAPURAM', 'SRMIST TRICHY', 'SRM TRICHY'];
   const isSRMCollege = srmColleges.some(c => c.toLowerCase() === college.toLowerCase());
 
-  // Helper: show category details only for SRM colleges, only for campus_admin and admin
-  const shouldShowCategory = isSRMCollege && (role === 'campus_admin' || role === 'admin');
+  // Determine which fields to show based on user role and college
+  const shouldShowInstitute = isSRMCollege && (role === 'campus_admin' || role === 'admin');
+  const shouldShowDepartment = role !== 'super_admin' && college && college !== 'N/A';
 
-  // Helper to build instructions per role
+  // Get instructions for bulk upload based on user role
   const getBulkUploadInstructions = () => {
     const baseColumns = [
-      { name: "name", required: true, notes: "User's full name" },
-      { name: "facultyId", required: true, notes: "Unique faculty ID" },
-      { name: "email", required: true, notes: "User's email address" },
-      { name: "password", required: false, notes: "Will be auto-generated if not provided" }
+      { name: "fullName", required: true, notes: "User's full name" },
+      { name: "facultyId", required: role !== 'super_admin', notes: "Required for all non-super admin roles" },
+      { name: "email", required: true, notes: "Must match college domain if specified" },
+      { name: "password", required: false, notes: "Auto-generated if not provided" }
     ];
 
     const baseNotes = [
-      "Passwords will be auto-generated if not provided"
+      "First row must contain column headers",
+      "Column names are case-sensitive",
+      "Passwords will be emailed to users"
     ];
 
     if (role === 'super_admin') {
       return {
-        title: "Super Admin Bulk Upload Instructions",
-        description: "You can upload users for any college with any role.",
+        title: "Super Admin Bulk Upload",
+        description: "Upload users for any college with any role",
         columns: [
           ...baseColumns,
-          { name: "college", required: true, notes: "Must match one of the valid colleges" },
+          { name: "role", required: true, notes: "Must be a valid role" },
+          { name: "college", required: true, notes: "Must match existing colleges" },
           { 
-            name: "category", 
-            required: true, 
-            notes: "Required for SRM colleges (Science and Humanities, Engineering and Technology, Management, Dental); not required for other colleges"
+            name: "institute", 
+            required: isSRMCollege, 
+            notes: "Required for SRM colleges only" 
           },
+          { 
+            name: "department", 
+            required: true, 
+            notes: "Must be valid for selected college/institute" 
+          }
         ],
         notes: [
-          "For SRM colleges (RAMAPURAM, TRICHY): Must include category in Excel.",
-          "For other colleges (EASWARI, TRP): No category needed in Excel.",
-          "Selected role before upload will be applied to all users.",
-          ...baseNotes
+          ...baseNotes,
+          "For SRM colleges: Must include valid institute",
+          "For other colleges: Institute will be set to 'N/A'"
         ]
       };
     }
 
-    // For campus_admin and admin, category auto-set for SRM colleges only
-    const notes = [
-      `College will be automatically set to ${college}`,
-      ...(shouldShowCategory ? [`Category will be automatically set to ${category}`] : []),
-      ...(role === 'campus_admin' ? ["Selected role before upload will be applied to all users"] : []),
-      ...(role === 'admin' ? ["All users will be created as faculty"] : []),
-      ...baseNotes
-    ];
-
     if (role === 'campus_admin') {
       return {
-        title: "Campus Admin Bulk Upload Instructions",
-        description: `You can upload users for ${college}.`,
+        title: `Campus Admin Bulk Upload - ${college}`,
+        description: `Upload users for ${college}`,
         columns: [
           ...baseColumns,
+          { name: "role", required: false, notes: "Defaults to selected role" },
+          ...(shouldShowInstitute ? [
+            { name: "institute", required: false, notes: `Defaults to ${institute}` }
+          ] : []),
+          { name: "department", required: true, notes: "Must be valid for this college" }
         ],
-        notes
+        notes: [
+          ...baseNotes,
+          `College will be set to ${college}`,
+          ...(shouldShowInstitute ? [`Institute defaults to ${institute}`] : []),
+          "Role defaults to selected value"
+        ]
       };
     }
 
-    // admin role
+    // For admin role
     return {
-      title: "Admin Bulk Upload Instructions",
-      description: `You can upload faculty users for ${college}.`,
-      columns: baseColumns,
-      notes
+      title: `Admin Bulk Upload - ${college}`,
+      description: `Upload faculty for ${college}`,
+      columns: [
+        ...baseColumns,
+        ...(shouldShowInstitute ? [
+          { name: "institute", required: false, notes: `Defaults to ${institute}` }
+        ] : []),
+        { name: "department", required: true, notes: "Must be valid for this college" }
+      ],
+      notes: [
+        ...baseNotes,
+        `College will be set to ${college}`,
+        ...(shouldShowInstitute ? [`Institute defaults to ${institute}`] : []),
+        "All users will be created as faculty"
+      ]
     };
   };
 
   const instructions = getBulkUploadInstructions();
 
+  const downloadTemplate = () => {
+    // In a real app, this would download an actual template file
+    toast.info('Template download started');
+    console.log('Downloading template with columns:', instructions.columns.map(c => c.name));
+  };
+
   return (
-    <div className="flex justify-between items-start">
-      <div>
-        <div className="flex items-center space-x-3 mb-1">
+    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+      <div className="flex-1">
+        <div className="flex items-center gap-3 mb-2">
           <UserCog className="h-6 w-6 text-blue-600" />
-          <h1 className="text-2xl font-bold tracking-tight text-gray-800">User Management</h1>
+          <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {role === 'super_admin'
-            ? 'Manage all users across all campuses'
-            : `Managing users for ${college}`}
-        </p>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="text-gray-600">
+            {role.replace('_', ' ')}
+          </Badge>
+          <Badge variant="outline" className="text-gray-600">
+            {college || 'All colleges'}
+          </Badge>
+          {shouldShowInstitute && (
+            <Badge variant="outline" className="text-gray-600">
+              {institute}
+            </Badge>
+          )}
+          {shouldShowDepartment && (
+            <Badge variant="outline" className="text-gray-600">
+              {department}
+            </Badge>
+          )}
+        </div>
       </div>
-      <div className="flex space-x-2">
+
+      <div className="flex flex-col sm:flex-row gap-2">
         {getAvailableRoles().length > 0 && (
           <Button
-            className="bg-blue-500 hover:bg-blue-600"
+            className="bg-blue-600 hover:bg-blue-700"
             onClick={() => setOpenDialog(true)}
           >
             <UserPlus className="mr-2 h-4 w-4" />
             Add User
           </Button>
         )}
+
         {(role === 'super_admin' || role === 'campus_admin' || role === 'admin') && (
           <>
             <Button
               variant="outline"
-              className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-500"
+              className="border-blue-600 text-blue-600 hover:bg-blue-50"
               onClick={() => setOpenBulkDialog(true)}
             >
-              <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
-                <path d="M4 4v12h12V4H4zm4 7h4m-2-2v4" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7 9V7a2 2 0 012-2h2a2 2 0 012 2v2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <FileText className="mr-2 h-4 w-4" />
               Bulk Upload
             </Button>
+
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-blue-500 hover:bg-blue-50">
-                  <Info className="h-4 w-4" />
+                <Button 
+                  variant="outline" 
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                  onClick={downloadTemplate}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Template
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                <DialogHeader className="border-b border-gray-200 pb-4">
-                  <DialogTitle className="flex items-center gap-2 text-gray-800">
-                    <Info className="h-5 w-5 text-blue-500" />
-                    {instructions.title}
-                    {shouldShowCategory && category && (
-                      <span className="text-sm font-normal text-gray-600">
-                        ({category})
-                      </span>
-                    )}
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogHeader className="border-b pb-4">
+                  <DialogTitle className="flex items-center gap-3">
+                    <Info className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p>{instructions.title}</p>
+                      <p className="text-sm font-normal text-gray-600 mt-1">
+                        {instructions.description}
+                      </p>
+                    </div>
                   </DialogTitle>
                 </DialogHeader>
-                
-                <div className="overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden px-1">
+
+                <div className="overflow-y-auto flex-1 px-1">
                   <div className="space-y-6 p-4">
-                    {/* Info Box */}
-                    <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <Info className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{instructions.description}</p>
-                        {role === 'admin' && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            <span className="font-semibold">Note:</span> All users will be created as faculty
-                          </p>
-                        )}
-                        {shouldShowCategory && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            <span className="font-semibold">Category:</span> Will automatically be set to {category}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Excel Requirements Section */}
+                    {/* Requirements Table */}
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        <h3 className="font-medium">Excel File Requirements</h3>
-                      </div>
-
-                      <div className="rounded-lg border overflow-hidden shadow-sm">
-                        <Table className="table-fixed w-full">
+                      <h3 className="font-medium text-gray-800">Excel File Requirements</h3>
+                      <div className="rounded-lg border overflow-hidden">
+                        <Table>
                           <TableHeader className="bg-gray-50">
                             <TableRow>
-                              <TableHead className="font-medium text-gray-700 max-w-[160px] break-words whitespace-normal">Column</TableHead>
-                              <TableHead className="font-medium text-gray-700 max-w-[100px]">Required</TableHead>
-                              <TableHead className="font-medium text-gray-700 max-w-[300px] break-words whitespace-normal">Notes</TableHead>
+                              <TableHead className="w-[180px]">Column</TableHead>
+                              <TableHead className="w-[100px]">Required</TableHead>
+                              <TableHead>Description</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {instructions.columns.map((col) => (
-                              <TableRow key={col.name} className="border-t">
-                                <TableCell className="font-medium py-3 max-w-[160px] break-words whitespace-normal">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono bg-gray-100 px-2 py-1 rounded text-sm text-gray-800 break-words whitespace-normal">
-                                      {col.name}
-                                    </span>
-                                  </div>
+                              <TableRow key={col.name}>
+                                <TableCell className="font-medium">
+                                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                    {col.name}
+                                  </code>
                                 </TableCell>
-                                <TableCell className="py-3 max-w-[100px] break-words whitespace-normal">
-                                  {col.required ? (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                      Required
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                      Optional
-                                    </span>
-                                  )}
+                                <TableCell>
+                                  <Badge 
+                                    variant={col.required ? "destructive" : "outline"}
+                                    className="px-2 py-0.5 text-xs"
+                                  >
+                                    {col.required ? "Required" : "Optional"}
+                                  </Badge>
                                 </TableCell>
-                                <TableCell className="text-sm text-gray-600 py-3 max-w-[300px] break-words whitespace-normal">
+                                <TableCell className="text-sm text-gray-600">
                                   {col.notes}
-                                  {col.name === 'password' && (
-                                    <span className="block mt-1 text-xs text-gray-500 italic">
-                                      Will be auto-generated if empty
-                                    </span>
-                                  )}
                                 </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
                         </Table>
                       </div>
-
                     </div>
 
-                    {/* Important Notes Section */}
+                    {/* Notes Section */}
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77-1.333.192 3 1.732 3z" />
-                        </svg>
-                        <h3 className="font-medium">Important Notes</h3>
+                      <h3 className="font-medium text-gray-800">Important Notes</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                        <ul className="space-y-2 list-disc pl-5 text-sm text-gray-700">
+                          {instructions.notes.map((note, i) => (
+                            <li key={i}>{note}</li>
+                          ))}
+                          <li>
+                            Email domains must match the college:
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {collegeOptions.map(college => (
+                                <Badge 
+                                  key={college.name} 
+                                  variant="outline" 
+                                  className="text-xs font-mono"
+                                >
+                                  @{college.name.toLowerCase().replace(/\s+/g, '')}.edu
+                                </Badge>
+                              ))}
+                            </div>
+                          </li>
+                        </ul>
                       </div>
-                      
-                      <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                        <div className="flex gap-2">
-                          <svg className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="text-sm text-gray-700">
-                            <span className="font-semibold">Column names must use camelCase</span> (e.g., <span className="font-mono bg-gray-200 px-1 py-0.5 rounded">facultyId</span> not "faculty id")
-                          </span>
-                        </div>
-                        
-                        {instructions.notes.map((note, index) => (
-                          <div key={index} className="flex gap-2">
-                            <svg className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span className="text-sm text-gray-700">{note}</span>
-                          </div>
-                        ))}
-                        
-                        {role === 'super_admin' && (
-                          <div className="flex gap-2">
-                            <svg className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span className="text-sm text-gray-700">
-                              <span className="font-semibold">Role Selection:</span> Selected role will be applied to all users in this upload
-                            </span>
-                          </div>
-                        )}
-                        {/* This only shows for SRM college campus_admin or admin */}
-                        {shouldShowCategory && (
-                          <div className="flex gap-2">
-                            <svg className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span className="text-sm text-gray-700">
-                              <span className="font-semibold">Default Values:</span> College = {college}, Category = {category}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          <svg className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="text-sm text-gray-700">
-                            Users will receive login credentials via email
-                          </span>
-                        </div>
+                    </div>
+
+                    {/* Example Section */}
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-gray-800">Example Data</h3>
+                      <div className="rounded-lg border overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-gray-50">
+                            <TableRow>
+                              {instructions.columns.slice(0, 5).map(col => (
+                                <TableHead key={col.name} className="text-xs">
+                                  {col.name}
+                                </TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              {instructions.columns.slice(0, 5).map(col => (
+                                <TableCell key={col.name} className="text-xs text-gray-500">
+                                  {col.name === 'email' 
+                                    ? `user@${college.toLowerCase().replace(/\s+/g, '')}.edu` 
+                                    : col.name === 'role' 
+                                      ? 'faculty' 
+                                      : 'example'}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          </TableBody>
+                        </Table>
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="border-t pt-4 flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    className="mr-2" 
+                    onClick={downloadTemplate}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Template
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setOpenBulkDialog(true);
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Start Bulk Upload
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>

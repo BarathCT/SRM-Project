@@ -16,17 +16,16 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { User, Mail, Lock, Shield, BookOpen, BadgeCheck } from 'lucide-react';
+import { User, Mail, Lock, Shield, BookOpen, BadgeCheck, Building2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // College to email domain mapping
 const collegeDomains = {
   'SRMIST RAMAPURAM': 'srmist.edu.in',
-  'SRM TRICHY': 'srmtrp.edu.in',
+  'SRM TRICHY': 'srmtrichy.edu.in',
   'EASWARI ENGINEERING COLLEGE': 'eec.srmrmp.edu.in',
-  'TRP ENGINEERING COLLEGE': 'trpeng.edu.in',
-  // Add other colleges as needed
+  'TRP ENGINEERING COLLEGE': 'trp.srmtrichy.edu.in',
 };
 
 export default function AddUserDialog({
@@ -40,14 +39,20 @@ export default function AddUserDialog({
   getAvailableRoles,
   currentUser,
   collegeOptions,
-  getCategoriesForCollege,
+  getInstitutesForCollege,
+  getDepartmentsForCollegeAndInstitute
 }) {
   const { toast } = useToast();
+  const [availableInstitutes, setAvailableInstitutes] = useState([]);
+  const [availableDepartments, setAvailableDepartments] = useState([]);
 
-  // Helper function to check if college has categories
-  const collegeHasCategories = (collegeName) => {
+  // Defensive programming: make sure form is always defined
+  if (!form) return null;
+
+  // Helper function to check if college has institutes
+  const collegeHasInstitutes = (collegeName) => {
     const college = collegeOptions.find(c => c.name === collegeName);
-    return college ? college.hasCategories : false;
+    return college ? college.hasInstitutes : false;
   };
 
   // Validate email domain based on selected college
@@ -57,94 +62,142 @@ export default function AddUserDialog({
     return email.endsWith(`@${domain}`);
   };
 
-  // Auto-suggest email domain when college changes
+  // Auto-suggest email domain when college changes (if email already entered)
   useEffect(() => {
-    if (form.college && collegeDomains[form.college] && form.email) {
+    if (
+      form.college &&
+      collegeDomains[form.college] &&
+      form.email &&
+      !form.email.endsWith(`@${collegeDomains[form.college]}`)
+    ) {
       const currentEmail = form.email.split('@')[0];
       if (currentEmail) {
         const newEmail = `${currentEmail}@${collegeDomains[form.college]}`;
-        setForm({ ...form, email: newEmail });
+        if (form.email !== newEmail) {
+          setForm({ ...form, email: newEmail });
+        }
       }
     }
     // eslint-disable-next-line
   }, [form.college]);
 
-  // Determine if we should show category field
-  const shouldShowCategoryField = () => {
+  // Load institutes when college changes
+  useEffect(() => {
+    // Don't update if dialog is closed (prevents update loop when resetting form)
+    if (!open) return;
+
+    if (form.college && collegeHasInstitutes(form.college)) {
+      const institutes = getInstitutesForCollege(form.college);
+      setAvailableInstitutes(institutes);
+
+      // Only reset if necessary to avoid infinite loop
+      if (form.institute !== '' || form.department !== '') {
+        setForm(prev => {
+          if (prev.institute === '' && prev.department === '') return prev;
+          return {
+            ...prev,
+            institute: '',
+            department: ''
+          };
+        });
+      }
+    } else {
+      setAvailableInstitutes([]);
+      if (form.institute !== 'N/A' || form.department !== '') {
+        setForm(prev => {
+          if (prev.institute === 'N/A' && prev.department === '') return prev;
+          return {
+            ...prev,
+            institute: 'N/A',
+            department: ''
+          };
+        });
+      }
+    }
+    // eslint-disable-next-line
+  }, [form.college, open]);
+
+  // Load departments when institute changes
+  useEffect(() => {
+    // Don't update if dialog is closed (prevents update loop when resetting form)
+    if (!open) return;
+
+    if (form.institute && form.institute !== 'N/A' && form.college) {
+      const departments = getDepartmentsForCollegeAndInstitute(form.college, form.institute);
+      setAvailableDepartments(departments);
+      if (form.department !== '') {
+        setForm(prev => {
+          if (prev.department === '') return prev;
+          return {
+            ...prev,
+            department: ''
+          };
+        });
+      }
+    } else if (form.college && !collegeHasInstitutes(form.college)) {
+      const departments = getDepartmentsForCollegeAndInstitute(form.college, 'N/A');
+      setAvailableDepartments(departments);
+    } else {
+      setAvailableDepartments([]);
+    }
+    // eslint-disable-next-line
+  }, [form.institute, form.college, open]);
+
+  // Determine if we should show institute field
+  const shouldShowInstituteField = () => {
     if (!currentUser) return false;
-
-    if (currentUser.role === 'super_admin') {
-      if (form.role === 'super_admin') return false;
-      if (!collegeHasCategories(form.college)) return false;
-      return ['faculty', 'campus_admin', 'admin'].includes(form.role);
-    }
-
-    if (
-      currentUser.role === 'campus_admin' &&
-      ['admin', 'faculty'].includes(form.role) &&
-      collegeHasCategories(currentUser.college)
-    ) {
-      return true;
-    }
-
-    return false;
+    if (form.role === 'super_admin') return false;
+    if (!form.college || form.college === 'N/A') return false;
+    return collegeHasInstitutes(form.college);
   };
 
-  // Get categories for the current college
-  const getCurrentCategories = () => {
-    const college = currentUser?.role === 'super_admin' ? form.college : currentUser?.college;
-    return getCategoriesForCollege(college);
+  // Determine if we should show department field
+  const shouldShowDepartmentField = () => {
+    if (!currentUser) return false;
+    if (form.role === 'super_admin') return false;
+    if (!form.college || form.college === 'N/A') return false;
+    return true;
   };
 
   // Handle role change with proper validation
-  const handleRoleChangeWithReset = (value) => {
-    const selectedCollege = currentUser?.role === 'super_admin' ? form.college : currentUser?.college;
-    const hasCat = collegeHasCategories(selectedCollege);
-
-    let category = form.category;
-    // Empty the category if changing to a role that requires a category
-    if (hasCat && ['faculty', 'campus_admin', 'admin'].includes(value)) {
-      category = '';
-    } else {
-      category = 'N/A';
-    }
-
-    setForm({
-      ...form,
-      role: value,
-      category,
-      facultyId: value === 'super_admin' ? 'N/A' : form.facultyId,
-    });
-
+  const handleRoleChange = (value) => {
+    const updates = { role: value };
     if (value === 'super_admin') {
-      toast.info('Super Admin selected - college and category not required');
+      updates.facultyId = 'N/A';
+      updates.college = 'N/A';
+      updates.institute = 'N/A';
+      updates.department = 'N/A';
+      toast.info('Super Admin selected - college and institute not required');
     }
+    setForm({ ...form, ...updates });
   };
 
   // Handle college change with validation
-  const handleCollegeChangeWithReset = (value) => {
-    const hasCat = collegeHasCategories(value);
-
-    let category = form.category;
-    if (hasCat && ['faculty', 'campus_admin', 'admin'].includes(form.role)) {
-      category = ''; // Set to empty so user has to pick
-      toast.info(`Selected ${value} - please choose a category`);
+  const handleCollegeChange = (value) => {
+    const updates = { college: value };
+    if (value === 'N/A') {
+      updates.institute = 'N/A';
+      updates.department = 'N/A';
+    } else if (!collegeHasInstitutes(value)) {
+      updates.institute = 'N/A';
+      updates.department = '';
+      toast.info(`Selected ${value} - no institute required`);
     } else {
-      category = 'N/A';
-      toast.info(`Selected ${value} - no category required`);
+      updates.institute = '';
+      updates.department = '';
+      toast.info(`Selected ${value} - please choose an institute`);
     }
-
-    setForm({
-      ...form,
-      college: value,
-      category,
-    });
+    setForm({ ...form, ...updates });
   };
 
-  // Handle category change with toast
-  const handleCategoryChange = (value) => {
-    setForm({ ...form, category: value });
-    toast.info(`Category set to ${value}`);
+  // Handle institute change
+  const handleInstituteChange = (value) => {
+    setForm({ ...form, institute: value });
+  };
+
+  // Handle department change
+  const handleDepartmentChange = (value) => {
+    setForm({ ...form, department: value });
   };
 
   // Generate a random password (8-10 chars, alphanumeric+symbols)
@@ -157,10 +210,10 @@ export default function AddUserDialog({
     return pwd;
   };
 
-  // Enhanced submit handler with complete validation and auto password generation
+  // Enhanced submit handler with complete validation
   const handleSubmitWithToast = async () => {
     try {
-      // Basic validation (no password check for new users)
+      // Basic validation
       if (!form.fullName) {
         toast.error('Full name is required');
         return;
@@ -169,7 +222,7 @@ export default function AddUserDialog({
         toast.error('Email is required');
         return;
       }
-      if (form.college && !validateEmailDomain(form.email, form.college)) {
+      if (form.college && collegeDomains[form.college] && !validateEmailDomain(form.email, form.college)) {
         toast.error(`Email must end with @${collegeDomains[form.college]}`);
         return;
       }
@@ -177,24 +230,24 @@ export default function AddUserDialog({
         toast.error('Faculty ID is required');
         return;
       }
-      if (currentUser?.role === 'super_admin' && form.role !== 'super_admin' && !form.college) {
-        toast.error('College selection is required');
+      if (shouldShowInstituteField() && !form.institute) {
+        toast.error('Institute selection is required');
         return;
       }
-      if (shouldShowCategoryField() && (!form.category || form.category === 'N/A')) {
-        toast.error('Category selection is required for this college');
+      if (shouldShowDepartmentField() && !form.department) {
+        toast.error('Department selection is required');
         return;
       }
 
-      // For new users, always generate a random password and send
+      // For new users, generate a random password
       let payload = { ...form };
       if (!editMode) {
         payload.password = generatePassword();
       }
-      // Pass payload to handleSubmit
+
       const result = await handleSubmit(payload);
 
-      if (result && typeof result === "object" && result.error) {
+      if (result?.error) {
         if (result.error.toLowerCase().includes('user already exists')) {
           toast.error('Email already exists');
         } else {
@@ -202,57 +255,38 @@ export default function AddUserDialog({
         }
         return;
       }
-      if (result && typeof result === "string" && result.toLowerCase().includes('user already exists')) {
-        toast.error('Email already exists');
-        return;
-      }
 
       toast.success(
-        editMode
-          ? 'User updated successfully'
-          : 'User created and welcome email sent.'
+        editMode ? 'User updated successfully' : 'User created successfully'
       );
       onOpenChange(false);
     } catch (error) {
-      if (error.message && error.message.toLowerCase().includes('user already exists')) {
-        toast.error('Email already exists');
-      } else {
-        toast.error(
-          error.message ||
-          (editMode ? 'Failed to update user' : 'Failed to create user')
-        );
-      }
+      toast.error(
+        error.message ||
+        (editMode ? 'Failed to update user' : 'Failed to create user')
+      );
     }
   };
 
-  // Helper: Determines if all required fields are filled (for button disable logic)
+  // Helper: Determines if all required fields are filled
   const isFormValid = () => {
-    // For edit mode, password is not required
-    // For create, password is always generated automatically
     if (form.role === 'super_admin') {
-      return (
-        !!form.fullName &&
-        !!form.email &&
-        !!form.facultyId
-      );
+      return !!form.fullName && !!form.email;
     }
+    const basicValid = !!form.fullName && !!form.email && !!form.facultyId && !!form.role;
     if (currentUser?.role === 'super_admin') {
-      if (!form.college || form.college === 'N/A') return false;
-      if (shouldShowCategoryField() && (!form.category || form.category === 'N/A' || form.category === '')) return false;
+      return basicValid && !!form.college &&
+        (!shouldShowInstituteField() || !!form.institute) &&
+        (!shouldShowDepartmentField() || !!form.department);
     }
-    return (
-      !!form.fullName &&
-      !!form.email &&
-      (form.college ? validateEmailDomain(form.email, form.college) : true) &&
-      !!form.facultyId &&
-      !!form.role &&
-      (currentUser?.role !== 'super_admin' || !!form.college)
-    );
+    return basicValid &&
+      (!shouldShowInstituteField() || !!form.institute) &&
+      (!shouldShowDepartmentField() || !!form.department);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[650px]">
         <DialogHeader>
           <div className="flex items-center space-x-2">
             {editMode ? (
@@ -265,8 +299,8 @@ export default function AddUserDialog({
             </DialogTitle>
           </div>
           <DialogDescription>
-            {editMode 
-              ? 'Update user details below' 
+            {editMode
+              ? 'Update user details below'
               : 'Fill in the details to create a new user'}
           </DialogDescription>
         </DialogHeader>
@@ -288,6 +322,7 @@ export default function AddUserDialog({
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                 />
               </div>
+
               {/* Faculty ID (hidden for super admin) */}
               {form.role !== 'super_admin' && (
                 <div className="space-y-2">
@@ -303,6 +338,7 @@ export default function AddUserDialog({
                   />
                 </div>
               )}
+
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center">
@@ -312,8 +348,8 @@ export default function AddUserDialog({
                 <Input
                   id="email"
                   placeholder={
-                    form.college && collegeDomains[form.college] 
-                      ? `example@${collegeDomains[form.college]}` 
+                    form.college && collegeDomains[form.college]
+                      ? `example@${collegeDomains[form.college]}`
                       : 'user@example.edu'
                   }
                   value={form.email}
@@ -334,7 +370,7 @@ export default function AddUserDialog({
 
             {/* Right Column */}
             <div className="space-y-4">
-              {/* Password: removed for create; for edit, show only if wanted */}
+              {/* Password: show only in edit mode */}
               {editMode && (
                 <div className="space-y-2">
                   <Label htmlFor="password" className="flex items-center">
@@ -353,6 +389,7 @@ export default function AddUserDialog({
                   </p>
                 </div>
               )}
+
               {/* Role */}
               <div className="space-y-2">
                 <Label htmlFor="role" className="flex items-center">
@@ -361,7 +398,7 @@ export default function AddUserDialog({
                 </Label>
                 <Select
                   value={form.role}
-                  onValueChange={handleRoleChangeWithReset}
+                  onValueChange={handleRoleChange}
                   disabled={editMode && currentUser?.role !== 'super_admin'}
                 >
                   <SelectTrigger>
@@ -376,16 +413,17 @@ export default function AddUserDialog({
                   </SelectContent>
                 </Select>
               </div>
+
               {/* College (for super admin creating non-super admin users) */}
               {(currentUser?.role === 'super_admin' && form.role !== 'super_admin') && (
                 <div className="space-y-2">
                   <Label htmlFor="college" className="flex items-center">
-                    <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
+                    <Building2 className="h-4 w-4 mr-2 text-gray-500" />
                     College
                   </Label>
                   <Select
                     value={form.college}
-                    onValueChange={handleCollegeChangeWithReset}
+                    onValueChange={handleCollegeChange}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select college" />
@@ -404,21 +442,52 @@ export default function AddUserDialog({
               )}
             </div>
           </div>
-          {/* Category (when applicable) */}
-          {shouldShowCategoryField() && (
+
+          {/* Institute (when applicable) */}
+          {shouldShowInstituteField() && (
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="institute" className="flex items-center">
+                <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
+                Institute
+              </Label>
               <Select
-                value={form.category || ""}
-                onValueChange={handleCategoryChange}
+                value={form.institute}
+                onValueChange={handleInstituteChange}
+                disabled={!form.college}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Select institute" />
                 </SelectTrigger>
                 <SelectContent>
-                  {getCurrentCategories().map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {availableInstitutes.map((institute) => (
+                    <SelectItem key={institute} value={institute}>
+                      {institute}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Department (when applicable) */}
+          {shouldShowDepartmentField() && (
+            <div className="space-y-2">
+              <Label htmlFor="department" className="flex items-center">
+                <Building2 className="h-4 w-4 mr-2 text-gray-500" />
+                Department
+              </Label>
+              <Select
+                value={form.department}
+                onValueChange={handleDepartmentChange}
+                disabled={!form.institute && collegeHasInstitutes(form.college)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDepartments.map((department) => (
+                    <SelectItem key={department} value={department}>
+                      {department}
                     </SelectItem>
                   ))}
                 </SelectContent>
