@@ -168,6 +168,16 @@ const run = async () => {
         createdBy: null
       },
       {
+        fullName: 'Anand',
+        facultyId: generateFacultyId(),
+        email: 'anand.cs.faculty@ramapuram.edu.in',
+        password: await hashPassword('anand47'),
+        role: 'faculty',
+        college: 'SRMIST RAMAPURAM',
+        category: 'Engineering and Technology',
+        createdBy: null
+      },
+      {
         fullName: 'CS Faculty 2',
         facultyId: generateFacultyId('faculty', 2),
         email: 'faculty2@cs.ramapuram.edu.in',
