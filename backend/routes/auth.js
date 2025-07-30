@@ -1,6 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt'; // keep as 'bcrypt' since that's what you use elsewhere
 import User from '../models/User.js';
 import { body, validationResult } from 'express-validator';
 import dotenv from 'dotenv';
@@ -33,63 +33,58 @@ const validateInstitutionalEmail = (email) => {
   return institutionalDomains.includes(domain);
 };
 
-// Login Route
+// ------------------------- LOGIN -------------------------
 router.post('/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').exists().notEmpty()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: errors.array() 
+      errors: errors.array()
     });
   }
 
   const { email, password } = req.body;
 
   try {
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Find active user
+    const user = await User.findOne({ email, isActive: true });
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Create JWT token
+    // IMPORTANT: include facultyId in JWT payload
     const token = jwt.sign(
-      { 
-        userId: user._id, 
-        role: user.role,
+      {
+        userId: user._id.toString(),
         email: user.email,
+        role: user.role,
+        facultyId: user.facultyId,   // ← required by /api/papers
         college: user.college || null,
-        category: user.category || null
+        category: user.category || null,
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
-    // Set HTTP-only cookie
+    // Optional cookie (you can keep it and also return token in body)
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000 // 1 day
+      sameSite: 'strict',              // if you need cross-site cookie between ports, consider 'lax'
+      maxAge: 24 * 60 * 60 * 1000
     });
 
-    // Return user data and token (for frontend localStorage if needed)
+    // Return safe user object + token
     const userData = user.toObject();
     delete userData.password;
 
@@ -97,7 +92,10 @@ router.post('/login', [
       success: true,
       message: 'Login successful',
       token,
-      user: userData
+      user: {
+        ...userData,
+        facultyId: user.facultyId     // ensure frontend gets it too
+      }
     });
 
   } catch (err) {
@@ -109,65 +107,62 @@ router.post('/login', [
   }
 });
 
-// Token Verification Route
+// -------------------- VERIFY TOKEN --------------------
 router.get('/verify-token', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
-    // Accept token from either cookie or Authorization header
+    // Accept token from cookie or Authorization header
     let token = req.cookies.token;
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
     }
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided'
-      });
+      return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId).select('-password');
 
+    // We still fetch the latest user doc for UI, but decoded contains facultyId for middleware use
+    const user = await User.findById(decoded.userId).select('-password');
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(401).json({ success: false, message: 'User not found' });
     }
 
     return res.json({
       success: true,
-      user
+      user,
+      // optional: echo parts of the decoded token if you want
+      tokenPayload: {
+        role: decoded.role,
+        facultyId: decoded.facultyId,
+        email: decoded.email,
+        college: decoded.college ?? null,
+        category: decoded.category ?? null
+      }
     });
 
   } catch (err) {
     console.error('Token verification error:', err);
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired token'
-    });
+    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 });
 
-// Logout Route
+// ------------------------- LOGOUT -------------------------
 router.post('/logout', (req, res) => {
   res.clearCookie('token');
-  return res.json({
-    success: true,
-    message: 'Logged out successfully'
-  });
+  return res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Forgot Password Route
+// -------------------- FORGOT PASSWORD --------------------
 router.post('/forgot-password', [
   body('email').isEmail().normalizeEmail()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: errors.array() 
+      errors: errors.array()
     });
   }
 
@@ -175,26 +170,19 @@ router.post('/forgot-password', [
 
   try {
     if (!validateInstitutionalEmail(email)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Only institutional emails are allowed'
-      });
+      return res.status(403).json({ success: false, message: 'Only institutional emails are allowed' });
     }
 
-    // Check if user exists (but don't reveal if they don't)
+    // Check if user exists (do not reveal if not)
     const userExists = await User.exists({ email });
     if (!userExists) {
-      return res.json({
-        success: true,
-        message: 'If an account exists, an OTP has been sent'
-      });
+      return res.json({ success: true, message: 'If an account exists, an OTP has been sent' });
     }
 
-    // Create and save OTP
+    // Create & send OTP
     const otpDoc = await OTP.createOTP(email);
     const otp = otpDoc.otp;
 
-    // Send email with OTP
     const mailOptions = {
       from: `"ScholarSync" <${process.env.SMTP_USER}>`,
       to: email,
@@ -211,31 +199,25 @@ router.post('/forgot-password', [
 
     await transporter.sendMail(mailOptions);
 
-    return res.json({
-      success: true,
-      message: 'OTP sent to your email'
-    });
+    return res.json({ success: true, message: 'OTP sent to your email' });
 
   } catch (err) {
     console.error('Forgot password error:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to process request'
-    });
+    return res.status(500).json({ success: false, message: 'Failed to process request' });
   }
 });
 
-// Verify OTP Route (does NOT mark OTP as used)
+// ----------------------- VERIFY OTP -----------------------
 router.post('/verify-otp', [
   body('email').isEmail().normalizeEmail(),
   body('otp').isLength({ min: 6, max: 6 })
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: errors.array() 
+      errors: errors.array()
     });
   }
 
@@ -243,22 +225,14 @@ router.post('/verify-otp', [
 
   try {
     await OTP.verifyOTP(email, otp);
-
-    return res.json({
-      success: true,
-      message: 'OTP verified successfully'
-    });
-
+    return res.json({ success: true, message: 'OTP verified successfully' });
   } catch (err) {
     console.error('OTP verification error:', err);
-    return res.status(400).json({
-      success: false,
-      message: err.message || 'OTP verification failed'
-    });
+    return res.status(400).json({ success: false, message: err.message || 'OTP verification failed' });
   }
 });
 
-// Reset Password Route (ONLY one! - does OTP consume + password update)
+// ---------------------- RESET PASSWORD ----------------------
 router.post('/reset-password', [
   body('email').isEmail().normalizeEmail(),
   body('otp').isLength({ min: 6, max: 6 }),
@@ -266,57 +240,40 @@ router.post('/reset-password', [
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: errors.array() 
+      errors: errors.array()
     });
   }
 
   const { email, otp, newPassword } = req.body;
 
   try {
-    // 1. Mark OTP as used if valid
     await OTP.consumeOTP(email, otp);
 
-    // 2. Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // 3. Check if new password is different from current
     const isSamePassword = await bcrypt.compare(newPassword, user.password);
     if (isSamePassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be different from current password'
-      });
+      return res.status(400).json({ success: false, message: 'New password must be different from current password' });
     }
 
-    // 4. Hash and update password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     user.password = hashedPassword;
     await user.save();
 
-    // 5. Delete all OTPs for this email
     await OTP.deleteMany({ email });
 
-    return res.json({
-      success: true,
-      message: 'Password reset successfully'
-    });
+    return res.json({ success: true, message: 'Password reset successfully' });
 
   } catch (err) {
     console.error('Password reset error:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to reset password'
-    });
+    return res.status(500).json({ success: false, message: 'Failed to reset password' });
   }
 });
 

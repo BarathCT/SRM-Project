@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+// frontend/src/pages/UploadPage.jsx
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import debounce from "lodash.debounce";
+import { toast } from "sonner";
 import { 
   Check, 
   AlertTriangle, 
@@ -11,7 +13,6 @@ import {
   X, 
   Info,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,7 +36,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Updated schema for requirements
 const formSchema = z.object({
   authors: z.array(z.object({ 
       name: z.string().min(1, "Author name is required."),
@@ -65,16 +65,16 @@ const formSchema = z.object({
   qRating: z.string().min(1, "Q rating is required."),
   issueType: z.string().min(1, "Type of issue is required."),
 }).superRefine((data, ctx) => {
-    if (data.isStudentScholar === 'yes') {
-      if (!data.studentScholars || data.studentScholars.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "At least one student scholar must be added.",
-          path: ['studentScholars']
-        });
-      }
+  if (data.isStudentScholar === 'yes') {
+    if (!data.studentScholars || data.studentScholars.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one student scholar must be added.",
+        path: ['studentScholars']
+      });
     }
-  });
+  }
+});
 
 const publicationLabels = {
   scopus: "Scopus ID",
@@ -84,27 +84,22 @@ const publicationLabels = {
   abdc: "ABDC ID"
 };
 
+function decodeToken(token) {
+  try {
+    const base64 = token.split('.')[1];
+    const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 export default function UploadPage() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [isCheckingDoi, setIsCheckingDoi] = useState(false);
   const [doiStatus, setDoiStatus] = useState({ isDuplicate: null, message: "" });
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        setIsAuthenticated(true);
-      } catch (err) {
-        console.error('Invalid token');
-        localStorage.removeItem('token');
-        navigate('/login');
-      }
-    } else {
-      navigate('/login');
-    }
-  }, [navigate]);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -123,78 +118,173 @@ export default function UploadPage() {
       qRating: "",
       issueType: "",
       studentScholars: [],
+      publication: undefined,
+      claimedBy: "",
+      authorNo: "",
+      isStudentScholar: "no"
     },
+    mode: "onSubmit"
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    const payload = decodeToken(token);
+    if (!payload || !payload.facultyId) {
+      localStorage.removeItem('token');
+      navigate('/login');
+      return;
+    }
+    setIsAuthenticated(true);
+    form.setValue('facultyId', payload.facultyId, { shouldValidate: true });
+  }, [form, navigate]);
 
   const publicationType = form.watch("publication");
-  const publicationLabel = publicationType ? publicationLabels[publicationType] : "Publication ID";
+  const publicationLabel = useMemo(
+    () => (publicationType ? publicationLabels[publicationType] : "Publication ID"),
+    [publicationType]
+  );
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "authors",
-  });
-
-  const { fields: studentFields, append: appendStudent, remove: removeStudent } = useFieldArray({
-    control: form.control,
-    name: "studentScholars",
-  });
+  const { fields, append, remove } = useFieldArray({ control: form.control, name: "authors" });
+  const { fields: studentFields, append: appendStudent, remove: removeStudent } = useFieldArray({ control: form.control, name: "studentScholars" });
 
   const watchAuthors = form.watch("authors");
   const watchIsStudentScholar = form.watch("isStudentScholar");
+  const correspondingAuthor = watchAuthors?.find(a => a.isCorresponding);
 
-  // Auto set Author No. when Claimed By changes
   useEffect(() => {
-    const subscription = form.watch((values, { name }) => {
+    const sub = form.watch((values, { name }) => {
       if (name === "claimedBy") {
-        if (values.claimedBy && watchAuthors && watchAuthors.length > 0) {
+        if (values.claimedBy && watchAuthors?.length > 0) {
           const foundIndex = watchAuthors.findIndex(a => a.name === values.claimedBy);
           if (foundIndex !== -1) {
-            form.setValue("authorNo", (foundIndex + 1).toString());
+            form.setValue("authorNo", (foundIndex + 1).toString(), { shouldValidate: true });
           }
         }
       }
     });
-    return () => subscription.unsubscribe();
+    return () => sub.unsubscribe();
     // eslint-disable-next-line
   }, [form, watchAuthors]);
 
   const debouncedDoiCheck = useCallback(
-    debounce((doi) => {
-      if (doi.trim()) {
-        setIsCheckingDoi(true);
-        // Simulate API call
-        setTimeout(() => {
-          setDoiStatus({
-            isDuplicate: Math.random() > 0.5,
-            message: Math.random() > 0.5 
-              ? "This DOI is already registered." 
-              : "This DOI is available."
-          });
-          setIsCheckingDoi(false);
-        }, 1000);
-      } else {
+    debounce(async (doi) => {
+      if (!doi.trim()) {
         setDoiStatus({ isDuplicate: null, message: "" });
+        return;
+      }
+      try {
+        setIsCheckingDoi(true);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:5000/api/papers/doi/${encodeURIComponent(doi.trim())}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setDoiStatus({
+            isDuplicate: !!data.exists,
+            message: data.exists ? "DOI already exists." : "DOI is available."
+          });
+        } else {
+          setDoiStatus({ isDuplicate: null, message: "DOI check failed." });
+        }
+      } catch {
+        setDoiStatus({ isDuplicate: null, message: "DOI check failed." });
+      } finally {
+        setIsCheckingDoi(false);
       }
     }, 500),
     []
   );
 
-  const correspondingAuthor = watchAuthors?.find(a => a.isCorresponding);
+  async function onSubmit(values) {
+    if (doiStatus.isDuplicate) {
+      toast.error("This DOI is already registered.");
+      return;
+    }
 
-  function onSubmit(values) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    const payload = {
+      ...values,
+      year: values.year.toString(),
+      authorNo: values.authorNo.toString()
+    };
+
     setIsPending(true);
-    console.log(values);
-    setTimeout(() => {
-      toast.success("Your paper has been successfully submitted for review.");
-      form.reset();
+    try {
+      const saved = await toast.promise(
+        (async () => {
+          const res = await fetch('http://localhost:5000/api/papers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+
+          let data;
+          try {
+            data = await res.json();
+          } catch {
+            data = null;
+          }
+
+          if (!res.ok || !data?._id) {
+            const message = Array.isArray(data?.details)
+              ? `${data?.error || 'Submission failed'}: ${data.details.join(', ')}`
+              : data?.error || `Submission failed (${res.status})`;
+            throw new Error(message);
+          }
+
+          return data; // contains _id if saved in DB
+        })(),
+        {
+          loading: 'Saving paper...',
+          success: 'Paper uploaded successfully.',
+          error: (err) => err.message || 'Submission failed',
+        }
+      );
+
+      form.reset({
+        authors: [{ name: "", isCorresponding: false }],
+        title: "",
+        journalName: "",
+        publisherName: "",
+        volume: "",
+        issue: "",
+        pageNo: "",
+        doi: "",
+        facultyId: form.getValues('facultyId'),
+        publicationId: "",
+        year: "",
+        qRating: "",
+        issueType: "",
+        studentScholars: [],
+        publication: undefined,
+        claimedBy: "",
+        authorNo: "",
+        isStudentScholar: "no"
+      });
       setDoiStatus({ isDuplicate: null, message: "" });
+
+      // Optional: console.log('Saved paper id:', saved._id);
+    } catch {
+      // error toast handled by toast.promise
+    } finally {
       setIsPending(false);
-    }, 1500);
+    }
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,8 +304,24 @@ export default function UploadPage() {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                  {/* Authors Section */}
+                <form
+                  onSubmit={form.handleSubmit(
+                    onSubmit,
+                    (errors) => {
+                      console.error('Validation errors:', errors);
+                      toast.error("Please fix the highlighted fields.");
+                    }
+                  )}
+                  className="space-y-8"
+                >
+                  <FormField
+                    control={form.control}
+                    name="facultyId"
+                    render={({ field }) => (
+                      <input type="hidden" {...field} readOnly />
+                    )}
+                  />
+
                   <div className="space-y-4 md:col-span-2">
                     <FormLabel>Authors</FormLabel>
                     {fields.map((field, index) => (
@@ -240,7 +346,7 @@ export default function UploadPage() {
                             <FormItem className="flex items-center gap-2">
                               <FormControl>
                                 <Checkbox
-                                  checked={field.value}
+                                  checked={!!field.value}
                                   onCheckedChange={field.onChange}
                                 />
                               </FormControl>
@@ -255,7 +361,6 @@ export default function UploadPage() {
                         )}
                       </div>
                     ))}
-                    {/* Add Author button: hide if 15 authors are present */}
                     {fields.length < 15 && (
                       <Button
                         type="button"
@@ -269,7 +374,6 @@ export default function UploadPage() {
                     )}
                   </div>
 
-                  {/* Publication Details */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
@@ -362,7 +466,7 @@ export default function UploadPage() {
                         <FormItem>
                           <FormLabel>Year</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., 2024" {...field} type="number" />
+                            <Input placeholder="e.g., 2025" {...field} type="number" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -405,7 +509,7 @@ export default function UploadPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Publication</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value ?? ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select publication type" />
@@ -431,7 +535,7 @@ export default function UploadPage() {
                         <FormItem>
                           <FormLabel>Faculty ID</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., F12345" {...field} />
+                            <Input {...field} readOnly />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -445,10 +549,7 @@ export default function UploadPage() {
                         <FormItem>
                           <FormLabel>{publicationLabel}</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder={`e.g., ${publicationType === 'scopus' ? '12345678900' : 'ID'}`} 
-                              {...field} 
-                            />
+                            <Input placeholder={publicationType === 'scopus' ? '12345678900' : 'ID'} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -461,10 +562,7 @@ export default function UploadPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Claimed By</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value}
-                          >
+                          <Select onValueChange={field.onChange} value={field.value ?? ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select an author" />
@@ -487,7 +585,7 @@ export default function UploadPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Author No.</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value ?? ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select author number" />
@@ -516,7 +614,7 @@ export default function UploadPage() {
                           <FormControl>
                             <RadioGroup 
                               onValueChange={field.onChange} 
-                              defaultValue={field.value} 
+                              value={field.value}
                               className="flex gap-4"
                             >
                               <FormItem className="flex items-center space-x-2">
@@ -550,7 +648,7 @@ export default function UploadPage() {
                               render={({ field }) => (
                                 <FormItem className="flex-1">
                                   <FormLabel className="sr-only">Student Author Name</FormLabel>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Select student author" />
@@ -607,7 +705,7 @@ export default function UploadPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Q Rating</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={(v) => field.onChange(v)} value={field.value ?? ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Q rating" />
@@ -631,7 +729,7 @@ export default function UploadPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Type of Issue</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={(v) => field.onChange(v)} value={field.value ?? ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Type of Issue" />
@@ -656,7 +754,7 @@ export default function UploadPage() {
                     </AlertDescription>
                   </Alert>
 
-                  <Button type="submit" disabled={isPending || isCheckingDoi} className="w-full md:w-auto">
+                  <Button type="submit" disabled={isPending} className="w-full md:w-auto">
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit Paper
                   </Button>

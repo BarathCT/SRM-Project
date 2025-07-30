@@ -20,20 +20,36 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
+  const fetchUserData = async () => {
     const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUser(decoded);
-      } catch (err) {
-        console.error('Invalid token');
-        localStorage.removeItem('token');
-        navigate('/login');
-      }
-    } else {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+      const response = await fetch('/api/settings', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+
+      setUser({
+        ...decoded,
+        ...(data.data || data)
+      });
+    } catch (err) {
+      console.error('Invalid token or failed to fetch user data');
+      localStorage.removeItem('token');
       navigate('/login');
     }
-  }, [navigate]);
+  };
+
+  fetchUserData();
+}, [navigate]);
+
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -62,6 +78,11 @@ export default function Navbar() {
   const getEmail = () => {
     return user.email || '';
   };
+
+   const  handleManageUsers = () => {
+    navigate('/admin/users'); // or any route for user management
+  };
+
 
   // Determine dashboard path based on role
   const getDashboardPath = () => {
@@ -137,7 +158,7 @@ export default function Navbar() {
           <Button 
             variant="outline"
             size="sm"
-            onClick={() => navigate("/users")}
+            onClick={handleManageUsers}
             className="gap-2 border-blue-500 text-blue-500 hover:bg-blue-50 shadow-sm transition-colors"
           >
             <Users className="h-4 w-4" />
