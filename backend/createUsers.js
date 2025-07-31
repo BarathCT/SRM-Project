@@ -20,9 +20,25 @@ const run = async () => {
     };
 
     // Generate simple faculty IDs
-    const generateFacultyId = (role, index) => {
-      return `${role.toUpperCase().substr(0, 3)}-${index.toString().padStart(3, '0')}`;
+    // const generateFacultyId = (role, index) => {
+    //   return `${role.toUpperCase().substr(0, 3)}-${index.toString().padStart(3, '0')}`;
+    // };
+
+
+    //-----------new func 
+    const generateFacultyId = (role = 'FAC', index = 0) => {
+      return `${role.toUpperCase().slice(0, 3)}-${String(index).padStart(3, '0')}`;
     };
+
+    // Helper to ensure passwords satisfy minlength
+const securePassword = (base) => {
+  // ensure at least 8 chars; you can tweak for complexity if needed
+  if (base.length >= 8) return base;
+  return base + '1234'; // naive padding to meet length
+};
+
+
+
 
     // Test users
     const users = [
@@ -168,8 +184,20 @@ const run = async () => {
         createdBy: null
       },
       {
+  fullName: 'Anand',
+  facultyId: generateFacultyId('faculty', 2),
+  email: 'anand.cs.faculty@ramapuram.edu.in',
+  password: await hashPassword('anand47XYZ'), // ensure ≥8 chars
+  role: 'faculty',
+  college: 'SRMIST RAMAPURAM',
+  institute: 'Engineering and Technology',
+  department: 'Computer Science', // supply a valid department
+  createdBy: null
+}
+,
+      {
         fullName: 'CS Faculty 2',
-        facultyId: generateFacultyId('faculty', 2),
+        facultyId: generateFacultyId('faculty', 3),
         email: 'faculty2@cs.ramapuram.edu.in',
         password: await hashPassword('faculty'),
         role: 'faculty',
@@ -182,7 +210,7 @@ const run = async () => {
       // SRMIST RAMAPURAM - Engineering - Electronics
       {
         fullName: 'ECE Faculty 1',
-        facultyId: generateFacultyId('faculty', 3),
+        facultyId: generateFacultyId('faculty', 4),
         email: 'faculty1@ece.ramapuram.edu.in',
         password: await hashPassword('faculty'),
         role: 'faculty',
@@ -195,7 +223,7 @@ const run = async () => {
       // SRMIST RAMAPURAM - Science - Physics
       {
         fullName: 'Physics Faculty 1',
-        facultyId: generateFacultyId('faculty', 4),
+        facultyId: generateFacultyId('faculty', 5),
         email: 'faculty1@physics.ramapuram.edu.in',
         password: await hashPassword('faculty'),
         role: 'faculty',
@@ -208,7 +236,7 @@ const run = async () => {
       // SRM TRICHY - Engineering - IT
       {
         fullName: 'IT Faculty 1',
-        facultyId: generateFacultyId('faculty', 5),
+        facultyId: generateFacultyId('faculty', 6),
         email: 'faculty1@it.trichy.edu.in',
         password: await hashPassword('faculty'),
         role: 'faculty',
@@ -221,7 +249,7 @@ const run = async () => {
       // EASWARI ENGINEERING COLLEGE - Electronics
       {
         fullName: 'Eswari Faculty 1',
-        facultyId: generateFacultyId('faculty', 6),
+        facultyId: generateFacultyId('faculty', 7),
         email: 'faculty1@eswari.edu.in',
         password: await hashPassword('faculty'),
         role: 'faculty',
@@ -234,7 +262,7 @@ const run = async () => {
       // TRP ENGINEERING COLLEGE - Mechanical
       {
         fullName: 'TRP Faculty 1',
-        facultyId: generateFacultyId('faculty', 7),
+        facultyId: generateFacultyId('faculty', 8),
         email: 'faculty1@trp.edu.in',
         password: await hashPassword('faculty'),
         role: 'faculty',
