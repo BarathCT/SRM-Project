@@ -62,24 +62,24 @@ router.post('/login', [
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-<<<<<<< HEAD
+<<<<<<<<< Temporary merge branch 1
     // IMPORTANT: include facultyId in JWT payload
-=======
+=========
     // Create JWT token - FIXED: Added department field
->>>>>>> department
+>>>>>>>>> Temporary merge branch 2
     const token = jwt.sign(
       {
         userId: user._id.toString(),
         email: user.email,
         role: user.role,
-        facultyId: user.facultyId,   // ← required by /api/papers
+        facultyId: user.facultyId,
         college: user.college || null,
-<<<<<<< HEAD
+<<<<<<<<< Temporary merge branch 1
         category: user.category || null
-=======
+=========
         institute: user.institute || null,
         department: user.department || null  // ← ADD THIS LINE
->>>>>>> department
+>>>>>>>>> Temporary merge branch 2
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
