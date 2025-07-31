@@ -62,14 +62,16 @@ router.post('/login', [
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // IMPORTANT: include facultyId in JWT payload
+    // Create JWT token with required fields
     const token = jwt.sign(
       {
         userId: user._id.toString(),
         email: user.email,
         role: user.role,
-        facultyId: user.facultyId,   // ← required by /api/papers
+        facultyId: user.facultyId,
         college: user.college || null,
+        institute: user.institute || null,
+        department: user.department || null,
         category: user.category || null
       },
       process.env.JWT_SECRET,
