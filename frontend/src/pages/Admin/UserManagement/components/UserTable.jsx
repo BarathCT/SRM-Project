@@ -18,7 +18,7 @@ export default function UserTable({
   users,
   filteredUsers,
   isLoading,
-  currentUser,
+  currentUser, // This might be null initially
   getRoleColor,
   canModifyUser,
   handleEdit,
@@ -39,6 +39,44 @@ export default function UserTable({
       : names[0][0];
   };
 
+  // Function to determine what to display in the institute column based on role
+  const renderInstituteColumn = (user) => {
+    // Default to showing both if currentUser isn't loaded yet
+    const userRole = currentUser?.role || 'super_admin';
+    
+    // For super admin, show both institute and department
+    if (userRole === 'super_admin') {
+      return (
+        <div className="flex flex-col">
+          <div className="flex items-center text-sm">
+            <Layers className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+            <span className="truncate max-w-[120px]">
+              {user.institute === 'N/A' ? '-' : user.institute}
+            </span>
+          </div>
+          {user.department && (
+            <div className="text-xs text-gray-500 ml-5 truncate max-w-[110px]">
+              {user.department}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // For admin and campus_admin, show only department
+    return (
+      <div className="flex items-center text-sm">
+        <Layers className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+        <span className="truncate max-w-[120px]">
+          {user.department || '-'}
+        </span>
+      </div>
+    );
+  };
+
+  // Get the current user's role safely
+  const currentUserRole = currentUser?.role || 'super_admin';
+
   return (
     <div className="rounded-lg border shadow-sm overflow-hidden">
       <Table className="min-w-full">
@@ -48,8 +86,10 @@ export default function UserTable({
             <TableHead>Details</TableHead>
             <TableHead className="w-[150px]">Role</TableHead>
             <TableHead className="w-[150px]">College</TableHead>
-            <TableHead className="w-[150px]">Institute</TableHead>
-            <TableHead className="w-[150px]">Status</TableHead>
+            <TableHead className="w-[150px]">
+              {currentUserRole === 'super_admin' ? 'Institute & Department' : 'Department'}
+            </TableHead>
+            {/* Removed Status Column */}
             <TableHead className="w-[120px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -75,7 +115,7 @@ export default function UserTable({
                 <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                {/* Removed Status Column */}
                 <TableCell className="flex justify-end gap-2">
                   <Skeleton className="h-8 w-8 rounded-md" />
                   <Skeleton className="h-8 w-8 rounded-md" />
@@ -131,21 +171,12 @@ export default function UserTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center text-sm">
-                    <Layers className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
-                    <span className="truncate max-w-[120px]">
-                      {user.institute === 'N/A' ? '-' : user.institute}
-                    </span>
-                  </div>
+                  {renderInstituteColumn(user)}
                 </TableCell>
-                <TableCell>
-                  <Badge variant={user.isActive ? 'default' : 'destructive'}>
-                    {user.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </TableCell>
+                {/* Removed Status Column */}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    {canModifyUser(user) && (
+                    {canModifyUser && canModifyUser(user) && (
                       <>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -186,7 +217,7 @@ export default function UserTable({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-96 text-center">
+              <TableCell colSpan={6} className="h-96 text-center">
                 <div className="flex flex-col items-center justify-center py-6 space-y-4">
                   <Users className="h-12 w-12 text-gray-400" />
                   <div className="space-y-1">
@@ -200,7 +231,7 @@ export default function UserTable({
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    {getAvailableRoles().length > 0 && users.length === 0 && (
+                    {getAvailableRoles && getAvailableRoles().length > 0 && users.length === 0 && (
                       <Button 
                         variant="default" 
                         size="sm" 
