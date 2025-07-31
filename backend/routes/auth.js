@@ -68,14 +68,15 @@ router.post('/login', [
       });
     }
 
-    // Create JWT token
+    // Create JWT token - FIXED: Added department field
     const token = jwt.sign(
       { 
         userId: user._id, 
         role: user.role,
         email: user.email,
         college: user.college || null,
-        institute: user.institute || null
+        institute: user.institute || null,
+        department: user.department || null  // ← ADD THIS LINE
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
