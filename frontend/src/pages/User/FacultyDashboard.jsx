@@ -14,12 +14,13 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const FacultyDashboard = () => {
   const [papers, setPapers] = useState([]);
-  const [expanded, setExpanded] = useState(null); // track which paper to show details
+  const [expanded, setExpanded] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     const fetchPapers = async () => {
       try {
-        const token = localStorage.getItem("token"); // replace with your auth method
+        const token = localStorage.getItem("token");
         const response = await axios.get("http://localhost:5000/api/papers/my", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -63,13 +64,35 @@ const FacultyDashboard = () => {
     maintainAspectRatio: false,
   };
 
+  const deletePaper = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this paper?")) return;
+    setDeletingId(id);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.delete(`http://localhost:5000/api/papers/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.status === 200) {
+        setPapers((prev) => prev.filter((p) => p._id !== id));
+      } else {
+        alert(res.data?.error || "Failed to delete paper");
+      }
+    } catch (e) {
+      console.error("Delete failed", e);
+      alert("Could not delete paper: " + (e.response?.data?.error || e.message));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         Welcome, Faculty Member
       </h1>
 
-      {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardContent className="p-4">
@@ -90,11 +113,10 @@ const FacultyDashboard = () => {
         </Card>
       </div>
 
-      {/* Publications Table */}
       <Card>
         <CardHeader>
           <CardTitle>Your Publications</CardTitle>
-          <CardDescription>Click "More Info" to view full details.</CardDescription>
+          <CardDescription>Click "More Info" to view full details or delete unwanted entries.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-auto">
@@ -107,6 +129,7 @@ const FacultyDashboard = () => {
                   <th className="py-2 px-4">DOI</th>
                   <th className="py-2 px-4">Q Rating</th>
                   <th className="py-2 px-4">More Info</th>
+                  <th className="py-2 px-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -130,10 +153,19 @@ const FacultyDashboard = () => {
                           {expanded === index ? "Hide" : "More Info"}
                         </button>
                       </td>
+                      <td className="py-2 px-4">
+                        <button
+                          onClick={() => deletePaper(paper._id)}
+                          disabled={deletingId === paper._id}
+                          className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {deletingId === paper._id ? "Deleting…" : "Delete"}
+                        </button>
+                      </td>
                     </tr>
                     {expanded === index && (
                       <tr>
-                        <td colSpan={6} className="bg-gray-100 p-4">
+                        <td colSpan={7} className="bg-gray-100 p-4">
                           <div>
                             <p><strong>Title:</strong> {paper.title}</p>
                             <p><strong>Publisher:</strong> {paper.publisher}</p>
@@ -143,8 +175,8 @@ const FacultyDashboard = () => {
                             <p><strong>Publication Type:</strong> {paper.publicationType}</p>
                             <p><strong>Claimed By:</strong> {paper.claimedBy || "Not Claimed"}</p>
                             <p><strong>Student Scholar:</strong> {paper.isStudentScholar}</p>
-                            {paper.studentScholars.length > 0 && (
-                              <p><strong>Scholars:</strong> {paper.studentScholars.join(", ")}</p>
+                            {paper.studentScholars && paper.studentScholars.length > 0 && (
+                              <p><strong>Scholars:</strong> {paper.studentScholars.map(s => s.name || s).join(", ")}</p>
                             )}
                           </div>
                         </td>
