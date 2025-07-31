@@ -148,7 +148,21 @@ export default function AddUserDialog({
     if (!currentUser) return false;
     if (form.role === 'super_admin') return false;
     if (!form.college || form.college === 'N/A') return false;
-    return collegeHasInstitutes(form.college);
+    
+    // Admin creating faculty - no need to show institute/department (inherit from admin)
+    if (currentUser.role === 'admin') return false;
+    
+    // Only show for super admin creating users in colleges with institutes
+    if (currentUser.role === 'super_admin') {
+      return collegeHasInstitutes(form.college);
+    }
+    
+    // Campus admin - only show if their college has institutes and they're creating non-campus admin
+    if (currentUser.role === 'campus_admin') {
+      return false; // Institute is inherited from campus admin
+    }
+    
+    return false;
   };
 
   // Determine if we should show department field
@@ -156,19 +170,103 @@ export default function AddUserDialog({
     if (!currentUser) return false;
     if (form.role === 'super_admin') return false;
     if (!form.college || form.college === 'N/A') return false;
-    return true;
+    
+    // Admin creating faculty - no need to show department (inherit from admin)
+    if (currentUser.role === 'admin') return false;
+    
+    // Campus admin doesn't need department
+    if (form.role === 'campus_admin') return false;
+    
+    // Super admin creating users
+    if (currentUser.role === 'super_admin') {
+      return form.role !== 'campus_admin';
+    }
+    
+    // Campus admin creating admin or faculty
+    if (currentUser.role === 'campus_admin') {
+      return form.role === 'admin' || form.role === 'faculty';
+    }
+    
+    return false;
+  };
+
+  // Determine if we should show college field
+  const shouldShowCollegeField = () => {
+    if (!currentUser) return false;
+    if (form.role === 'super_admin') return false;
+    
+    // Only super admin can select college
+    return currentUser.role === 'super_admin' && form.role !== 'super_admin';
+  };
+
+  // Get available roles based on current user's role
+  const getFilteredRoles = () => {
+    const allRoles = getAvailableRoles();
+    
+    // If current user is admin, they can only create faculty
+    if (currentUser?.role === 'admin') {
+      return allRoles.filter(role => role.value === 'faculty');
+    }
+    
+    // If current user is campus_admin, they can create faculty and admin
+    if (currentUser?.role === 'campus_admin') {
+      return allRoles.filter(role => role.value === 'faculty' || role.value === 'admin');
+    }
+    
+    // Super admin can create all roles
+    return allRoles;
   };
 
   // Handle role change with proper validation
   const handleRoleChange = (value) => {
+    console.log('Role changed to:', value);
+    console.log('Current user role:', currentUser?.role);
+    
     const updates = { role: value };
+    
     if (value === 'super_admin') {
       updates.facultyId = 'N/A';
       updates.college = 'N/A';
       updates.institute = 'N/A';
       updates.department = 'N/A';
       toast.info('Super Admin selected - college and institute not required');
+    } else if (value === 'campus_admin') {
+      updates.department = 'N/A'; // Campus admin doesn't need department
+      // Inherit college and institute from current user if they're not super admin
+      if (currentUser?.role !== 'super_admin') {
+        updates.college = currentUser.college;
+        updates.institute = currentUser.institute;
+      }
+    } else if (value === 'admin') {
+      // Admin must have department, inherit from current user if campus_admin
+      if (currentUser?.role === 'campus_admin') {
+        updates.college = currentUser.college;
+        updates.institute = currentUser.institute;
+        // Reset department for selection
+        updates.department = '';
+      } else if (currentUser?.role === 'super_admin') {
+        // Super admin can set college/institute/department
+        updates.department = '';
+      }
+    } else if (value === 'faculty') {
+      // Faculty inherits from current user
+      if (currentUser?.role === 'admin') {
+        updates.college = currentUser.college;
+        updates.institute = currentUser.institute;
+        updates.department = currentUser.department;
+        toast.info('Faculty will inherit admin\'s college, institute, and department');
+      } else if (currentUser?.role === 'campus_admin') {
+        updates.college = currentUser.college;
+        updates.institute = currentUser.institute;
+        // Reset department for selection
+        updates.department = '';
+      } else if (currentUser?.role === 'super_admin') {
+        // Super admin can set everything
+        updates.department = '';
+      }
     }
+    
+    console.log('Updates to apply:', updates);
     setForm({ ...form, ...updates });
   };
 
@@ -192,7 +290,7 @@ export default function AddUserDialog({
 
   // Handle institute change
   const handleInstituteChange = (value) => {
-    setForm({ ...form, institute: value });
+    setForm({ ...form, institute: value, department: '' });
   };
 
   // Handle department change
@@ -213,6 +311,13 @@ export default function AddUserDialog({
   // Enhanced submit handler with complete validation
   const handleSubmitWithToast = async () => {
     try {
+      console.log('=== FRONTEND SUBMIT DEBUG ===');
+      console.log('Form data:', form);
+      console.log('Current user:', currentUser);
+      console.log('Should show department field:', shouldShowDepartmentField());
+      console.log('Should show institute field:', shouldShowInstituteField());
+      console.log('===============================');
+
       // Basic validation
       if (!form.fullName) {
         toast.error('Full name is required');
@@ -230,11 +335,23 @@ export default function AddUserDialog({
         toast.error('Faculty ID is required');
         return;
       }
+
+      // Role-specific validations
+      if (form.role === 'admin') {
+        if (currentUser?.role === 'campus_admin' || currentUser?.role === 'super_admin') {
+          if (!form.department || form.department === 'N/A') {
+            toast.error('Department is required when creating admin');
+            return;
+          }
+        }
+      }
+
       if (shouldShowInstituteField() && !form.institute) {
         toast.error('Institute selection is required');
         return;
       }
-      if (shouldShowDepartmentField() && !form.department) {
+      
+      if (shouldShowDepartmentField() && (!form.department || form.department === 'N/A')) {
         toast.error('Department selection is required');
         return;
       }
@@ -244,6 +361,8 @@ export default function AddUserDialog({
       if (!editMode) {
         payload.password = generatePassword();
       }
+
+      console.log('Payload being sent:', payload);
 
       const result = await handleSubmit(payload);
 
@@ -261,6 +380,7 @@ export default function AddUserDialog({
       );
       onOpenChange(false);
     } catch (error) {
+      console.error('Submit error:', error);
       toast.error(
         error.message ||
         (editMode ? 'Failed to update user' : 'Failed to create user')
@@ -273,15 +393,35 @@ export default function AddUserDialog({
     if (form.role === 'super_admin') {
       return !!form.fullName && !!form.email;
     }
+    
     const basicValid = !!form.fullName && !!form.email && !!form.facultyId && !!form.role;
-    if (currentUser?.role === 'super_admin') {
-      return basicValid && !!form.college &&
-        (!shouldShowInstituteField() || !!form.institute) &&
-        (!shouldShowDepartmentField() || !!form.department);
+    
+    // Super admin creating other roles
+    if (currentUser?.role === 'super_admin' && form.role !== 'super_admin') {
+      const collegeValid = !!form.college && form.college !== 'N/A';
+      const instituteValid = !shouldShowInstituteField() || !!form.institute;
+      const departmentValid = !shouldShowDepartmentField() || (!!form.department && form.department !== 'N/A');
+      return basicValid && collegeValid && instituteValid && departmentValid;
     }
+    
+    // Campus admin creating admin - department is required
+    if (form.role === 'admin' && currentUser?.role === 'campus_admin') {
+      return basicValid && !!form.department && form.department !== 'N/A';
+    }
+    
+    // Campus admin creating faculty - department is required
+    if (form.role === 'faculty' && currentUser?.role === 'campus_admin') {
+      return basicValid && !!form.department && form.department !== 'N/A';
+    }
+    
+    // Admin creating faculty - all fields auto-filled from admin
+    if (form.role === 'faculty' && currentUser?.role === 'admin') {
+      return basicValid;
+    }
+    
     return basicValid &&
       (!shouldShowInstituteField() || !!form.institute) &&
-      (!shouldShowDepartmentField() || !!form.department);
+      (!shouldShowDepartmentField() || (!!form.department && form.department !== 'N/A'));
   };
 
   return (
@@ -396,26 +536,35 @@ export default function AddUserDialog({
                   <Shield className="h-4 w-4 mr-2 text-gray-500" />
                   Role
                 </Label>
-                <Select
-                  value={form.role}
-                  onValueChange={handleRoleChange}
-                  disabled={editMode && currentUser?.role !== 'super_admin'}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableRoles().map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {currentUser?.role === 'admin' ? (
+                  <div className="p-2 bg-gray-50 rounded border">
+                    <span className="text-sm text-gray-600">Faculty (Fixed)</span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Admins can only create faculty members
+                    </p>
+                  </div>
+                ) : (
+                  <Select
+                    value={form.role}
+                    onValueChange={handleRoleChange}
+                    disabled={editMode && currentUser?.role !== 'super_admin'}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getFilteredRoles().map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
-              {/* College (for super admin creating non-super admin users) */}
-              {(currentUser?.role === 'super_admin' && form.role !== 'super_admin') && (
+              {/* College (only for super admin creating non-super admin users) */}
+              {shouldShowCollegeField() && (
                 <div className="space-y-2">
                   <Label htmlFor="college" className="flex items-center">
                     <Building2 className="h-4 w-4 mr-2 text-gray-500" />
@@ -479,7 +628,7 @@ export default function AddUserDialog({
               <Select
                 value={form.department}
                 onValueChange={handleDepartmentChange}
-                disabled={!form.institute && collegeHasInstitutes(form.college)}
+                disabled={shouldShowInstituteField() && !form.institute}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
@@ -492,6 +641,35 @@ export default function AddUserDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Show inherited values when admin creates faculty */}
+          {currentUser?.role === 'admin' && form.role === 'faculty' && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> Faculty will be created under your department and institute:
+              </p>
+              <ul className="text-xs text-blue-600 mt-1">
+                <li>College: {currentUser.college}</li>
+                <li>Institute: {currentUser.institute}</li>
+                <li>Department: {currentUser.department}</li>
+              </ul>
+            </div>
+          )}
+
+          {/* Show inherited values when campus admin creates users */}
+          {currentUser?.role === 'campus_admin' && form.role !== 'super_admin' && (
+            <div className="bg-green-50 p-3 rounded-lg">
+              <p className="text-sm text-green-700">
+                <strong>Note:</strong> User will be created under your college and institute:
+              </p>
+              <ul className="text-xs text-green-600 mt-1">
+                <li>College: {currentUser.college}</li>
+                <li>Institute: {currentUser.institute}</li>
+                {form.role === 'admin' && <li>Department: {form.department || 'Please select'}</li>}
+                {form.role === 'faculty' && <li>Department: {form.department || 'Please select'}</li>}
+              </ul>
             </div>
           )}
         </div>
