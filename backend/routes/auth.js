@@ -62,8 +62,7 @@ router.post('/login', [
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Create JWT token with required fields
-    const token = jwt.sign(
+const token = jwt.sign(
       {
         userId: user._id.toString(),
         email: user.email,
@@ -72,7 +71,6 @@ router.post('/login', [
         college: user.college || null,
         institute: user.institute || null,
         department: user.department || null,
-        category: user.category || null
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
