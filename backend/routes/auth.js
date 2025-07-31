@@ -63,23 +63,33 @@ router.post('/login', [
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     // IMPORTANT: include facultyId in JWT payload
 =======
     // Create JWT token - FIXED: Added department field
 >>>>>>> department
+=======
+    // Create JWT token with required fields
+>>>>>>> eea666db679d9b9f380be282f73c72a1908971da
     const token = jwt.sign(
       {
         userId: user._id.toString(),
         email: user.email,
         role: user.role,
-        facultyId: user.facultyId,   // ← required by /api/papers
+        facultyId: user.facultyId,
         college: user.college || null,
+<<<<<<< HEAD
 <<<<<<< HEAD
         category: user.category || null
 =======
         institute: user.institute || null,
         department: user.department || null  // ← ADD THIS LINE
 >>>>>>> department
+=======
+        institute: user.institute || null,
+        department: user.department || null,
+        category: user.category || null
+>>>>>>> eea666db679d9b9f380be282f73c72a1908971da
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
