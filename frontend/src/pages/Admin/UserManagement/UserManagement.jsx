@@ -282,13 +282,16 @@ export default function UserManagement() {
       // Validate department based on college and institute
       const collegeData = COLLEGE_OPTIONS.find(c => c.name === payload.college);
       if (collegeData) {
-        if (collegeData.hasInstitutes) {
-          const instituteData = collegeData.institutes.find(i => i.name === payload.institute);
-          if (instituteData && !instituteData.departments.includes(payload.department)) {
-            throw new Error(`Invalid department for selected institute`);
+        // SKIP department validation for campus_admin
+        if (payload.role !== 'campus_admin') {
+          if (collegeData.hasInstitutes) {
+            const instituteData = collegeData.institutes.find(i => i.name === payload.institute);
+            if (instituteData && !instituteData.departments.includes(payload.department)) {
+              throw new Error(`Invalid department for selected institute`);
+            }
+          } else if (!collegeData.departments.includes(payload.department)) {
+            throw new Error(`Invalid department for selected college`);
           }
-        } else if (!collegeData.departments.includes(payload.department)) {
-          throw new Error(`Invalid department for selected college`);
         }
       }
 

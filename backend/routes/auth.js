@@ -71,7 +71,6 @@ const token = jwt.sign(
     college: user.college || null,
     institute: user.institute || null,
     department: user.department || null,
-    category: user.category || null
   },
   process.env.JWT_SECRET,
   { expiresIn: '1d' }
