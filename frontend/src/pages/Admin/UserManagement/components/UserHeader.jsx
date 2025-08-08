@@ -10,6 +10,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/Toast';
+import * as XLSX from 'xlsx';
 
 export default function UserHeader({
   currentUser = {},
@@ -35,42 +36,37 @@ export default function UserHeader({
 
   // Get instructions for bulk upload based on user role
   const getBulkUploadInstructions = () => {
+    // Remove password field from all roles
     const baseColumns = [
       { name: "fullName", required: true, notes: "User's full name" },
-      { name: "facultyId", required: role !== 'super_admin', notes: "Required for all non-super admin roles" },
-      { name: "email", required: true, notes: "Must match college domain if specified" },
-      { name: "password", required: false, notes: "Auto-generated if not provided" }
+      { 
+        name: "facultyId", 
+        required: true, // Always required
+        notes: "Required for all roles"
+      },
+      { name: "email", required: true, notes: "Must match college domain if specified" }
+      // password field removed
     ];
 
     const baseNotes = [
       "First row must contain column headers",
       "Column names are case-sensitive",
-      "Passwords will be emailed to users"
+      "Passwords will be auto-generated and emailed to users"
     ];
 
     if (role === 'super_admin') {
+      // For super_admin, exclude college, institute, department, and role from template download
       return {
         title: "Super Admin Bulk Upload",
         description: "Upload users for any college with any role",
         columns: [
           ...baseColumns,
-          { name: "role", required: true, notes: "Must be a valid role" },
-          { name: "college", required: true, notes: "Must match existing colleges" },
-          { 
-            name: "institute", 
-            required: isSRMCollege, 
-            notes: "Required for SRM colleges only" 
-          },
-          { 
-            name: "department", 
-            required: true, 
-            notes: "Must be valid for selected college/institute" 
-          }
         ],
         notes: [
           ...baseNotes,
           "For SRM colleges: Must include valid institute",
-          "For other colleges: Institute will be set to 'N/A'"
+          "For other colleges: Institute will be set to 'N/A'",
+          "Password column is not needed; it will be auto-generated for all users.",
         ]
       };
     }
@@ -91,7 +87,8 @@ export default function UserHeader({
           ...baseNotes,
           `College will be set to ${college}`,
           ...(shouldShowInstitute ? [`Institute defaults to ${institute}`] : []),
-          "Role defaults to selected value"
+          "Role defaults to selected value",
+          "Password column is not needed; it will be auto-generated for all users."
         ]
       };
     }
@@ -111,17 +108,46 @@ export default function UserHeader({
         ...baseNotes,
         `College will be set to ${college}`,
         ...(shouldShowInstitute ? [`Institute defaults to ${institute}`] : []),
-        "All users will be created as faculty"
+        "All users will be created as faculty",
+        "Password column is not needed; it will be auto-generated for all users."
       ]
     };
   };
 
   const instructions = getBulkUploadInstructions();
 
+  // Helper for example values for each column
+  function getExampleValue(col) {
+    switch (col.name) {
+      case 'fullName':
+        return 'Jane Doe';
+      case 'facultyId':
+        return 'FAC1234';
+      case 'email':
+        return `user@${(college || "college").toLowerCase().replace(/\s+/g, '')}.edu`;
+      case 'role':
+        return 'faculty';
+      case 'college':
+        return college || 'SRM University';
+      case 'institute':
+        return institute || 'Engineering';
+      case 'department':
+        return department || 'CSE';
+      default:
+        return 'example';
+    }
+  }
+
+  // XLSX Download Template
   const downloadTemplate = () => {
-    // In a real app, this would download an actual template file
+    // For super_admin, only include base columns (no college/institute/department/role)
+    let cols = instructions.columns.map(c => c.name);
+    const worksheet = XLSX.utils.json_to_sheet([], { header: cols });
+    XLSX.utils.sheet_add_aoa(worksheet, [cols], { origin: "A1" });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+    XLSX.writeFile(workbook, "user-upload-template.xlsx");
     toast.info('Template download started');
-    console.log('Downloading template with columns:', instructions.columns.map(c => c.name));
   };
 
   return (
@@ -208,7 +234,10 @@ export default function UserHeader({
                           <TableHeader className="bg-gray-50">
                             <TableRow>
                               <TableHead className="w-[180px]">Column</TableHead>
-                              <TableHead className="w-[100px]">Required</TableHead>
+                              {/* Remove the "Required" column for super_admin */}
+                              {role !== 'super_admin' && (
+                                <TableHead className="w-[100px]">Required</TableHead>
+                              )}
                               <TableHead>Description</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -220,14 +249,17 @@ export default function UserHeader({
                                     {col.name}
                                   </code>
                                 </TableCell>
-                                <TableCell>
-                                  <Badge 
-                                    variant={col.required ? "destructive" : "outline"}
-                                    className="px-2 py-0.5 text-xs"
-                                  >
-                                    {col.required ? "Required" : "Optional"}
-                                  </Badge>
-                                </TableCell>
+                                {/* Only show Required badge for non-super_admin */}
+                                {role !== 'super_admin' && (
+                                  <TableCell>
+                                    <Badge 
+                                      variant={col.required ? "destructive" : "outline"}
+                                      className="px-2 py-0.5 text-xs"
+                                    >
+                                      {col.required ? "Required" : "Optional"}
+                                    </Badge>
+                                  </TableCell>
+                                )}
                                 <TableCell className="text-sm text-gray-600">
                                   {col.notes}
                                 </TableCell>
@@ -271,7 +303,7 @@ export default function UserHeader({
                         <Table>
                           <TableHeader className="bg-gray-50">
                             <TableRow>
-                              {instructions.columns.slice(0, 5).map(col => (
+                              {instructions.columns.map(col => (
                                 <TableHead key={col.name} className="text-xs">
                                   {col.name}
                                 </TableHead>
@@ -280,18 +312,17 @@ export default function UserHeader({
                           </TableHeader>
                           <TableBody>
                             <TableRow>
-                              {instructions.columns.slice(0, 5).map(col => (
+                              {instructions.columns.map(col => (
                                 <TableCell key={col.name} className="text-xs text-gray-500">
-                                  {col.name === 'email' 
-                                    ? `user@${college.toLowerCase().replace(/\s+/g, '')}.edu` 
-                                    : col.name === 'role' 
-                                      ? 'faculty' 
-                                      : 'example'}
+                                  {getExampleValue(col)}
                                 </TableCell>
                               ))}
                             </TableRow>
                           </TableBody>
                         </Table>
+                        <div className="text-xs text-gray-600 italic p-2">
+                          Password column not required. Passwords will be auto-generated and sent via email.
+                        </div>
                       </div>
                     </div>
                   </div>
