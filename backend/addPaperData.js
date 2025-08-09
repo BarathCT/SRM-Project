@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Paper from './models/Paper.js';       // <-- uses backend/models/Paper.js
-import User from './models/User.js';         // <-- to find faculty users only
+import Paper from './models/Paper.js';
+import User from './models/User.js';
 
 dotenv.config();
 
@@ -87,6 +87,7 @@ async function run() {
       console.log('  Cleared existing papers');
     }
 
+    // Only select faculty users (role: 'faculty'), no admin or other roles.
     const faculties = await User.find({ role: 'faculty', facultyId: { $exists: true, $ne: 'N/A' } }).lean();
     if (!faculties.length) {
       console.log('  No faculty users found. Seed users first.');

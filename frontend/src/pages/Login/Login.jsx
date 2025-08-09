@@ -74,16 +74,13 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(data.user));
       toast.success('Login successful');
 
-      // Redirect based on role
+      // Redirect based on role (admin removed)
       switch(data.user.role) {
         case 'super_admin':
           navigate('/super-admin');
           break;
         case 'campus_admin':
           navigate('/campus-admin');
-          break;
-        case 'admin':
-          navigate('/admin');
           break;
         case 'faculty':
           navigate('/faculty');

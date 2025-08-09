@@ -6,7 +6,7 @@ import { jwtDecode } from 'jwt-decode';
 import { DeleteConfirmationDialog } from './components/DeleteConfirmationDialog';
 import AddUserDialog from './components/AddUserDialog.jsx';
 import UserTable from './components/UserTable';
-import UserFilters from './components/UserFilter';
+import UserFilters from './components/UserFilter'
 import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
 import BulkUploadDialog from './components/BulkUploadDialog';
@@ -66,10 +66,10 @@ const COLLEGE_OPTIONS = [
   }
 ];
 
+// Only allowed roles (admin removed)
 const ROLE_OPTIONS = [
   { value: 'super_admin', label: 'Super Admin' },
   { value: 'campus_admin', label: 'Campus Admin' },
-  { value: 'admin', label: 'Admin' },
   { value: 'faculty', label: 'Faculty' }
 ];
 
@@ -191,10 +191,6 @@ export default function UserManagement() {
         if (COLLEGES_WITH_INSTITUTES.includes(user.college)) {
           params.append('institute', user.institute);
         }
-      } else if (user.role === 'admin') {
-        params.append('college', user.college);
-        params.append('institute', user.institute);
-        params.append('role', 'faculty');
       }
       
       // Append params to URL if any exist
@@ -258,10 +254,8 @@ export default function UserManagement() {
   const canCreateRole = (role) => {
     if (!currentUser) return false;
     const creatorRole = currentUser.role;
-    
-    if (creatorRole === 'super_admin') return ['campus_admin', 'admin', 'faculty'].includes(role);
-    if (creatorRole === 'campus_admin') return ['admin', 'faculty'].includes(role);
-    if (creatorRole === 'admin') return role === 'faculty';
+    if (creatorRole === 'super_admin') return ['campus_admin', 'faculty'].includes(role);
+    if (creatorRole === 'campus_admin') return role === 'faculty';
     return false;
   };
 
@@ -381,7 +375,6 @@ export default function UserManagement() {
         return;
       }
       
-      // Update local users array
       setUsers(prevUsers => prevUsers.filter(user => user._id !== id));
       toast.success('User deleted successfully');
     } catch (err) {
@@ -425,11 +418,6 @@ export default function UserManagement() {
       }
       return currentUser.institute === targetUser.institute;
     }
-    if (currentUser.role === 'admin') {
-      return currentUser.college === targetUser.college && 
-             currentUser.institute === targetUser.institute &&
-             targetUser.role === 'faculty';
-    }
     return false;
   };
 
@@ -447,14 +435,13 @@ export default function UserManagement() {
     switch(role) {
       case 'super_admin': return 'bg-purple-100 text-purple-800';
       case 'campus_admin': return 'bg-blue-100 text-blue-800';
-      case 'admin': return 'bg-green-100 text-green-800';
       case 'faculty': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   // Get available filter options from current users
-  const availableRoles = [...new Set(users.map(user => user.role))];
+  const availableRoles = [...new Set(users.map(user => user.role))].filter(role => ['super_admin', 'campus_admin', 'faculty'].includes(role));
   const availableInstitutes = [...new Set(
     users
       .filter(user => user.institute && user.institute !== 'N/A')

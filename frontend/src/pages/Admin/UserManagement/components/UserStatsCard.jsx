@@ -2,10 +2,10 @@ import { Users, UserCog } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
+// Only valid roles: super_admin, campus_admin, faculty
 const roleColors = {
   super_admin: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200' },
   campus_admin: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
-  admin: { bg: 'bg-sky-100', text: 'text-sky-800', border: 'border-sky-200' },
   faculty: { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-200' },
   default: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' }
 };
@@ -21,6 +21,11 @@ export default function UserStatsCard({
   const getRoleColor = (role) => {
     return roleColors[role] || roleColors.default;
   };
+
+  // Only show allowed roles (no "admin")
+  const filteredRoleOptions = roleOptions.filter(role =>
+    ['super_admin', 'campus_admin', 'faculty'].includes(role.value)
+  );
 
   return (
     <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50/50 to-white">
@@ -61,7 +66,7 @@ export default function UserStatsCard({
                 Role Distribution
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {roleOptions.map(role => {
+                {filteredRoleOptions.map(role => {
                   const count = users.filter(u => u.role === role.value).length;
                   const color = getRoleColor(role.value);
 

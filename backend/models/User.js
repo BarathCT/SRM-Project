@@ -1,5 +1,19 @@
 import mongoose from 'mongoose';
-  
+
+// Allowed domains for email validation
+const normalCollegeDomains = {
+  'SRMIST RAMAPURAM': 'srmist.edu.in',
+  'SRM TRICHY': 'srmtrichy.edu.in',
+  'EASWARI ENGINEERING COLLEGE': 'eec.srmrmp.edu.in',
+  'TRP ENGINEERING COLLEGE': 'trp.srmtrichy.edu.in'
+};
+const researchAllowedDomains = [
+  'srmist.edu.in',
+  'srmtrichy.edu.in',
+  'eec.srmrmp.edu.in',
+  'trp.srmtrichy.edu.in'
+];
+
 const userSchema = new mongoose.Schema({
   email: { 
     type: String, 
@@ -28,7 +42,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['super_admin', 'campus_admin', 'admin', 'faculty'],
+    enum: ['super_admin', 'campus_admin', 'faculty'],
     required: true
   },
   college: {
@@ -45,10 +59,12 @@ const userSchema = new mongoose.Schema({
   institute: {
     type: String,
     enum: [
+      // Only these colleges have SRM RESEARCH as an institute
       'Science and Humanities',
       'Engineering and Technology', 
       'Management',
       'Dental',
+      'SRM RESEARCH',
       'N/A'
     ],
     default: 'N/A'
@@ -137,6 +153,12 @@ const collegeOptions = [
           'Orthodontics',
           'N/A'
         ]
+      },
+      { 
+        name: 'SRM RESEARCH',
+        departments: [
+          'Ramapuram Research'
+        ]
       }
     ]
   },
@@ -163,6 +185,12 @@ const collegeOptions = [
           'Mechanical',
           'Civil',
           'N/A'
+        ]
+      },
+      { 
+        name: 'SRM RESEARCH',
+        departments: [
+          'Trichy Research'
         ]
       }
     ]
@@ -227,12 +255,9 @@ userSchema.pre('validate', function(next) {
   // Handle colleges without institutes
   if (collegesWithoutInstitutes.includes(this.college)) {
     this.institute = 'N/A';
-    
-    // Validate department for colleges without institutes
     if (!collegeData.departments.includes(this.department)) {
       return next(new Error(`Invalid department '${this.department}' for college '${this.college}'`));
     }
-    
     return next();
   }
 
@@ -259,26 +284,59 @@ userSchema.pre('validate', function(next) {
 userSchema.pre('save', function(next) {
   const collegeData = collegeOptions.find(c => c.name === this.college);
 
-  // If college doesn't have institutes, ensure institute is 'N/A'
   if (collegesWithoutInstitutes.includes(this.college)) {
     this.institute = 'N/A';
-    
-    // Validate department for colleges without institutes
     if (!collegeData.departments.includes(this.department)) {
       return next(new Error(`Invalid department '${this.department}' for college '${this.college}'`));
     }
   } else {
-    // For colleges with institutes, validate the institute-department relationship
     if (this.institute !== 'N/A') {
       const instituteData = collegeData.institutes.find(i => i.name === this.institute);
       if (!instituteData) {
         return next(new Error(`Institute '${this.institute}' is not valid for college '${this.college}'`));
       }
-      
       if (!instituteData.departments.includes(this.department)) {
         return next(new Error(`Department '${this.department}' is not valid for institute '${this.institute}'`));
       }
     }
+  }
+
+  next();
+});
+
+// Middleware to enforce email domain restrictions (SRM RESEARCH case and normal)
+userSchema.pre('validate', function(next) {
+  if (!this.isActive) return next();
+  if (this.role === 'super_admin') return next();
+
+  // Check for SRM RESEARCH selection for only SRMIST RAMAPURAM and SRM TRICHY
+  let isResearch = false;
+  if (
+    (this.college === 'SRMIST RAMAPURAM' || this.college === 'SRM TRICHY') &&
+    this.institute === 'SRM RESEARCH'
+  ) {
+    isResearch = true;
+  }
+
+  const emailDomain = this.email.split('@')[1] || '';
+  if (isResearch) {
+    if (!researchAllowedDomains.includes(emailDomain)) {
+      return next(new Error(
+        `For SRM RESEARCH, only these email domains are allowed: ${researchAllowedDomains.join(', ')}`
+      ));
+    }
+    return next();
+  }
+
+  // Normal selection (no SRM RESEARCH)
+  if (Object.keys(normalCollegeDomains).includes(this.college)) {
+    const allowedDomain = normalCollegeDomains[this.college];
+    if (emailDomain !== allowedDomain) {
+      return next(new Error(
+        `Email domain '${emailDomain}' is not allowed for college '${this.college}'. Allowed domain: ${allowedDomain}`
+      ));
+    }
+    return next();
   }
 
   next();

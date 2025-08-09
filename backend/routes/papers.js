@@ -1,4 +1,3 @@
-// backend/routes/papers.js
 import express from 'express';
 import Paper from '../models/Paper.js';
 import verifyToken from '../middleware/verifyToken.js';
@@ -13,14 +12,18 @@ router.delete('/:id', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid paper ID' });
     }
 
-    // Optional: enforce ownership (only faculty who owns it or admin)
+    // Find paper
     const paper = await Paper.findById(id);
     if (!paper) {
       return res.status(404).json({ error: 'Paper not found' });
     }
 
-    // if you have roles on req.user, you can guard here, example:
-    if (req.user?.facultyId !== paper.facultyId && req.user?.role !== 'admin' && req.user?.role !== 'super_admin') {
+    // Role-based deletion: only owner (facultyId) or super_admin or campus_admin
+    if (
+      req.user?.facultyId !== paper.facultyId &&
+      req.user?.role !== 'super_admin' &&
+      req.user?.role !== 'campus_admin'
+    ) {
       return res.status(403).json({ error: 'Not authorized to delete this paper' });
     }
 
@@ -31,7 +34,6 @@ router.delete('/:id', verifyToken, async (req, res) => {
     return res.status(500).json({ error: 'Server error' });
   }
 });
-
 
 router.get('/doi/:doi', verifyToken, async (req, res) => {
   try {

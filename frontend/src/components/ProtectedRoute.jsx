@@ -91,8 +91,7 @@ export default function ProtectedRoute({ allowedRoles }) {
       dashboard = {
         super_admin: '/super-admin',
         campus_admin: '/campus-admin',
-        admin: '/admin',
-        faculty: '/faculty',
+        faculty: '/faculty', // 'admin' removed
       }[userRole] || '/';
     }
     return <Navigate to={dashboard} replace />;
