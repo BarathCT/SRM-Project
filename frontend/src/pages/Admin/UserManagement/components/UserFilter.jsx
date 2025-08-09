@@ -40,16 +40,17 @@ export default function UserFilters({
     !!searchTerm,
   ].filter(Boolean).length;
 
-  // Determine if we should show institute filter
-  const showInstituteFilter = availableInstitutes.length > 0 && 
-    (currentUser?.role === 'super_admin' || 
-     currentUser?.role === 'campus_admin');
+  // Only show institute filter to super_admin or campus_admin
+  const showInstituteFilter =
+    availableInstitutes.length > 0 &&
+    (currentUser?.role === 'super_admin' || currentUser?.role === 'campus_admin');
 
-  // Determine if we should show department filter
-  const showDepartmentFilter = availableDepartments.length > 0 && 
-    (currentUser?.role === 'super_admin' || 
-     currentUser?.role === 'campus_admin' || 
-     currentUser?.role === 'admin');
+  // Only show department filter to super_admin, campus_admin, or faculty (no admin)
+  const showDepartmentFilter =
+    availableDepartments.length > 0 &&
+    (currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'campus_admin' ||
+      currentUser?.role === 'faculty');
 
   return (
     <div className="bg-white p-4 rounded-lg border shadow-sm">
@@ -134,7 +135,7 @@ export default function UserFilters({
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
               {availableRoles
-                .filter(role => role)
+                .filter(role => role && ['super_admin', 'campus_admin', 'faculty'].includes(role))
                 .map(role => (
                   <SelectItem key={role} value={role}>
                     {role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ')}

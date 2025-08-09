@@ -4,6 +4,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/Toast';
 
+// Colleges with and without institutes
 const collegesWithInstitutes = [
   'SRMIST RAMAPURAM',
   'SRM TRICHY'
@@ -41,10 +42,10 @@ const SettingsPage = () => {
       }
 
       try {
-        // First get basic info from token
+        // Get basic info from token
         const decoded = jwtDecode(token);
 
-        // Then fetch complete user data from API
+        // Fetch full user data from API
         const response = await axios.get('/api/settings', {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -60,7 +61,7 @@ const SettingsPage = () => {
           email: userData.email || ''
         });
 
-        // Fetch departments based on user's college and institute
+        // Fetch departments for user's college/institute (if needed)
         if (userData.college && userData.college !== 'N/A') {
           const deptResponse = await axios.get('/api/settings/departments', {
             headers: { Authorization: `Bearer ${token}` }
@@ -218,6 +219,7 @@ const SettingsPage = () => {
     );
   }
 
+  // Only show institute/department for campus_admin/faculty, not super_admin
   const showInstitute = user.role !== 'super_admin' && 
                        user.college && 
                        collegesWithInstitutes.includes(user.college);

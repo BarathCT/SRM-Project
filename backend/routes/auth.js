@@ -1,6 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt'; // keep as 'bcrypt' since that's what you use elsewhere
+import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 import { body, validationResult } from 'express-validator';
 import dotenv from 'dotenv';
@@ -62,29 +62,27 @@ router.post('/login', [
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-const token = jwt.sign(
-  {
-    userId: user._id.toString(),
-    email: user.email,
-    role: user.role,
-    facultyId: user.facultyId,
-    college: user.college || null,
-    institute: user.institute || null,
-    department: user.department || null,
-  },
-  process.env.JWT_SECRET,
-  { expiresIn: '1d' }
-);
+    const token = jwt.sign(
+      {
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        facultyId: user.facultyId,
+        college: user.college || null,
+        institute: user.institute || null,
+        department: user.department || null,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
 
-    // Optional cookie (you can keep it and also return token in body)
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',              // if you need cross-site cookie between ports, consider 'lax'
+      sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    // Return safe user object + token
     const userData = user.toObject();
     delete userData.password;
 
@@ -94,7 +92,7 @@ const token = jwt.sign(
       token,
       user: {
         ...userData,
-        facultyId: user.facultyId     // ensure frontend gets it too
+        facultyId: user.facultyId
       }
     });
 
@@ -111,7 +109,6 @@ const token = jwt.sign(
 router.get('/verify-token', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
-    // Accept token from cookie or Authorization header
     let token = req.cookies.token;
     if (!token && req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
@@ -122,7 +119,6 @@ router.get('/verify-token', async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // We still fetch the latest user doc for UI, but decoded contains facultyId for middleware use
     const user = await User.findById(decoded.userId).select('-password');
     if (!user) {
       return res.status(401).json({ success: false, message: 'User not found' });
@@ -131,7 +127,6 @@ router.get('/verify-token', async (req, res) => {
     return res.json({
       success: true,
       user,
-      // optional: echo parts of the decoded token if you want
       tokenPayload: {
         role: decoded.role,
         facultyId: decoded.facultyId,
@@ -173,13 +168,11 @@ router.post('/forgot-password', [
       return res.status(403).json({ success: false, message: 'Only institutional emails are allowed' });
     }
 
-    // Check if user exists (do not reveal if not)
     const userExists = await User.exists({ email });
     if (!userExists) {
       return res.json({ success: true, message: 'If an account exists, an OTP has been sent' });
     }
 
-    // Create & send OTP
     const otpDoc = await OTP.createOTP(email);
     const otp = otpDoc.otp;
 

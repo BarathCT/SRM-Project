@@ -237,16 +237,19 @@ router.get('/departments', authenticate, async (req, res) => {
       });
     }
 
+    // Updated logic: SRM RESEARCH for RAMAPURAM and TRICHY
     const collegeData = {
       'SRMIST RAMAPURAM': {
         'Science and Humanities': ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A'],
         'Engineering and Technology': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
         'Management': ['Business Administration', 'Commerce', 'N/A'],
-        'Dental': ['General Dentistry', 'Orthodontics', 'N/A']
+        'Dental': ['General Dentistry', 'Orthodontics', 'N/A'],
+        'SRM RESEARCH': ['Ramapuram Research']
       },
       'SRM TRICHY': {
         'Science and Humanities': ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A'],
-        'Engineering and Technology': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
+        'Engineering and Technology': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
+        'SRM RESEARCH': ['Trichy Research']
       },
       'EASWARI ENGINEERING COLLEGE': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
       'TRP ENGINEERING COLLEGE': ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],

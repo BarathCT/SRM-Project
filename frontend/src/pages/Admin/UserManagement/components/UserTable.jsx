@@ -18,7 +18,7 @@ export default function UserTable({
   users,
   filteredUsers,
   isLoading,
-  currentUser, // This might be null initially
+  currentUser,
   getRoleColor,
   canModifyUser,
   handleEdit,
@@ -62,8 +62,7 @@ export default function UserTable({
         </div>
       );
     }
-    
-    // For admin and campus_admin, show only department
+    // For campus_admin, show only department (no admin)
     return (
       <div className="flex items-center text-sm">
         <Layers className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
@@ -89,7 +88,6 @@ export default function UserTable({
             <TableHead className="w-[150px]">
               {currentUserRole === 'super_admin' ? 'Institute & Department' : 'Department'}
             </TableHead>
-            {/* Removed Status Column */}
             <TableHead className="w-[120px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -115,7 +113,6 @@ export default function UserTable({
                 <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                {/* Removed Status Column */}
                 <TableCell className="flex justify-end gap-2">
                   <Skeleton className="h-8 w-8 rounded-md" />
                   <Skeleton className="h-8 w-8 rounded-md" />
@@ -173,7 +170,6 @@ export default function UserTable({
                 <TableCell>
                   {renderInstituteColumn(user)}
                 </TableCell>
-                {/* Removed Status Column */}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     {canModifyUser && canModifyUser(user) && (

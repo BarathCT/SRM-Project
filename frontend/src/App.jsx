@@ -6,7 +6,6 @@ import UploadPage from './pages/User/UploadPage';
 
 import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard';
 import CampusAdminDashboard from './pages/Admin/CampusAdminDashboard';
-import AdminDashboard from './pages/Admin/AdminDashboard';
 import SettingsPage from './pages/Settings/SettingsPage';
 import FacultyDashboard from './pages/User/FacultyDashboard';
 import ScholarDashboard from './pages/User/ScholarDashboard';
@@ -34,12 +33,6 @@ export default function App() {
             <Route path="/campus-admin/users" element={<UserManagement />} />
           </Route>
 
-          {/* Admin routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<UserManagement />} />
-            <Route path="/admin/upload" element={<UploadPage />} />
-          </Route>
 
           {/* Faculty routes */}
           <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
