@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import { User, LogOut, ChevronDown, LayoutDashboard, Settings, Upload, Users, FilePlus } from 'lucide-react';
+import { User, LogOut, ChevronDown, LayoutDashboard, Settings, Upload, Users, FilePlus, AlertCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -13,49 +13,133 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { useToast } from '@/components/Toast';
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-  const fetchUserData = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+    const fetchUserData = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
 
-    try {
-      const decoded = jwtDecode(token);
-      const response = await fetch('/api/settings', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
+      try {
+        const decoded = jwtDecode(token);
+        const response = await fetch('/api/settings', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
 
-      setUser({
-        ...decoded,
-        ...(data.data || data)
-      });
-    } catch (err) {
-      console.error('Invalid token or failed to fetch user data');
-      localStorage.removeItem('token');
-      navigate('/login');
-    }
-  };
+        setUser({
+          ...decoded,
+          ...(data.data || data)
+        });
+      } catch (err) {
+        console.error('Invalid token or failed to fetch user data');
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    };
 
-  fetchUserData();
-}, [navigate]);
-
+    fetchUserData();
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
     toast.success('You have been logged out successfully');
+  };
+
+  // Check if faculty user has at least one Author ID
+  const checkAuthorIdRequirement = async () => {
+    if (!user || user.role !== 'faculty') {
+      return true; // Non-faculty users can upload without Author IDs
+    }
+
+    const hasAtLeastOneAuthorId = !!(
+      user.authorId?.scopus || 
+      user.authorId?.sci || 
+      user.authorId?.webOfScience
+    );
+
+    return hasAtLeastOneAuthorId;
+  };
+
+  const handleUploadClick = async () => {
+    setLoading(true);
+    
+    try {
+      const canUpload = await checkAuthorIdRequirement();
+      
+      if (!canUpload) {
+        toast.warning(
+          'Author ID Required: You need to add at least one Author ID (Scopus, SCI, or Web of Science) before uploading research papers. Please go to Settings to add your Author IDs.',
+          {
+            duration: 8000,
+            action: {
+              label: 'Go to Settings',
+              onClick: () => navigate('/settings')
+            }
+          }
+        );
+        return;
+      }
+
+      // If validation passes, navigate to upload page
+      navigate(getUploadPath());
+      
+    } catch (error) {
+      console.error('Error checking Author ID requirement:', error);
+      toast.error('Unable to verify Author ID requirements. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUploadFromDropdown = async () => {
+    setLoading(true);
+    
+    try {
+      const canUpload = await checkAuthorIdRequirement();
+      
+      if (!canUpload) {
+        toast.academic(
+          'Research Upload Restricted: Faculty members must have at least one Author ID (Scopus, SCI, or Web of Science) to upload research papers.',
+          {
+            duration: 10000
+          }
+        );
+        
+        // Show additional info toast with action
+        setTimeout(() => {
+          toast.info(
+            'To add your Author IDs, go to Account Settings and fill in your research identifiers.',
+            {
+              duration: 8000
+            }
+          );
+        }, 1000);
+        
+        return;
+      }
+
+      navigate("/upload");
+      
+    } catch (error) {
+      console.error('Error checking Author ID requirement:', error);
+      toast.error('Unable to verify upload permissions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!user) return null;
@@ -79,10 +163,9 @@ export default function Navbar() {
     return user.email || '';
   };
 
-   const  handleManageUsers = () => {
+  const handleManageUsers = () => {
     navigate('/admin/users'); // or any route for user management
   };
-
 
   // Determine dashboard path based on role
   const getDashboardPath = () => {
@@ -118,6 +201,13 @@ export default function Navbar() {
   // Check if user can manage users
   const canManageUsers = user.role && ['super_admin', 'campus_admin', 'admin'].includes(user.role);
 
+  // Check if faculty has Author IDs for visual indicator
+  const hasAuthorIds = user.role === 'faculty' ? !!(
+    user.authorId?.scopus || 
+    user.authorId?.sci || 
+    user.authorId?.webOfScience
+  ) : true;
+
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b px-6 py-3 flex items-center justify-between">
       {/* Left: Logo and Title */}
@@ -141,16 +231,34 @@ export default function Navbar() {
       <div className="flex items-center gap-4">
         {/* Upload Button (for admin, faculty, scholar) */}
         {canUpload && (
-          <Button 
-            variant="default"
-            size="sm"
-            onClick={() => navigate(getUploadPath())}
-            className="gap-2 bg-blue-500 hover:bg-blue-600 text-white shadow-sm transition-colors"
-          >
-            <FilePlus className="h-4 w-4" />
-            <span className="hidden sm:inline">Upload Research</span>
-            <span className="sm:hidden">Upload</span>
-          </Button>
+          <div className="relative">
+            <Button 
+              variant="default"
+              size="sm"
+              onClick={handleUploadClick}
+              disabled={loading}
+              className={`gap-2 shadow-sm transition-colors ${
+                hasAuthorIds 
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                  : 'bg-orange-500 hover:bg-orange-600 text-white'
+              }`}
+            >
+              {loading ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <FilePlus className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">Upload Research</span>
+              <span className="sm:hidden">Upload</span>
+            </Button>
+            
+            {/* Warning indicator for faculty without Author IDs */}
+            {user.role === 'faculty' && !hasAuthorIds && (
+              <div className="absolute -top-1 -right-1">
+                <AlertCircle className="h-4 w-4 text-orange-500 bg-white rounded-full" />
+              </div>
+            )}
+          </div>
         )}
         
         {/* User Management Button (for super_admin, campus_admin, admin) */}
@@ -239,6 +347,20 @@ export default function Navbar() {
                       {user.college}
                     </span>
                   )}
+                  {/* Author ID Status for Faculty */}
+                  {user.role === 'faculty' && (
+                    <div className="flex items-center gap-1 mt-1">
+                      {hasAuthorIds ? (
+                        <Badge variant="outline" className="h-4 text-xs text-green-600 border-green-300">
+                          Author IDs ✓
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="h-4 text-xs text-orange-600 border-orange-300">
+                          Author IDs Required
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </DropdownMenuItem>
@@ -265,11 +387,21 @@ export default function Navbar() {
             
             {canUpload && (
               <DropdownMenuItem 
-                onClick={() => navigate("/upload")}
+                onClick={handleUploadFromDropdown}
+                disabled={loading}
                 className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
               >
-                <FilePlus className="mr-2 h-4 w-4 text-gray-500" />
-                Upload Research
+                <div className="flex items-center w-full">
+                  {loading ? (
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+                  ) : (
+                    <FilePlus className="mr-2 h-4 w-4 text-gray-500" />
+                  )}
+                  Upload Research
+                  {user.role === 'faculty' && !hasAuthorIds && (
+                    <AlertCircle className="ml-auto h-4 w-4 text-orange-500" />
+                  )}
+                </div>
               </DropdownMenuItem>
             )}
             
@@ -280,6 +412,9 @@ export default function Navbar() {
               <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4 text-gray-500" />
                 Account Settings
+                {user.role === 'faculty' && !hasAuthorIds && (
+                  <AlertCircle className="ml-auto h-4 w-4 text-orange-500" />
+                )}
               </Link>
             </DropdownMenuItem>
             

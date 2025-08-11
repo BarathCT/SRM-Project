@@ -57,6 +57,7 @@ router.get('/', authenticate, async (req, res) => {
       college: req.user.college,
       institute: req.user.institute,
       department: req.user.department,
+      authorId: req.user.authorId || { scopus: null, sci: null, webOfScience: null }, // Include Author IDs
       createdAt: req.user.createdAt,
       lastLogin: req.user.lastLogin
     };
@@ -146,32 +147,17 @@ router.post('/change-password', authenticate, async (req, res) => {
 
 /**
  * @route PUT /api/settings/profile
- * @desc Update user profile information
+ * @desc Update user profile information (excluding email)
  * @access Private
  */
 router.put('/profile', authenticate, async (req, res) => {
   try {
-    const { fullName, email } = req.body;
+    const { fullName } = req.body;
     const updates = {};
 
-    // Validate input
+    // Validate input - only allow fullName updates
     if (fullName && fullName.trim() !== '') {
       updates.fullName = fullName.trim();
-    }
-    
-    if (email && email.trim() !== '') {
-      // Check if email is already in use
-      const existingUser = await User.findOne({ 
-        email: { $regex: `^${email.trim()}$`, $options: 'i' } 
-      });
-      
-      if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email already in use'
-        });
-      }
-      updates.email = email.trim().toLowerCase();
     }
 
     if (Object.keys(updates).length === 0) {
@@ -188,21 +174,10 @@ router.put('/profile', authenticate, async (req, res) => {
       { new: true, runValidators: true }
     ).select('-password -__v');
 
-    // Generate new token if email was changed
-    let newToken = null;
-    if (updates.email) {
-      newToken = jwt.sign(
-        { userId: updatedUser._id, email: updatedUser.email, role: updatedUser.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '30d' }
-      );
-    }
-
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      data: updatedUser,
-      token: newToken || undefined
+      data: updatedUser
     });
 
   } catch (error) {
@@ -216,6 +191,84 @@ router.put('/profile', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update profile',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route PUT /api/settings/author-ids
+ * @desc Update user's Author IDs
+ * @access Private
+ */
+router.put('/author-ids', authenticate, async (req, res) => {
+  try {
+    const { authorId } = req.body;
+
+    // Only faculty members can update Author IDs
+    if (req.user.role !== 'faculty') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only faculty members can update Author IDs'
+      });
+    }
+
+    // Validate Author ID formats
+    const errors = [];
+
+    if (authorId.scopus && !/^\d{10,11}$/.test(authorId.scopus)) {
+      errors.push('Scopus Author ID must be 10-11 digits');
+    }
+
+    if (authorId.sci && !/^[A-Z]-\d{4}-\d{4}$/.test(authorId.sci)) {
+      errors.push('SCI Author ID must be in format X-XXXX-XXXX');
+    }
+
+    if (authorId.webOfScience && !/^[A-Z]-\d{4}-\d{4}$/.test(authorId.webOfScience)) {
+      errors.push('Web of Science ResearcherID must be in format X-XXXX-XXXX');
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors
+      });
+    }
+
+    // Update user's Author IDs
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { 
+        authorId: {
+          scopus: authorId.scopus || null,
+          sci: authorId.sci || null,
+          webOfScience: authorId.webOfScience || null
+        },
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    ).select('-password -__v');
+
+    res.status(200).json({
+      success: true,
+      message: 'Author IDs updated successfully',
+      data: {
+        authorId: updatedUser.authorId
+      }
+    });
+
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        error: error.message
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update Author IDs',
       error: error.message
     });
   }
@@ -275,6 +328,49 @@ router.get('/departments', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch departments',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/settings/author-id-status
+ * @desc Check if user has required Author IDs for paper upload
+ * @access Private
+ */
+router.get('/author-id-status', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'faculty') {
+      return res.status(200).json({
+        success: true,
+        canUploadPapers: true,
+        message: 'Non-faculty users can upload papers without Author IDs'
+      });
+    }
+
+    const hasAtLeastOneAuthorId = !!(
+      req.user.authorId?.scopus || 
+      req.user.authorId?.sci || 
+      req.user.authorId?.webOfScience
+    );
+
+    res.status(200).json({
+      success: true,
+      canUploadPapers: hasAtLeastOneAuthorId,
+      authorIds: {
+        scopus: !!req.user.authorId?.scopus,
+        sci: !!req.user.authorId?.sci,
+        webOfScience: !!req.user.authorId?.webOfScience
+      },
+      message: hasAtLeastOneAuthorId 
+        ? 'User can upload papers' 
+        : 'At least one Author ID is required to upload papers'
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check Author ID status',
       error: error.message
     });
   }
