@@ -10,6 +10,123 @@ import {
 import { Filter, X, Search, Building, User as UserIcon, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useEffect, useMemo } from 'react';
+
+// College options with their institutes and departments (same as in User model)
+const collegeOptions = [
+  { 
+    name: 'SRMIST RAMAPURAM',
+    hasInstitutes: true,
+    institutes: [
+      { 
+        name: 'Science and Humanities',
+        departments: [
+          'Mathematics',
+          'Physics',
+          'Chemistry',
+          'English',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Engineering and Technology',
+        departments: [
+          'Computer Science',
+          'Information Technology',
+          'Electronics',
+          'Mechanical',
+          'Civil',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Management',
+        departments: [
+          'Business Administration',
+          'Commerce',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Dental',
+        departments: [
+          'General Dentistry',
+          'Orthodontics',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'SRM RESEARCH',
+        departments: [
+          'Ramapuram Research'
+        ]
+      }
+    ]
+  },
+  { 
+    name: 'SRM TRICHY',
+    hasInstitutes: true,
+    institutes: [
+      { 
+        name: 'Science and Humanities',
+        departments: [
+          'Mathematics',
+          'Physics',
+          'Chemistry',
+          'English',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'Engineering and Technology',
+        departments: [
+          'Computer Science',
+          'Information Technology',
+          'Electronics',
+          'Mechanical',
+          'Civil',
+          'N/A'
+        ]
+      },
+      { 
+        name: 'SRM RESEARCH',
+        departments: [
+          'Trichy Research'
+        ]
+      }
+    ]
+  },
+  { 
+    name: 'EASWARI ENGINEERING COLLEGE',
+    hasInstitutes: false,
+    departments: [
+      'Computer Science',
+      'Information Technology',
+      'Electronics',
+      'Mechanical',
+      'Civil',
+      'N/A'
+    ]
+  },
+  { 
+    name: 'TRP ENGINEERING COLLEGE',
+    hasInstitutes: false,
+    departments: [
+      'Computer Science',
+      'Information Technology',
+      'Electronics',
+      'Mechanical',
+      'Civil',
+      'N/A'
+    ]
+  }
+];
+
+// Colleges without institutes
+const collegesWithoutInstitutes = [
+  'EASWARI ENGINEERING COLLEGE',
+  'TRP ENGINEERING COLLEGE'
+];
 
 export default function UserFilters({
   filters,
@@ -40,14 +157,136 @@ export default function UserFilters({
     !!searchTerm,
   ].filter(Boolean).length;
 
-  // Only show institute filter to super_admin or campus_admin
-  const showInstituteFilter =
-    availableInstitutes.length > 0 &&
-    (currentUser?.role === 'super_admin' || currentUser?.role === 'campus_admin');
+  // Get dynamic filter options based on current selections
+  const dynamicFilterOptions = useMemo(() => {
+    let colleges = availableColleges.filter(c => c !== 'N/A');
+    let institutes = [];
+    let departments = [];
 
-  // Only show department filter to super_admin, campus_admin, or faculty (no admin)
-  const showDepartmentFilter =
-    availableDepartments.length > 0 &&
+    // If no college is selected, show all available options
+    if (filters.college === 'all') {
+      // Show all institutes from all colleges
+      collegeOptions.forEach(college => {
+        if (college.hasInstitutes) {
+          college.institutes.forEach(institute => {
+            if (!institutes.includes(institute.name)) {
+              institutes.push(institute.name);
+            }
+          });
+        }
+      });
+
+      // Show all departments from all colleges and institutes
+      collegeOptions.forEach(college => {
+        if (college.hasInstitutes) {
+          college.institutes.forEach(institute => {
+            institute.departments.forEach(dept => {
+              if (!departments.includes(dept)) {
+                departments.push(dept);
+              }
+            });
+          });
+        } else {
+          college.departments.forEach(dept => {
+            if (!departments.includes(dept)) {
+              departments.push(dept);
+            }
+          });
+        }
+      });
+    } else {
+      // College is selected, filter institutes and departments
+      const selectedCollege = collegeOptions.find(c => c.name === filters.college);
+      
+      if (selectedCollege) {
+        if (selectedCollege.hasInstitutes) {
+          institutes = selectedCollege.institutes.map(inst => inst.name);
+          
+          // If no institute is selected, show all departments from all institutes in this college
+          if (filters.institute === 'all') {
+            selectedCollege.institutes.forEach(institute => {
+              institute.departments.forEach(dept => {
+                if (!departments.includes(dept)) {
+                  departments.push(dept);
+                }
+              });
+            });
+          } else {
+            // Specific institute is selected, show only its departments
+            const selectedInstitute = selectedCollege.institutes.find(i => i.name === filters.institute);
+            if (selectedInstitute) {
+              departments = selectedInstitute.departments;
+            }
+          }
+        } else {
+          // College without institutes, show its departments directly
+          institutes = [];
+          departments = selectedCollege.departments;
+        }
+      }
+    }
+
+    return {
+      colleges,
+      institutes,
+      departments
+    };
+  }, [filters.college, filters.institute, availableColleges]);
+
+  // Check if institute filter should be disabled
+  const isInstituteDisabled = useMemo(() => {
+    if (filters.college === 'all') return false;
+    return collegesWithoutInstitutes.includes(filters.college);
+  }, [filters.college]);
+
+  // Auto-reset dependent filters when college changes
+  useEffect(() => {
+    if (filters.college !== 'all') {
+      const selectedCollege = collegeOptions.find(c => c.name === filters.college);
+      
+      // If college doesn't have institutes, reset institute filter
+      if (selectedCollege && !selectedCollege.hasInstitutes) {
+        if (filters.institute !== 'all') {
+          setFilters(prev => ({ ...prev, institute: 'all', department: 'all' }));
+        }
+      }
+      
+      // If institute is selected but not available in new college, reset it
+      if (filters.institute !== 'all') {
+        const hasInstitute = selectedCollege?.institutes?.some(i => i.name === filters.institute);
+        if (!hasInstitute) {
+          setFilters(prev => ({ ...prev, institute: 'all', department: 'all' }));
+        }
+      }
+    }
+  }, [filters.college, filters.institute, setFilters]);
+
+  // Auto-reset department filter when institute changes
+  useEffect(() => {
+    if (filters.institute !== 'all' && filters.college !== 'all') {
+      const selectedCollege = collegeOptions.find(c => c.name === filters.college);
+      if (selectedCollege) {
+        const selectedInstitute = selectedCollege.institutes?.find(i => i.name === filters.institute);
+        if (selectedInstitute && filters.department !== 'all') {
+          const hasDepartment = selectedInstitute.departments.includes(filters.department);
+          if (!hasDepartment) {
+            setFilters(prev => ({ ...prev, department: 'all' }));
+          }
+        }
+      }
+    }
+  }, [filters.institute, filters.college, filters.department, setFilters]);
+
+  // Filter visibility logic
+  const shouldShowCollegeFilter = currentUser?.role === 'super_admin';
+  
+  const shouldShowInstituteFilter = 
+    dynamicFilterOptions.institutes.length > 0 &&
+    (currentUser?.role === 'super_admin' || currentUser?.role === 'campus_admin') &&
+    !isInstituteDisabled;
+
+  const shouldShowDepartmentFilter = 
+    dynamicFilterOptions.departments.length > 0 &&
     (currentUser?.role === 'super_admin' ||
       currentUser?.role === 'campus_admin' ||
       currentUser?.role === 'faculty');
@@ -94,7 +333,7 @@ export default function UserFilters({
         </div>
 
         {/* College filter (only for super admin) */}
-        {currentUser?.role === 'super_admin' && (
+        {shouldShowCollegeFilter && (
           <div className="space-y-2">
             <Label htmlFor="filter-college" className="flex items-center text-sm">
               <Building className="h-4 w-4 mr-2 text-gray-500" />
@@ -109,7 +348,7 @@ export default function UserFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All colleges</SelectItem>
-                {availableColleges.map(college => (
+                {dynamicFilterOptions.colleges.map(college => (
                   <SelectItem key={college} value={college}>
                     {college}
                   </SelectItem>
@@ -146,22 +385,26 @@ export default function UserFilters({
         </div>
 
         {/* Institute filter */}
-        {showInstituteFilter && (
+        {shouldShowInstituteFilter && (
           <div className="space-y-2">
             <Label htmlFor="filter-institute" className="flex items-center text-sm">
               <Layers className="h-4 w-4 mr-2 text-gray-500" />
               Institute
+              {isInstituteDisabled && (
+                <span className="ml-1 text-xs text-gray-400">(N/A for this college)</span>
+              )}
             </Label>
             <Select
               value={filters.institute}
               onValueChange={(value) => setFilters({ ...filters, institute: value })}
+              disabled={isInstituteDisabled}
             >
-              <SelectTrigger>
+              <SelectTrigger className={isInstituteDisabled ? "opacity-50 cursor-not-allowed" : ""}>
                 <SelectValue placeholder="All institutes" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All institutes</SelectItem>
-                {availableInstitutes
+                {dynamicFilterOptions.institutes
                   .filter(institute => institute)
                   .map(institute => (
                     <SelectItem key={institute} value={institute}>
@@ -174,7 +417,7 @@ export default function UserFilters({
         )}
 
         {/* Department filter */}
-        {showDepartmentFilter && (
+        {shouldShowDepartmentFilter && (
           <div className="space-y-2">
             <Label htmlFor="filter-department" className="flex items-center text-sm">
               <Layers className="h-4 w-4 mr-2 text-gray-500" />
@@ -189,8 +432,8 @@ export default function UserFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All departments</SelectItem>
-                {availableDepartments
-                  .filter(department => department)
+                {dynamicFilterOptions.departments
+                  .filter(department => department && department !== 'N/A')
                   .map(department => (
                     <SelectItem key={department} value={department}>
                       {department}

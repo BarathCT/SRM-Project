@@ -228,6 +228,11 @@ export default function AddUserDialog({
     return currentUser?.institute === 'SRM RESEARCH';
   };
 
+  // Check if the selected college has institutes
+  const selectedCollegeHasInstitutes = () => {
+    return form.college && collegeHasInstitutes(form.college);
+  };
+
   // Auto-suggest email domain when college changes (but not for SRM RESEARCH)
   useEffect(() => {
     if (
@@ -344,7 +349,15 @@ export default function AddUserDialog({
     if (!currentUser) return false;
     if (form.role === 'super_admin') return false;
     if (!form.college || form.college === 'N/A') return false;
+    
+    // UPDATED LOGIC: Campus admin for colleges WITHOUT institutes don't need department
+    if (form.role === 'campus_admin' && !selectedCollegeHasInstitutes()) {
+      return false; // Hide department field for campus admin in colleges without institutes
+    }
+    
+    // Campus admin for colleges WITH institutes still don't need department (existing logic)
     if (form.role === 'campus_admin') return false;
+    
     if (currentUser.role === 'super_admin') return true;
     if (currentUser.role === 'campus_admin' && form.role === 'faculty') return true;
     return false;
@@ -376,7 +389,17 @@ export default function AddUserDialog({
       updates.department = 'N/A';
       toast.info('Super Admin selected - college and institute not required');
     } else if (value === 'campus_admin') {
-      updates.department = 'N/A';
+      // UPDATED LOGIC: Set department based on college type
+      if (form.college && !selectedCollegeHasInstitutes()) {
+        // For colleges without institutes, campus admin gets N/A for both institute and department
+        updates.institute = 'N/A';
+        updates.department = 'N/A';
+        toast.info('Campus Admin for college without institutes - no institute/department required');
+      } else {
+        // For colleges with institutes, campus admin gets N/A only for department
+        updates.department = 'N/A';
+      }
+      
       if (currentUser?.role !== 'super_admin') {
         updates.college = currentUser.college;
         updates.institute = currentUser.institute;
@@ -408,8 +431,14 @@ export default function AddUserDialog({
       updates.department = 'N/A';
     } else if (!collegeHasInstitutes(value)) {
       updates.institute = 'N/A';
-      updates.department = '';
-      toast.info(`Selected ${value} - no institute required`);
+      // UPDATED LOGIC: For campus admin in colleges without institutes, set department to N/A
+      if (form.role === 'campus_admin') {
+        updates.department = 'N/A';
+        toast.info(`Selected ${value} - Campus Admin manages entire college (no institute/department required)`);
+      } else {
+        updates.department = '';
+        toast.info(`Selected ${value} - no institute required`);
+      }
     } else {
       updates.institute = '';
       updates.department = '';
@@ -478,7 +507,7 @@ export default function AddUserDialog({
         return;
       }
 
-      // Department validation - adjusted for SRM RESEARCH campus admin
+      // Department validation - UPDATED to handle campus admin in colleges without institutes
       if (shouldShowDepartmentField()) {
         if (isCurrentUserFromSRMResearch()) {
           // For SRM RESEARCH campus admin, department should be auto-filled
@@ -527,7 +556,7 @@ export default function AddUserDialog({
     }
   };
 
-  // Form validation - adjusted for SRM RESEARCH campus admin
+  // Form validation - UPDATED to handle campus admin in colleges without institutes
   const isFormValid = () => {
     // Basic validation
     const basicValid = form.fullName?.trim() && form.email?.trim() && form.role;
@@ -831,6 +860,20 @@ export default function AddUserDialog({
                     {form.role === 'faculty' && (
                       <li><strong>Department:</strong> {form.department || currentUser.department || 'Please select'}</li>
                     )}
+                  </ul>
+                </div>
+              )}
+
+              {/* UPDATED: Campus admin for colleges without institutes notice */}
+              {form.role === 'campus_admin' && form.college && !selectedCollegeHasInstitutes() && (
+                <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
+                  <p className="text-sm text-orange-700 font-medium mb-2">
+                    <strong>Campus Admin for College without Institutes:</strong>
+                  </p>
+                  <ul className="text-xs text-orange-600 space-y-1">
+                    <li>• <strong>Role:</strong> Manages the entire {form.college}</li>
+                    <li>• <strong>Institute:</strong> Not applicable (set to N/A)</li>
+                    <li>• <strong>Department:</strong> Not applicable (manages all departments)</li>
                   </ul>
                 </div>
               )}
