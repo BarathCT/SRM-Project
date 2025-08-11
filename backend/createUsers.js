@@ -66,6 +66,72 @@ const COLLEGE_CONFIG = [
   }
 ];
 
+// Helper functions for generating sample Author IDs
+const generateScopusId = () => {
+  // Generate 10-11 digit Scopus ID
+  const length = Math.random() > 0.5 ? 10 : 11;
+  return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
+};
+
+const generateSciId = () => {
+  // Generate SCI ID in format A-1234-5678
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const letter = letters[Math.floor(Math.random() * letters.length)];
+  const num1 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
+  const num2 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
+  return `${letter}-${num1}-${num2}`;
+};
+
+const generateWebOfScienceId = () => {
+  // Generate Web of Science ID in format A-1234-5678 (same format as SCI)
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const letter = letters[Math.floor(Math.random() * letters.length)];
+  const num1 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
+  const num2 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
+  return `${letter}-${num1}-${num2}`;
+};
+
+// Function to randomly assign Author IDs to faculty (some will have none, some partial, some all)
+const generateAuthorIds = (facultyIndex) => {
+  const authorId = {
+    scopus: null,
+    sci: null,
+    webOfScience: null
+  };
+
+  // Distribution strategy:
+  // 30% - No Author IDs (new faculty/those who haven't set up yet)
+  // 25% - Only Scopus
+  // 20% - Only Scopus + SCI
+  // 15% - Only Scopus + Web of Science
+  // 10% - All three IDs
+  
+  const random = Math.random();
+  
+  if (random < 0.30) {
+    // 30% - No Author IDs (represents faculty who need to add them before uploading papers)
+    return authorId;
+  } else if (random < 0.55) {
+    // 25% - Only Scopus
+    authorId.scopus = generateScopusId();
+  } else if (random < 0.75) {
+    // 20% - Scopus + SCI
+    authorId.scopus = generateScopusId();
+    authorId.sci = generateSciId();
+  } else if (random < 0.90) {
+    // 15% - Scopus + Web of Science
+    authorId.scopus = generateScopusId();
+    authorId.webOfScience = generateWebOfScienceId();
+  } else {
+    // 10% - All three
+    authorId.scopus = generateScopusId();
+    authorId.sci = generateSciId();
+    authorId.webOfScience = generateWebOfScienceId();
+  }
+
+  return authorId;
+};
+
 const run = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
@@ -91,7 +157,7 @@ const run = async () => {
       return `${prefix}${emailCounters[key]}@${domain}`;
     };
 
-    // 3 Super Admins
+    // 3 Super Admins (no Author IDs needed)
     const users = [
       {
         fullName: 'Super Admin 1',
@@ -102,7 +168,12 @@ const run = async () => {
         college: 'N/A',
         institute: 'N/A',
         department: 'N/A',
-        createdBy: null
+        createdBy: null,
+        authorId: {
+          scopus: null,
+          sci: null,
+          webOfScience: null
+        }
       },
       {
         fullName: 'Super Admin 2',
@@ -113,7 +184,12 @@ const run = async () => {
         college: 'N/A',
         institute: 'N/A',
         department: 'N/A',
-        createdBy: null
+        createdBy: null,
+        authorId: {
+          scopus: null,
+          sci: null,
+          webOfScience: null
+        }
       },
       {
         fullName: 'Super Admin 3',
@@ -124,11 +200,16 @@ const run = async () => {
         college: 'N/A',
         institute: 'N/A',
         department: 'N/A',
-        createdBy: null
+        createdBy: null,
+        authorId: {
+          scopus: null,
+          sci: null,
+          webOfScience: null
+        }
       }
     ];
 
-    // Campus Admins (unchanged - keeping original structure)
+    // Campus Admins (no Author IDs needed - they don't upload papers)
     for (const college of COLLEGE_CONFIG) {
       if (college.hasInstitutes) {
         // For colleges with institutes: One campus admin per institute
@@ -141,13 +222,17 @@ const run = async () => {
             role: 'campus_admin',
             college: college.name,
             institute: institute.name,
-            department: institute.departments[0], // Assign to first department of the institute
-            createdBy: null
+            department: institute.departments[0],
+            createdBy: null,
+            authorId: {
+              scopus: null,
+              sci: null,
+              webOfScience: null
+            }
           });
         }
       } else {
         // For colleges without institutes: One campus admin for the entire college
-        // No institute or department assignment - they manage the whole college
         users.push({
           fullName: `${college.name} Campus Admin`,
           facultyId: generateFacultyId(),
@@ -155,9 +240,14 @@ const run = async () => {
           password: await hashPassword('campusadmin123'),
           role: 'campus_admin',
           college: college.name,
-          institute: 'N/A', // No institute for colleges without institutes
-          department: 'N/A', // No specific department - manages entire college
-          createdBy: null
+          institute: 'N/A',
+          department: 'N/A',
+          createdBy: null,
+          authorId: {
+            scopus: null,
+            sci: null,
+            webOfScience: null
+          }
         });
       }
     }
@@ -178,12 +268,14 @@ const run = async () => {
     console.log(`👥 Target: 850 faculty (170 departments × 5 faculty each)`);
     
     // Faculty: Calculate how many faculty per department to reach 850 total
-    const targetFacultyTotal = 850; // 170 × 5
+    const targetFacultyTotal = 850;
     const facultyPerDepartment = Math.ceil(targetFacultyTotal / totalDepartments);
     
     console.log(`📈 Creating ${facultyPerDepartment} faculty per department to reach target`);
 
     let facultyCount = 0;
+    let facultyIndex = 0; // For tracking Author ID distribution
+
     for (const college of COLLEGE_CONFIG) {
       if (college.hasInstitutes) {
         // Colleges with institutes
@@ -201,9 +293,11 @@ const run = async () => {
                   college: college.name,
                   institute: institute.name,
                   department: department,
-                  createdBy: null
+                  createdBy: null,
+                  authorId: generateAuthorIds(facultyIndex) // Generate Author IDs for faculty
                 });
                 facultyCount++;
+                facultyIndex++;
               }
             }
           }
@@ -221,11 +315,13 @@ const run = async () => {
                 password: await hashPassword('faculty1234'),
                 role: 'faculty',
                 college: college.name,
-                institute: 'N/A', // No institute for these colleges
+                institute: 'N/A',
                 department: department,
-                createdBy: null
+                createdBy: null,
+                authorId: generateAuthorIds(facultyIndex) // Generate Author IDs for faculty
               });
               facultyCount++;
+              facultyIndex++;
             }
           }
         }
@@ -260,9 +356,11 @@ const run = async () => {
                 college: college.name,
                 institute: institute.name,
                 department: department,
-                createdBy: null
+                createdBy: null,
+                authorId: generateAuthorIds(facultyIndex)
               });
               facultyCount++;
+              facultyIndex++;
             }
           }
         } else {
@@ -284,9 +382,11 @@ const run = async () => {
               college: college.name,
               institute: 'N/A',
               department: department,
-              createdBy: null
+              createdBy: null,
+              authorId: generateAuthorIds(facultyIndex)
             });
             facultyCount++;
+            facultyIndex++;
           }
         }
       }
@@ -309,6 +409,51 @@ const run = async () => {
     console.log(`Campus Admins: ${summary.campus_admin}`);
     console.log(`Faculty: ${summary.faculty}`);
     console.log(`Total Users: ${createdUsers.length}`);
+
+    // Author ID Distribution Statistics
+    console.log('\n🆔 Author ID Distribution for Faculty:');
+    console.log('======================================');
+    
+    const facultyUsers = createdUsers.filter(u => u.role === 'faculty');
+    let noAuthorIds = 0;
+    let onlyScopus = 0;
+    let scopusAndSci = 0;
+    let scopusAndWos = 0;
+    let allThree = 0;
+    let partial = 0;
+
+    facultyUsers.forEach(user => {
+      const hasScope = !!user.authorId.scopus;
+      const hasSci = !!user.authorId.sci;
+      const hasWos = !!user.authorId.webOfScience;
+      
+      if (!hasScope && !hasSci && !hasWos) {
+        noAuthorIds++;
+      } else if (hasScope && !hasSci && !hasWos) {
+        onlyScopus++;
+      } else if (hasScope && hasSci && !hasWos) {
+        scopusAndSci++;
+      } else if (hasScope && !hasSci && hasWos) {
+        scopusAndWos++;
+      } else if (hasScope && hasSci && hasWos) {
+        allThree++;
+      } else {
+        partial++;
+      }
+    });
+
+    console.log(`No Author IDs: ${noAuthorIds} (${((noAuthorIds/facultyUsers.length)*100).toFixed(1)}%)`);
+    console.log(`Only Scopus: ${onlyScopus} (${((onlyScopus/facultyUsers.length)*100).toFixed(1)}%)`);
+    console.log(`Scopus + SCI: ${scopusAndSci} (${((scopusAndSci/facultyUsers.length)*100).toFixed(1)}%)`);
+    console.log(`Scopus + Web of Science: ${scopusAndWos} (${((scopusAndWos/facultyUsers.length)*100).toFixed(1)}%)`);
+    console.log(`All Three IDs: ${allThree} (${((allThree/facultyUsers.length)*100).toFixed(1)}%)`);
+    console.log(`Other Combinations: ${partial} (${((partial/facultyUsers.length)*100).toFixed(1)}%)`);
+
+    console.log('\n⚠️  Important Notes:');
+    console.log('===================');
+    console.log(`• ${noAuthorIds} faculty members have no Author IDs and will need to add at least one before uploading papers`);
+    console.log('• Faculty can update their Author IDs after login through their profile');
+    console.log('• At least one Author ID (Scopus, SCI, or Web of Science) is required to upload papers');
 
     // Verify target numbers
     console.log('\n🎯 Target Verification:');
@@ -338,64 +483,16 @@ const run = async () => {
         }
       });
       
-      // Show faculty count
+      // Show faculty count with Author ID status
       const facultyUsers = collegeUsers.filter(u => u.role === 'faculty');
-      console.log(`  Faculty: ${facultyUsers.length}`);
-      
-      if (college.hasInstitutes) {
-        for (const institute of college.institutes) {
-          const instituteUsers = collegeUsers.filter(u => u.institute === institute.name);
-          const instituteFaculty = instituteUsers.filter(u => u.role === 'faculty');
-          console.log(`  ${institute.name}: ${instituteFaculty.length} faculty`);
-          
-          for (const department of institute.departments) {
-            const deptUsers = instituteFaculty.filter(u => u.department === department);
-            console.log(`    ${department}: ${deptUsers.length} faculty`);
-          }
-        }
-      } else {
-        console.log(`  Faculty by Department:`);
-        for (const department of college.departments) {
-          const deptUsers = facultyUsers.filter(u => u.department === department);
-          console.log(`    ${department}: ${deptUsers.length} faculty`);
-        }
-      }
+      const facultyWithAuthorIds = facultyUsers.filter(u => 
+        u.authorId.scopus || u.authorId.sci || u.authorId.webOfScience
+      );
+      console.log(`  Faculty: ${facultyUsers.length} (${facultyWithAuthorIds.length} with Author IDs)`);
     }
 
-    // Display super admin details
-    console.log('\n👑 Super Admin Details:');
-    console.log('=======================');
-    const superAdmins = createdUsers.filter(u => u.role === 'super_admin');
-    superAdmins.forEach(admin => {
-      console.log(`${admin.email.padEnd(35)} | ${admin.fullName}`);
-    });
-
-    // Display campus admin details
-    console.log('\n🏢 Campus Admin Details:');
-    console.log('========================');
-    const campusAdmins = createdUsers.filter(u => u.role === 'campus_admin');
-    campusAdmins.forEach(admin => {
-      console.log(`${admin.email.padEnd(35)} | ${admin.college.padEnd(25)} | ${admin.institute.padEnd(20)} | ${admin.department}`);
-    });
-
-    // Display faculty distribution summary
-    console.log('\n📊 Faculty Distribution Summary:');
-    console.log('===============================');
-    const facultyUsers = createdUsers.filter(u => u.role === 'faculty');
-    const facultyByCollege = {};
-    
-    facultyUsers.forEach(user => {
-      if (!facultyByCollege[user.college]) {
-        facultyByCollege[user.college] = 0;
-      }
-      facultyByCollege[user.college]++;
-    });
-    
-    Object.entries(facultyByCollege).forEach(([college, count]) => {
-      console.log(`${college}: ${count} faculty`);
-    });
-
     // Set createdBy: all users except super_admin are created by super_admin
+    const superAdmins = createdUsers.filter(u => u.role === 'super_admin');
     const firstSuperAdmin = superAdmins[0];
     if (firstSuperAdmin) {
       await User.updateMany(
@@ -405,28 +502,21 @@ const run = async () => {
       console.log('\n🔗 Updated createdBy references (all non-super-admin users created by first super_admin)');
     }
 
-    // Final department count verification
-    console.log('\n🔍 Department Distribution Verification:');
-    console.log('=======================================');
+    // Sample Author IDs for testing
+    console.log('\n📋 Sample Faculty with Author IDs (for testing):');
+    console.log('================================================');
+    const sampleFaculty = facultyUsers.filter(u => 
+      u.authorId.scopus || u.authorId.sci || u.authorId.webOfScience
+    ).slice(0, 5);
     
-    const facultyByDept = {};
-    facultyUsers.forEach(user => {
-      const key = `${user.college} | ${user.institute} | ${user.department}`;
-      facultyByDept[key] = (facultyByDept[key] || 0) + 1;
-    });
-    
-    console.log(`Total departments with faculty: ${Object.keys(facultyByDept).length}`);
-    Object.entries(facultyByDept)
-      .sort(([,a], [,b]) => b - a)
-      .forEach(([dept, count]) => {
-        console.log(`${dept}: ${count} faculty`);
-      });
-
-    // Email distribution check
-    console.log('\n📧 Email Distribution Check:');
-    console.log('===========================');
-    Object.entries(emailCounters).forEach(([email, count]) => {
-      console.log(`${email}: ${count} users`);
+    sampleFaculty.forEach(faculty => {
+      console.log(`${faculty.email}:`);
+      console.log(`  Name: ${faculty.fullName}`);
+      console.log(`  Faculty ID: ${faculty.facultyId}`);
+      console.log(`  Scopus: ${faculty.authorId.scopus || 'Not set'}`);
+      console.log(`  SCI: ${faculty.authorId.sci || 'Not set'}`);
+      console.log(`  Web of Science: ${faculty.authorId.webOfScience || 'Not set'}`);
+      console.log('');
     });
 
   } catch (error) {

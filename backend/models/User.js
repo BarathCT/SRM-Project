@@ -73,6 +73,51 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: 'N/A'
   },
+  // Author ID fields for research publications
+  authorId: {
+    scopus: {
+      type: String,
+      default: null,
+      trim: true,
+      validate: {
+        validator: function(v) {
+          // Only validate if value is provided (not null/empty)
+          if (!v) return true;
+          // Scopus Author ID is typically 10-11 digits
+          return /^\d{10,11}$/.test(v);
+        },
+        message: 'Scopus Author ID must be 10-11 digits'
+      }
+    },
+    sci: {
+      type: String,
+      default: null,
+      trim: true,
+      validate: {
+        validator: function(v) {
+          // Only validate if value is provided (not null/empty)
+          if (!v) return true;
+          // SCI Author ID format validation (adjust pattern as needed)
+          return /^[A-Z]-\d{4}-\d{4}$/.test(v);
+        },
+        message: 'SCI Author ID must be in format X-XXXX-XXXX (e.g., A-1234-5678)'
+      }
+    },
+    webOfScience: {
+      type: String,
+      default: null,
+      trim: true,
+      validate: {
+        validator: function(v) {
+          // Only validate if value is provided (not null/empty)
+          if (!v) return true;
+          // Web of Science ResearcherID format validation
+          return /^[A-Z]-\d{4}-\d{4}$/.test(v);
+        },
+        message: 'Web of Science ResearcherID must be in format X-XXXX-XXXX (e.g., A-1234-5678)'
+      }
+    }
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -351,6 +396,10 @@ userSchema.index({ college: 1 });
 userSchema.index({ institute: 1 });
 userSchema.index({ department: 1 });
 userSchema.index({ createdBy: 1 });
+// New indexes for Author IDs
+userSchema.index({ 'authorId.scopus': 1 }, { sparse: true });
+userSchema.index({ 'authorId.sci': 1 }, { sparse: true });
+userSchema.index({ 'authorId.webOfScience': 1 }, { sparse: true });
 
 const User = mongoose.model('User', userSchema);
 export default User;
