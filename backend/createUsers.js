@@ -1,537 +1,882 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';
-import User from './models/User.js'; // Adjust path as needed
+import Paper from './models/Paper.js';
+import User from './models/User.js';
 
 dotenv.config();
 
-const COLLEGE_CONFIG = [
-  {
-    name: 'SRMIST RAMAPURAM',
-    emailDomain: 'srmist.edu.in',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities', 
-        departments: ['Physics', 'Chemistry', 'Mathematics', 'English'] 
-      },
-      { 
-        name: 'Engineering and Technology', 
-        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil'] 
-      },
-      { 
-        name: 'Management', 
-        departments: ['Business Administration', 'Commerce'] 
-      },
-      { 
-        name: 'Dental', 
-        departments: ['General Dentistry', 'Orthodontics'] 
-      },
-      { 
-        name: 'SRM RESEARCH', 
-        departments: ['Ramapuram Research'] 
-      }
-    ]
-  },
-  {
-    name: 'SRM TRICHY',
-    emailDomain: 'srmtrichy.edu.in',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities', 
-        departments: ['Physics', 'Chemistry', 'Mathematics', 'English'] 
-      },
-      { 
-        name: 'Engineering and Technology', 
-        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil'] 
-      },
-      { 
-        name: 'SRM RESEARCH', 
-        departments: ['Trichy Research'] 
-      }
-    ]
-  },
-  {
-    name: 'EASWARI ENGINEERING COLLEGE',
-    emailDomain: 'eec.srmrmp.edu.in',
-    hasInstitutes: false,
-    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
-  },
-  {
-    name: 'TRP ENGINEERING COLLEGE',
-    emailDomain: 'trp.srmtrichy.edu.in',
-    hasInstitutes: false,
-    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
-  }
+// -------- configuration --------
+const RESET_PAPERS = true;       // set false if you don't want to clear the collection
+const MIN_PAPERS = 11;          // minimum mock papers per user
+const MAX_PAPERS = 18;          // maximum mock papers per user
+// --------------------------------
+
+// Academic publishers
+const PUBLISHERS = [
+  'Springer', 'Elsevier', 'IEEE', 'ACM', 'Wiley', 'Nature Portfolio', 
+  'Taylor & Francis', 'SAGE Publications', 'Oxford University Press', 
+  'Cambridge University Press', 'Hindawi', 'MDPI', 'IOP Publishing',
+  'American Chemical Society', 'Royal Society of Chemistry', 'JMLR',
+  'AI Access Foundation', 'MIT Press', 'World Scientific', 'Academic Press'
 ];
 
-// Helper functions for generating sample Author IDs
-const generateScopusId = () => {
-  // Generate 10-11 digit Scopus ID
-  const length = Math.random() > 0.5 ? 10 : 11;
-  return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
+// Complete Subject Areas and Categories structure - ALL RANDOMLY APPLIED
+const SUBJECT_AREAS = {
+  "Agricultural and Biological Sciences": [
+    "Agronomy and Crop Science",
+    "Animal Science and Zoology",
+    "Aquatic Science",
+    "Ecology, Evolution, Behavior and Systematics",
+    "Food Science",
+    "Forestry",
+    "Horticulture",
+    "Insect Science",
+    "Plant Science",
+    "Soil Science",
+    "Agricultural and Biological Sciences (miscellaneous)"
+  ],
+  "Arts and Humanities": [
+    "Archeology",
+    "Arts and Humanities (miscellaneous)",
+    "Classics",
+    "Conservation",
+    "History",
+    "History and Philosophy of Science",
+    "Language and Linguistics",
+    "Literature and Literary Theory",
+    "Music",
+    "Philosophy",
+    "Religious Studies",
+    "Visual Arts and Performing Arts"
+  ],
+  "Biochemistry, Genetics and Molecular Biology": [
+    "Aging",
+    "Biochemistry",
+    "Biochemistry, Genetics and Molecular Biology (miscellaneous)",
+    "Biophysics",
+    "Biotechnology",
+    "Cancer Research",
+    "Cell Biology",
+    "Clinical Biochemistry",
+    "Developmental Biology",
+    "Endocrinology",
+    "Genetics",
+    "Molecular Biology",
+    "Molecular Medicine",
+    "Structural Biology"
+  ],
+  "Business, Management and Accounting": [
+    "Accounting",
+    "Business and International Management",
+    "Business, Management and Accounting (miscellaneous)",
+    "Industrial and Manufacturing Engineering",
+    "Management Information Systems",
+    "Management of Technology and Innovation",
+    "Marketing",
+    "Organizational Behavior and Human Resource Management",
+    "Strategy and Management",
+    "Tourism, Leisure and Hospitality Management"
+  ],
+  "Chemical Engineering": [
+    "Bioengineering",
+    "Catalysis",
+    "Chemical Engineering (miscellaneous)",
+    "Chemical Health and Safety",
+    "Colloid and Surface Chemistry",
+    "Filtration and Separation",
+    "Fluid Flow and Transfer Processes",
+    "Process Chemistry and Technology"
+  ],
+  "Chemistry": [
+    "Analytical Chemistry",
+    "Chemistry (miscellaneous)",
+    "Electrochemistry",
+    "Inorganic Chemistry",
+    "Organic Chemistry",
+    "Physical and Theoretical Chemistry",
+    "Spectroscopy"
+  ],
+  "Computer Science": [
+    "Artificial Intelligence",
+    "Computational Theory and Mathematics",
+    "Computer Graphics and Computer-Aided Design",
+    "Computer Networks and Communications",
+    "Computer Science Applications",
+    "Computer Science (miscellaneous)",
+    "Computer Vision and Pattern Recognition",
+    "Hardware and Architecture",
+    "Human-Computer Interaction",
+    "Information Systems",
+    "Signal Processing",
+    "Software"
+  ],
+  "Decision Sciences": [
+    "Decision Sciences (miscellaneous)",
+    "Information Systems and Management",
+    "Management Science and Operations Research"
+  ],
+  "Earth and Planetary Sciences": [
+    "Atmospheric Science",
+    "Computers in Earth Sciences",
+    "Earth and Planetary Sciences (miscellaneous)",
+    "Earth-Surface Processes",
+    "Economic Geology",
+    "Geochemistry and Petrology",
+    "Geology",
+    "Geophysics",
+    "Geotechnical Engineering and Engineering Geology",
+    "Oceanography",
+    "Paleontology",
+    "Space and Planetary Science",
+    "Stratigraphy"
+  ],
+  "Economics, Econometrics and Finance": [
+    "Economics and Econometrics",
+    "Economics, Econometrics and Finance (miscellaneous)",
+    "Finance"
+  ],
+  "Energy": [
+    "Energy Engineering and Power Technology",
+    "Energy (miscellaneous)",
+    "Fuel Technology",
+    "Nuclear Energy and Engineering",
+    "Renewable Energy, Sustainability and the Environment"
+  ],
+  "Engineering": [
+    "Aerospace Engineering",
+    "Automotive Engineering",
+    "Biomedical Engineering",
+    "Civil and Structural Engineering",
+    "Control and Systems Engineering",
+    "Electrical and Electronic Engineering",
+    "Engineering (miscellaneous)",
+    "Industrial and Manufacturing Engineering",
+    "Mechanical Engineering",
+    "Ocean Engineering",
+    "Safety, Risk, Reliability and Quality"
+  ],
+  "Environmental Science": [
+    "Ecological Modeling",
+    "Ecology",
+    "Environmental Chemistry",
+    "Environmental Engineering",
+    "Environmental Science (miscellaneous)",
+    "Global and Planetary Change",
+    "Health, Toxicology and Mutagenesis",
+    "Management, Monitoring, Policy and Law",
+    "Nature and Landscape Conservation",
+    "Pollution",
+    "Waste Management and Disposal",
+    "Water Science and Technology"
+  ],
+  "Immunology and Microbiology": [
+    "Applied Microbiology and Biotechnology",
+    "Immunology",
+    "Immunology and Microbiology (miscellaneous)",
+    "Microbiology",
+    "Parasitology",
+    "Virology"
+  ],
+  "Materials Science": [
+    "Biomaterials",
+    "Ceramics and Composites",
+    "Electronic, Optical and Magnetic Materials",
+    "Materials Chemistry",
+    "Materials Science (miscellaneous)",
+    "Metals and Alloys",
+    "Polymers and Plastics",
+    "Surfaces, Coatings and Films"
+  ],
+  "Mathematics": [
+    "Algebra and Number Theory",
+    "Analysis",
+    "Applied Mathematics",
+    "Computational Mathematics",
+    "Control and Optimization",
+    "Discrete Mathematics and Combinatorics",
+    "Geometry and Topology",
+    "Logic",
+    "Mathematical Physics",
+    "Mathematics (miscellaneous)",
+    "Modeling and Simulation",
+    "Numerical Analysis",
+    "Statistics and Probability",
+    "Theoretical Computer Science"
+  ],
+  "Medicine": [
+    "Anesthesiology and Pain Medicine",
+    "Biochemistry (medical)",
+    "Cardiology and Cardiovascular Medicine",
+    "Critical Care and Intensive Care Medicine",
+    "Complementary and Alternative Medicine",
+    "Dermatology",
+    "Drug Discovery",
+    "Emergency Medicine",
+    "Endocrinology, Diabetes and Metabolism",
+    "Epidemiology",
+    "Family Practice",
+    "Gastroenterology",
+    "Geriatrics and Gerontology",
+    "Health Informatics",
+    "Health Policy",
+    "Hematology",
+    "Hepatology",
+    "Histology and Pathology",
+    "Immunology and Allergy",
+    "Internal Medicine",
+    "Medicine (miscellaneous)",
+    "Microbiology (medical)",
+    "Nephrology",
+    "Neurology (clinical)",
+    "Obstetrics and Gynecology",
+    "Oncology",
+    "Ophthalmology",
+    "Orthopedics and Sports Medicine",
+    "Otorhinolaryngology",
+    "Pathology and Forensic Medicine",
+    "Pediatrics, Perinatology and Child Health",
+    "Pharmacology (medical)",
+    "Physiology (medical)",
+    "Psychiatry and Mental Health",
+    "Public Health, Environmental and Occupational Health",
+    "Pulmonary and Respiratory Medicine",
+    "Radiology, Nuclear Medicine and Imaging",
+    "Rehabilitation",
+    "Reproductive Medicine",
+    "Reviews and References (medical)",
+    "Rheumatology",
+    "Surgery",
+    "Transplantation",
+    "Urology"
+  ],
+  "Neuroscience": [
+    "Behavioral Neuroscience",
+    "Biological Psychiatry",
+    "Cellular and Molecular Neuroscience",
+    "Cognitive Neuroscience",
+    "Developmental Neuroscience",
+    "Endocrine and Autonomic Systems",
+    "Neurology",
+    "Neuroscience (miscellaneous)",
+    "Sensory Systems"
+  ],
+  "Nursing": [
+    "Advanced and Specialized Nursing",
+    "Assessment and Diagnosis",
+    "Care Planning",
+    "Community and Home Care",
+    "Critical Care Nursing",
+    "Emergency Nursing",
+    "Fundamentals and Skills",
+    "Gerontology",
+    "Issues, Ethics and Legal Aspects",
+    "Leadership and Management",
+    "Maternity and Midwifery",
+    "Nurse Assisting",
+    "Nursing (miscellaneous)",
+    "Nutrition and Dietetics",
+    "Oncology (nursing)",
+    "Pathophysiology",
+    "Pediatric Nursing",
+    "Pharmacology (nursing)",
+    "Psychiatric Mental Health",
+    "Public Health, Environmental and Occupational Health",
+    "Research and Theory",
+    "Review and Exam Preparation"
+  ],
+  "Pharmacology, Toxicology and Pharmaceutics": [
+    "Drug Discovery",
+    "Pharmaceutical Science",
+    "Pharmacology",
+    "Pharmacology, Toxicology and Pharmaceutics (miscellaneous)",
+    "Toxicology"
+  ],
+  "Physics and Astronomy": [
+    "Acoustics and Ultrasonics",
+    "Astronomy and Astrophysics",
+    "Atomic and Molecular Physics, and Optics",
+    "Condensed Matter Physics",
+    "Instrumentation",
+    "Nuclear and High Energy Physics",
+    "Physics and Astronomy (miscellaneous)",
+    "Radiation",
+    "Statistical and Nonlinear Physics",
+    "Surfaces and Interfaces"
+  ],
+  "Psychology": [
+    "Applied Psychology",
+    "Clinical Psychology",
+    "Developmental and Educational Psychology",
+    "Experimental and Cognitive Psychology",
+    "Neuropsychology and Physiological Psychology",
+    "Psychology (miscellaneous)",
+    "Social Psychology"
+  ],
+  "Social Sciences": [
+    "Anthropology",
+    "Archeology",
+    "Communication",
+    "Cultural Studies",
+    "Demography",
+    "Development",
+    "Education",
+    "Gender Studies",
+    "Geography, Planning and Development",
+    "Health (social science)",
+    "Human Factors and Ergonomics",
+    "Law",
+    "Library and Information Sciences",
+    "Linguistics and Language",
+    "Political Science and International Relations",
+    "Public Administration",
+    "Safety Research",
+    "Social Sciences (miscellaneous)",
+    "Social Work",
+    "Sociology and Political Science",
+    "Transportation",
+    "Urban Studies"
+  ],
+  "Veterinary": [
+    "Equine",
+    "Food Animals",
+    "Small Animals",
+    "Veterinary (miscellaneous)"
+  ],
+  "Dentistry": [
+    "Dental Assisting",
+    "Dental Hygiene",
+    "Dentistry (miscellaneous)",
+    "Oral Surgery",
+    "Orthodontics",
+    "Periodontics"
+  ],
+  "Health Professions": [
+    "Chiropractics",
+    "Complementary and Manual Therapy",
+    "Emergency Medical Services",
+    "Health Information Management",
+    "Health Professions (miscellaneous)",
+    "Medical Assisting and Transcription",
+    "Medical Laboratory Technology",
+    "Occupational Therapy",
+    "Optometry",
+    "Pharmacy",
+    "Physical Therapy, Sports Therapy and Rehabilitation",
+    "Podiatry",
+    "Radiological and Ultrasound Technology",
+    "Respiratory Care",
+    "Speech and Hearing"
+  ],
+  "Multidisciplinary": [
+    "Multidisciplinary"
+  ]
 };
 
-const generateSciId = () => {
-  // Generate SCI ID in format A-1234-5678
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const letter = letters[Math.floor(Math.random() * letters.length)];
-  const num1 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  const num2 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  return `${letter}-${num1}-${num2}`;
+// Journal name components for dynamic generation
+const JOURNAL_COMPONENTS = {
+  prefixes: [
+    'International Journal of', 'Journal of', 'Advanced', 'IEEE', 'ACM', 'European', 
+    'American', 'International', 'Proceedings of', 'Transactions on', 'Advances in',
+    'Applied', 'Clinical', 'Experimental', 'Theoretical', 'Computational', 'Modern',
+    'Contemporary', 'Global', 'World', 'Annual Review of', 'Frontiers in'
+  ],
+  subjects: [
+    'Research', 'Science', 'Technology', 'Engineering', 'Medicine', 'Biology',
+    'Chemistry', 'Physics', 'Mathematics', 'Computer Science', 'Materials',
+    'Energy', 'Environment', 'Health', 'Innovation', 'Development', 'Analysis',
+    'Applications', 'Systems', 'Methods', 'Studies', 'Communications', 'Letters',
+    'Reports', 'Reviews', 'Discoveries', 'Innovations', 'Solutions', 'Advances'
+  ],
+  suffixes: [
+    'and Applications', 'Research', 'Letters', 'Communications', 'Review', 
+    'Technology', 'Engineering', 'Science', 'Today', 'Quarterly', 'International',
+    'and Practice', 'Reports', 'Studies', 'and Development', 'Innovations',
+    'and Technology', 'Methods', 'Systems', 'and Analysis', 'Proceedings'
+  ]
 };
 
-const generateWebOfScienceId = () => {
-  // Generate Web of Science ID in format A-1234-5678 (same format as SCI)
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const letter = letters[Math.floor(Math.random() * letters.length)];
-  const num1 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  const num2 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  return `${letter}-${num1}-${num2}`;
-};
-
-// Function to randomly assign Author IDs to faculty (some will have none, some partial, some all)
-const generateAuthorIds = (facultyIndex) => {
-  const authorId = {
-    scopus: null,
-    sci: null,
-    webOfScience: null
-  };
-
-  // Distribution strategy:
-  // 30% - No Author IDs (new faculty/those who haven't set up yet)
-  // 25% - Only Scopus
-  // 20% - Only Scopus + SCI
-  // 15% - Only Scopus + Web of Science
-  // 10% - All three IDs
+const diverseCoAuthorPool = [
+  // Indian Names
+  'Bharath K', 'Priya S', 'Rahul M', 'Meera N', 'Karthik P', 'Divya R',
+  'Arun V', 'Sneha T', 'Vikram J', 'Nisha L', 'Harish B', 'Anjali C',
+  'Suresh Kumar', 'Lakshmi Devi', 'Ravi Shankar', 'Kavitha M',
+  'Srinivas R', 'Padmavathi S', 'Venkatesh N', 'Deepika Rao',
   
-  const random = Math.random();
-  
-  if (random < 0.30) {
-    // 30% - No Author IDs (represents faculty who need to add them before uploading papers)
-    return authorId;
-  } else if (random < 0.55) {
-    // 25% - Only Scopus
-    authorId.scopus = generateScopusId();
-  } else if (random < 0.75) {
-    // 20% - Scopus + SCI
-    authorId.scopus = generateScopusId();
-    authorId.sci = generateSciId();
-  } else if (random < 0.90) {
-    // 15% - Scopus + Web of Science
-    authorId.scopus = generateScopusId();
-    authorId.webOfScience = generateWebOfScienceId();
-  } else {
-    // 10% - All three
-    authorId.scopus = generateScopusId();
-    authorId.sci = generateSciId();
-    authorId.webOfScience = generateWebOfScienceId();
+  // International Names
+  'John Smith', 'Maria Garcia', 'Chen Wei', 'Ahmed Hassan',
+  'Sarah Johnson', 'Michael Brown', 'Lisa Anderson', 'David Wilson',
+  'Anna Kowalski', 'Pierre Dubois', 'Yuki Tanaka', 'Elena Rossi',
+  'James Miller', 'Sophie Martin', 'Alexander Petrov', 'Isabella Lopez'
+];
+
+// Research topics - ALL MIXED UP for random assignment
+const ALL_RESEARCH_TOPICS = [
+  'Machine Learning Algorithms', 'Deep Neural Networks', 'Natural Language Processing',
+  'Computer Vision', 'Distributed Systems', 'Cloud Computing', 'Edge Computing',
+  'Blockchain Technology', 'Cybersecurity Protocols', 'Data Mining Techniques',
+  'IoT Edge Devices', 'Microservices Architecture', 'DevOps Practices',
+  'Software Engineering', 'Database Management', 'Web Technologies',
+  'VLSI Design', 'Signal Processing', 'Communication Systems', 'Embedded Systems',
+  'Finite Element Analysis', 'Fluid Dynamics', 'Heat Transfer', 'Manufacturing Processes',
+  'Structural Engineering', 'Geotechnical Engineering', 'Transportation Systems',
+  'Quantum Mechanics', 'Condensed Matter Physics', 'Optical Physics',
+  'Organic Chemistry', 'Inorganic Chemistry', 'Physical Chemistry',
+  'Applied Mathematics', 'Mathematical Modeling', 'Optimization Theory',
+  'Linguistic Analysis', 'Literature Studies', 'Discourse Analysis',
+  'Strategic Management', 'Operations Research', 'Supply Chain Management',
+  'Financial Markets', 'E-commerce Strategies', 'Consumer Behavior',
+  'Oral Health Assessment', 'Preventive Dentistry', 'Restorative Procedures',
+  'Malocclusion Treatment', 'Bracket Systems', 'Clear Aligners',
+  'Interdisciplinary Research', 'Cross-domain Applications', 'General Studies',
+  'Biotechnology Applications', 'Nanotechnology', 'Renewable Energy Systems',
+  'Environmental Sustainability', 'Climate Change', 'Artificial Intelligence Ethics',
+  'Robotics and Automation', 'Human-Computer Interaction', 'Data Analytics',
+  'Wireless Networks', 'Network Security', 'Mobile Computing'
+];
+
+const titlePrefixes = [
+  'Advanced', 'Novel', 'Intelligent', 'Efficient', 'Optimized', 'Enhanced',
+  'Robust', 'Scalable', 'Adaptive', 'Dynamic', 'Hybrid', 'Multi-objective',
+  'Real-time', 'Distributed', 'Secure', 'Energy-efficient', 'High-performance',
+  'Smart', 'Automated', 'Integrated', 'Collaborative', 'Predictive'
+];
+
+const researchActions = [
+  'Analysis of', 'Design and Implementation of', 'A Comprehensive Study on',
+  'Performance Evaluation of', 'Optimization Techniques for', 'Investigation of',
+  'Development of', 'Comparative Analysis of', 'Experimental Study on',
+  'Theoretical Framework for', 'Empirical Analysis of', 'Case Study on',
+  'Review and Analysis of', 'Modeling and Simulation of', 'Assessment of'
+];
+
+const usedTitles = new Set();
+const usedDOIs = new Set();
+const usedJournals = new Set();
+
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+function buildPublication(type) {
+  switch (type) {
+    case 'scopus':
+      return { type, id: String(randomInt(10_000_000_000, 99_999_999_999)) };
+    case 'sci':
+      return { type, id: `SCI-${randomInt(100000, 999999)}` };
+    case 'webOfScience':
+      return { type, id: `WOS:${randomInt(1000000, 9999999)}` };
+    case 'pubmed':
+      return { type, id: String(randomInt(1_000_000, 9_999_999)) };
+    case 'abdc':
+      return { type, id: `ABDC-${randomInt(1000, 9999)}` };
+    default:
+      return { type: 'scopus', id: String(randomInt(10_000_000_000, 99_999_999_999)) };
   }
+}
 
-  return authorId;
-};
+function generateUniqueDoi() {
+  let doi;
+  let attempts = 0;
+  do {
+    const publisher = randomInt(1000, 9999);
+    const journal = randomInt(100, 999);
+    const year = randomInt(2020, 2025);
+    const paper = randomInt(1000, 9999);
+    doi = `10.${publisher}/${journal}.${year}.${paper}`;
+    attempts++;
+  } while (usedDOIs.has(doi) && attempts < 100);
+  
+  usedDOIs.add(doi);
+  return doi;
+}
 
-const run = async () => {
+function generateUniqueJournal(userFacultyId, userFullName) {
+  let journal;
+  let attempts = 0;
+  
+  do {
+    const prefix = pick(JOURNAL_COMPONENTS.prefixes);
+    const subject = pick(JOURNAL_COMPONENTS.subjects);
+    const suffix = Math.random() < 0.6 ? pick(JOURNAL_COMPONENTS.suffixes) : '';
+    
+    // Create different journal name patterns
+    const patterns = [
+      `${prefix} ${subject}${suffix ? ' ' + suffix : ''}`,
+      `${subject} ${suffix || 'Journal'}`,
+      `${prefix} ${subject}`,
+      `${subject} Research ${suffix || 'Letters'}`,
+      `${subject}: ${suffix || 'Theory and Practice'}`,
+    ];
+    
+    journal = pick(patterns);
+    
+    // Add uniqueness by incorporating user info for very similar journals
+    if (usedJournals.has(journal)) {
+      const uniquePatterns = [
+        `${journal} - Advanced Studies`,
+        `${journal} and Applications`,
+        `${journal}: International Edition`,
+        `${journal} Quarterly`,
+        `${journal} Communications`,
+        `${journal} International`,
+        `${journal} Today`,
+        `${journal} - Series ${randomInt(1, 99)}`
+      ];
+      journal = pick(uniquePatterns);
+    }
+    
+    attempts++;
+  } while (usedJournals.has(journal) && attempts < 100);
+  
+  // If still not unique after 100 attempts, add a random suffix
+  if (usedJournals.has(journal)) {
+    journal = `${journal} - Edition ${randomInt(100, 999)}`;
+  }
+  
+  usedJournals.add(journal);
+  return {
+    journal,
+    publisher: pick(PUBLISHERS)
+  };
+}
+
+function generateUniqueTitle() {
+  let title;
+  let attempts = 0;
+  
+  do {
+    const prefix = pick(titlePrefixes);
+    const action = pick(researchActions);
+    const topic = pick(ALL_RESEARCH_TOPICS);
+    
+    // Create variations
+    const variations = [
+      `${prefix} ${action} ${topic}`,
+      `${action} ${prefix} ${topic}`,
+      `${prefix} ${topic}: ${action}`,
+      `${topic} using ${prefix} Approaches`,
+      `${prefix} Framework for ${topic}`,
+      `${topic}: A ${prefix} Perspective`
+    ];
+    
+    title = pick(variations);
+    attempts++;
+  } while (usedTitles.has(title) && attempts < 100);
+  
+  // If we can't find a unique title after 100 attempts, add a suffix
+  if (usedTitles.has(title)) {
+    title = `${title} - Study ${randomInt(1, 1000)}`;
+  }
+  
+  usedTitles.add(title);
+  return title;
+}
+
+function getRandomSubjectAreaAndCategories() {
+  // Get ALL subject areas
+  const allSubjectAreas = Object.keys(SUBJECT_AREAS);
+  
+  // Pick a random subject area - completely random, not tied to department
+  const subjectArea = pick(allSubjectAreas);
+  const availableCategories = SUBJECT_AREAS[subjectArea];
+  
+  // Select 1-3 random categories from the selected subject area
+  const numCategories = randomInt(1, Math.min(3, availableCategories.length));
+  const selectedCategories = [];
+  
+  while (selectedCategories.length < numCategories) {
+    const category = pick(availableCategories);
+    if (!selectedCategories.includes(category)) {
+      selectedCategories.push(category);
+    }
+  }
+  
+  return {
+    subjectArea,
+    subjectCategories: selectedCategories
+  };
+}
+
+function makeAuthors(primaryAuthor) {
+  const authorCount = randomInt(2, 5);
+  const pool = diverseCoAuthorPool.filter(n => n !== primaryAuthor);
+  const authors = [{ name: primaryAuthor, isCorresponding: Math.random() < 0.6 }];
+  
+  // Add random co-authors
+  while (authors.length < authorCount) {
+    const name = pick(pool);
+    if (!authors.find(a => a.name === name)) {
+      authors.push({ name, isCorresponding: false });
+    }
+  }
+  
+  // Ensure at least one corresponding author
+  if (!authors.some(a => a.isCorresponding)) {
+    authors[randomInt(0, authors.length - 1)].isCorresponding = true;
+  }
+  
+  return authors;
+}
+
+function makeStudentScholars() {
+  if (Math.random() < 0.7) return { isStudentScholar: 'no', studentScholars: [] };
+  
+  const count = randomInt(1, 3);
+  const list = [];
+  for (let i = 0; i < count; i++) {
+    list.push({
+      name: pick(diverseCoAuthorPool),
+      id: `STU-${randomInt(100000, 999999)}`
+    });
+  }
+  return { isStudentScholar: 'yes', studentScholars: list };
+}
+
+async function run() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
-    await User.deleteMany({});
-    console.log('🗑️  Existing users cleared');
+    if (RESET_PAPERS) {
+      await Paper.deleteMany({});
+      console.log('🗑️ Cleared existing papers');
+    }
 
-    // Password hashing function
-    const hashPassword = async (password) => {
-      return await bcrypt.hash(password, 12);
-    };
+    // Get both faculty and campus admin users
+    const users = await User.find({ 
+      role: { $in: ['faculty', 'campus_admin'] },
+      facultyId: { $exists: true, $ne: 'N/A' }
+    }).lean();
 
-    // Generate unique faculty IDs
-    let facultyIdx = 1;
-    const generateFacultyId = () => `FAC-${String(facultyIdx++).padStart(4, '0')}`;
+    if (!users.length) {
+      console.log('❌ No faculty or campus admin users found. Seed users first.');
+      return;
+    }
 
-    // Email counter per domain to ensure unique emails
-    const emailCounters = {};
-    const getUniqueEmail = (prefix, domain) => {
-      const key = `${prefix}@${domain}`;
-      emailCounters[key] = (emailCounters[key] || 0) + 1;
-      return `${prefix}${emailCounters[key]}@${domain}`;
-    };
+    console.log(`👥 Found ${users.length} users (faculty + campus admins)`);
+    
+    // Separate by role for reporting
+    const facultyUsers = users.filter(u => u.role === 'faculty');
+    const campusAdminUsers = users.filter(u => u.role === 'campus_admin');
+    
+    console.log(`📊 Faculty: ${facultyUsers.length}, Campus Admins: ${campusAdminUsers.length}`);
+    console.log(`🎲 Applying RANDOM subject areas and categories to ALL users`);
 
-    // 3 Super Admins (no Author IDs needed)
-    const users = [
-      {
-        fullName: 'Super Admin 1',
-        facultyId: 'N/A',
-        email: 'superadmin1@srmist.edu.in',
-        password: await hashPassword('superadmin123'),
-        role: 'super_admin',
-        college: 'N/A',
-        institute: 'N/A',
-        department: 'N/A',
-        createdBy: null,
-        authorId: {
-          scopus: null,
-          sci: null,
-          webOfScience: null
-        }
-      },
-      {
-        fullName: 'Super Admin 2',
-        facultyId: 'N/A',
-        email: 'superadmin2@srmist.edu.in',
-        password: await hashPassword('superadmin123'),
-        role: 'super_admin',
-        college: 'N/A',
-        institute: 'N/A',
-        department: 'N/A',
-        createdBy: null,
-        authorId: {
-          scopus: null,
-          sci: null,
-          webOfScience: null
-        }
-      },
-      {
-        fullName: 'Super Admin 3',
-        facultyId: 'N/A',
-        email: 'superadmin3@srmist.edu.in',
-        password: await hashPassword('superadmin123'),
-        role: 'super_admin',
-        college: 'N/A',
-        institute: 'N/A',
-        department: 'N/A',
-        createdBy: null,
-        authorId: {
-          scopus: null,
-          sci: null,
-          webOfScience: null
+    const docs = [];
+    let totalPapers = 0;
+
+    for (const user of users) {
+      const userName = user.fullName || `${user.role === 'faculty' ? 'Faculty' : 'Campus Admin'} Member`;
+      const userFacultyId = user.facultyId || 'FAC-000';
+      const userDepartment = user.department || 'Unknown';
+      const papersForUser = randomInt(MIN_PAPERS, MAX_PAPERS);
+      
+      console.log(`📝 Generating ${papersForUser} papers for ${userName} (${userFacultyId}) - ${user.role} - ${userDepartment}`);
+      
+      for (let i = 0; i < papersForUser; i++) {
+        const year = randomInt(2020, 2025);
+        const { journal, publisher } = generateUniqueJournal(userFacultyId, userName);
+        const pub = buildPublication(pick(['scopus', 'sci', 'webOfScience', 'pubmed', 'abdc']));
+        const authors = makeAuthors(userName);
+        const claimedByObj = pick(authors);
+        const claimedBy = claimedByObj.name;
+        const correspondingIndex = authors.findIndex(a => a.isCorresponding);
+        const authorNo = Math.random() < 0.3 && correspondingIndex >= 0 ? 'C' : String(randomInt(1, authors.length));
+        const studentScholars = makeStudentScholars();
+        
+        // COMPLETELY RANDOM subject area and categories - not tied to department
+        const { subjectArea, subjectCategories } = getRandomSubjectAreaAndCategories();
+
+        const doc = {
+          authors,
+          title: generateUniqueTitle(),
+          journal,
+          publisher,
+          volume: String(randomInt(1, 60)),
+          issue: String(randomInt(1, 12)),
+          pageNo: `${randomInt(1, 100)}-${randomInt(101, 200)}`,
+          doi: generateUniqueDoi(),
+          publicationType: pub.type,
+          facultyId: userFacultyId,
+          publicationId: pub.id,
+          year,
+          claimedBy,
+          authorNo,
+          isStudentScholar: studentScholars.isStudentScholar,
+          studentScholars: studentScholars.studentScholars,
+          qRating: pick(['Q1', 'Q2', 'Q3', 'Q4']),
+          typeOfIssue: Math.random() < 0.25 ? 'Special Issue' : 'Regular Issue',
+          subjectArea,
+          subjectCategories
+        };
+
+        docs.push(doc);
+        totalPapers++;
+      }
+    }
+
+    if (!docs.length) {
+      console.log('❌ Nothing to insert.');
+      return;
+    }
+
+    console.log(`\n📊 Total papers to insert: ${totalPapers}`);
+    console.log(`📚 Unique titles generated: ${usedTitles.size}`);
+    console.log(`📰 Unique journals generated: ${usedJournals.size}`);
+    console.log(`🔗 Unique DOIs generated: ${usedDOIs.size}`);
+
+    // Insert in smaller batches to handle large datasets better
+    const batchSize = 1000;
+    let insertedCount = 0;
+    
+    console.log(`\n🔄 Inserting papers in batches of ${batchSize}...`);
+    
+    for (let i = 0; i < docs.length; i += batchSize) {
+      const batch = docs.slice(i, i + batchSize);
+      try {
+        const result = await Paper.insertMany(batch, { ordered: false });
+        insertedCount += result.length;
+        console.log(`✅ Batch ${Math.floor(i/batchSize) + 1}: Inserted ${result.length} papers (Total: ${insertedCount})`);
+      } catch (error) {
+        console.error(`❌ Error in batch ${Math.floor(i/batchSize) + 1}:`, error.message);
+        
+        // Try inserting one by one to identify problematic documents
+        console.log(`🔍 Attempting individual inserts for batch ${Math.floor(i/batchSize) + 1}...`);
+        for (const doc of batch) {
+          try {
+            await Paper.create(doc);
+            insertedCount++;
+          } catch (singleError) {
+            console.error(`❌ Failed to insert paper: "${doc.title}"`, singleError.message);
+            console.error('Error details:', singleError);
+          }
         }
       }
-    ];
+    }
 
-    // Campus Admins (no Author IDs needed - they don't upload papers)
-    for (const college of COLLEGE_CONFIG) {
-      if (college.hasInstitutes) {
-        // For colleges with institutes: One campus admin per institute
-        for (const institute of college.institutes) {
-          users.push({
-            fullName: `${institute.name} Campus Admin`,
-            facultyId: generateFacultyId(),
-            email: getUniqueEmail('campusadmin', college.emailDomain),
-            password: await hashPassword('campusadmin123'),
-            role: 'campus_admin',
-            college: college.name,
-            institute: institute.name,
-            department: institute.departments[0],
-            createdBy: null,
-            authorId: {
-              scopus: null,
-              sci: null,
-              webOfScience: null
-            }
-          });
+    console.log(`\n✅ Successfully inserted ${insertedCount} paper documents out of ${totalPapers} generated`);
+
+    // Get final count from database
+    const finalCount = await Paper.countDocuments();
+    console.log(`📊 Final paper count in database: ${finalCount}`);
+
+    if (finalCount > 0) {
+      // Statistics for successfully inserted papers
+      const created = await Paper.find().lean();
+      
+      // Papers by user role
+      const facultyPapers = created.filter(p => {
+        const user = users.find(u => u.facultyId === p.facultyId);
+        return user?.role === 'faculty';
+      }).length;
+      
+      const campusAdminPapers = created.filter(p => {
+        const user = users.find(u => u.facultyId === p.facultyId);
+        return user?.role === 'campus_admin';
+      }).length;
+      
+      console.log('\n📈 Paper Distribution:');
+      console.log('======================');
+      console.log(`Faculty Papers: ${facultyPapers}`);
+      console.log(`Campus Admin Papers: ${campusAdminPapers}`);
+      console.log(`Total Papers: ${created.length}`);
+      
+      // Unique journals in database
+      const uniqueJournalsInDB = new Set(created.map(p => p.journal));
+      console.log(`📰 Unique journals in database: ${uniqueJournalsInDB.size}`);
+      
+      // Papers by college
+      console.log('\n🏫 Papers by College:');
+      console.log('=====================');
+      const collegeMap = new Map();
+      created.forEach(paper => {
+        const user = users.find(u => u.facultyId === paper.facultyId);
+        if (user?.college) {
+          collegeMap.set(user.college, (collegeMap.get(user.college) || 0) + 1);
         }
-      } else {
-        // For colleges without institutes: One campus admin for the entire college
-        users.push({
-          fullName: `${college.name} Campus Admin`,
-          facultyId: generateFacultyId(),
-          email: getUniqueEmail('campusadmin', college.emailDomain),
-          password: await hashPassword('campusadmin123'),
-          role: 'campus_admin',
-          college: college.name,
-          institute: 'N/A',
-          department: 'N/A',
-          createdBy: null,
-          authorId: {
-            scopus: null,
-            sci: null,
-            webOfScience: null
-          }
+      });
+      
+      collegeMap.forEach((count, college) => {
+        console.log(`${college}: ${count} papers`);
+      });
+
+      // Papers by subject area (showing random distribution)
+      console.log('\n🎲 Papers by Subject Area (Random Distribution):');
+      console.log('================================================');
+      const subjectAreaMap = new Map();
+      created.forEach(paper => {
+        const area = paper.subjectArea;
+        subjectAreaMap.set(area, (subjectAreaMap.get(area) || 0) + 1);
+      });
+      
+      // Sort by count to see distribution
+      const sortedSubjectAreas = Array.from(subjectAreaMap.entries()).sort((a, b) => b[1] - a[1]);
+      sortedSubjectAreas.forEach(([area, count]) => {
+        console.log(`${area}: ${count} papers`);
+      });
+
+      // Show how Computer Science faculty might have papers in Biology, Medicine, etc.
+      console.log('\n🔀 Cross-Disciplinary Examples:');
+      console.log('===============================');
+      const exampleCSDept = users.find(u => u.department === 'Computer Science');
+      if (exampleCSDept) {
+        const csPapers = created.filter(p => p.facultyId === exampleCSDept.facultyId);
+        console.log(`${exampleCSDept.fullName} (Computer Science Department):`);
+        csPapers.slice(0, 3).forEach((paper, index) => {
+          console.log(`  ${index + 1}. Subject: ${paper.subjectArea}`);
+          console.log(`     Categories: ${paper.subjectCategories.join(', ')}`);
         });
       }
-    }
 
-    // Calculate total departments for faculty distribution
-    let totalDepartments = 0;
-    for (const college of COLLEGE_CONFIG) {
-      if (college.hasInstitutes) {
-        for (const institute of college.institutes) {
-          totalDepartments += institute.departments.length;
-        }
-      } else {
-        totalDepartments += college.departments.length;
-      }
-    }
-
-    console.log(`📊 Total departments across all colleges: ${totalDepartments}`);
-    console.log(`👥 Target: 850 faculty (170 departments × 5 faculty each)`);
-    
-    // Faculty: Calculate how many faculty per department to reach 850 total
-    const targetFacultyTotal = 850;
-    const facultyPerDepartment = Math.ceil(targetFacultyTotal / totalDepartments);
-    
-    console.log(`📈 Creating ${facultyPerDepartment} faculty per department to reach target`);
-
-    let facultyCount = 0;
-    let facultyIndex = 0; // For tracking Author ID distribution
-
-    for (const college of COLLEGE_CONFIG) {
-      if (college.hasInstitutes) {
-        // Colleges with institutes
-        for (const institute of college.institutes) {
-          for (const department of institute.departments) {
-            // Create calculated number of faculty members for each department
-            for (let i = 1; i <= facultyPerDepartment; i++) {
-              if (facultyCount < targetFacultyTotal) {
-                users.push({
-                  fullName: `${department} Faculty ${i}`,
-                  facultyId: generateFacultyId(),
-                  email: getUniqueEmail('faculty', college.emailDomain),
-                  password: await hashPassword('faculty1234'),
-                  role: 'faculty',
-                  college: college.name,
-                  institute: institute.name,
-                  department: department,
-                  createdBy: null,
-                  authorId: generateAuthorIds(facultyIndex) // Generate Author IDs for faculty
-                });
-                facultyCount++;
-                facultyIndex++;
-              }
-            }
-          }
-        }
-      } else {
-        // Colleges without institutes (direct departments)
-        for (const department of college.departments) {
-          // Create calculated number of faculty members for each department
-          for (let i = 1; i <= facultyPerDepartment; i++) {
-            if (facultyCount < targetFacultyTotal) {
-              users.push({
-                fullName: `${department} Faculty ${i}`,
-                facultyId: generateFacultyId(),
-                email: getUniqueEmail('faculty', college.emailDomain),
-                password: await hashPassword('faculty1234'),
-                role: 'faculty',
-                college: college.name,
-                institute: 'N/A',
-                department: department,
-                createdBy: null,
-                authorId: generateAuthorIds(facultyIndex) // Generate Author IDs for faculty
-              });
-              facultyCount++;
-              facultyIndex++;
-            }
-          }
-        }
-      }
-    }
-
-    // Add additional faculty to reach exactly 850 if needed
-    while (facultyCount < targetFacultyTotal) {
-      // Distribute remaining faculty across departments
-      for (const college of COLLEGE_CONFIG) {
-        if (facultyCount >= targetFacultyTotal) break;
-        
-        if (college.hasInstitutes) {
-          for (const institute of college.institutes) {
-            if (facultyCount >= targetFacultyTotal) break;
-            for (const department of institute.departments) {
-              if (facultyCount >= targetFacultyTotal) break;
-              
-              const existingCount = users.filter(u => 
-                u.role === 'faculty' && 
-                u.college === college.name && 
-                u.institute === institute.name && 
-                u.department === department
-              ).length;
-              
-              users.push({
-                fullName: `${department} Faculty ${existingCount + 1}`,
-                facultyId: generateFacultyId(),
-                email: getUniqueEmail('faculty', college.emailDomain),
-                password: await hashPassword('faculty1234'),
-                role: 'faculty',
-                college: college.name,
-                institute: institute.name,
-                department: department,
-                createdBy: null,
-                authorId: generateAuthorIds(facultyIndex)
-              });
-              facultyCount++;
-              facultyIndex++;
-            }
-          }
-        } else {
-          for (const department of college.departments) {
-            if (facultyCount >= targetFacultyTotal) break;
-            
-            const existingCount = users.filter(u => 
-              u.role === 'faculty' && 
-              u.college === college.name && 
-              u.department === department
-            ).length;
-            
-            users.push({
-              fullName: `${department} Faculty ${existingCount + 1}`,
-              facultyId: generateFacultyId(),
-              email: getUniqueEmail('faculty', college.emailDomain),
-              password: await hashPassword('faculty1234'),
-              role: 'faculty',
-              college: college.name,
-              institute: 'N/A',
-              department: department,
-              createdBy: null,
-              authorId: generateAuthorIds(facultyIndex)
-            });
-            facultyCount++;
-            facultyIndex++;
-          }
-        }
-      }
-    }
-
-    const createdUsers = await User.insertMany(users);
-    console.log(`✅ Successfully created ${createdUsers.length} test users`);
-
-    // Display summary statistics
-    console.log('\n📊 User Creation Summary:');
-    console.log('========================');
-    
-    const summary = {
-      super_admin: createdUsers.filter(u => u.role === 'super_admin').length,
-      campus_admin: createdUsers.filter(u => u.role === 'campus_admin').length,
-      faculty: createdUsers.filter(u => u.role === 'faculty').length
-    };
-    
-    console.log(`Super Admins: ${summary.super_admin}`);
-    console.log(`Campus Admins: ${summary.campus_admin}`);
-    console.log(`Faculty: ${summary.faculty}`);
-    console.log(`Total Users: ${createdUsers.length}`);
-
-    // Author ID Distribution Statistics
-    console.log('\n🆔 Author ID Distribution for Faculty:');
-    console.log('======================================');
-    
-    const facultyUsers = createdUsers.filter(u => u.role === 'faculty');
-    let noAuthorIds = 0;
-    let onlyScopus = 0;
-    let scopusAndSci = 0;
-    let scopusAndWos = 0;
-    let allThree = 0;
-    let partial = 0;
-
-    facultyUsers.forEach(user => {
-      const hasScope = !!user.authorId.scopus;
-      const hasSci = !!user.authorId.sci;
-      const hasWos = !!user.authorId.webOfScience;
-      
-      if (!hasScope && !hasSci && !hasWos) {
-        noAuthorIds++;
-      } else if (hasScope && !hasSci && !hasWos) {
-        onlyScopus++;
-      } else if (hasScope && hasSci && !hasWos) {
-        scopusAndSci++;
-      } else if (hasScope && !hasSci && hasWos) {
-        scopusAndWos++;
-      } else if (hasScope && hasSci && hasWos) {
-        allThree++;
-      } else {
-        partial++;
-      }
-    });
-
-    console.log(`No Author IDs: ${noAuthorIds} (${((noAuthorIds/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Only Scopus: ${onlyScopus} (${((onlyScopus/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Scopus + SCI: ${scopusAndSci} (${((scopusAndSci/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Scopus + Web of Science: ${scopusAndWos} (${((scopusAndWos/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`All Three IDs: ${allThree} (${((allThree/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Other Combinations: ${partial} (${((partial/facultyUsers.length)*100).toFixed(1)}%)`);
-
-    console.log('\n⚠️  Important Notes:');
-    console.log('===================');
-    console.log(`• ${noAuthorIds} faculty members have no Author IDs and will need to add at least one before uploading papers`);
-    console.log('• Faculty can update their Author IDs after login through their profile');
-    console.log('• At least one Author ID (Scopus, SCI, or Web of Science) is required to upload papers');
-
-    // Verify target numbers
-    console.log('\n🎯 Target Verification:');
-    console.log('======================');
-    console.log(`✅ Super Admins: ${summary.super_admin}/3 ${summary.super_admin === 3 ? '✓' : '✗'}`);
-    console.log(`✅ Campus Admins: ${summary.campus_admin}/10 ${summary.campus_admin === 10 ? '✓' : '✗'}`);
-    console.log(`✅ Faculty: ${summary.faculty}/850 ${summary.faculty === 850 ? '✓' : '✗'}`);
-    console.log(`✅ Total: ${createdUsers.length}/863 ${createdUsers.length === 863 ? '✓' : '✗'}`);
-
-    // Display breakdown by college
-    console.log('\n🏫 Users by College:');
-    console.log('====================');
-    
-    for (const college of COLLEGE_CONFIG) {
-      const collegeUsers = createdUsers.filter(u => u.college === college.name);
-      console.log(`\n${college.name}:`);
-      console.log(`  Total: ${collegeUsers.length} users`);
-      
-      // Show campus admins for this college
-      const campusAdmins = collegeUsers.filter(u => u.role === 'campus_admin');
-      console.log(`  Campus Admins: ${campusAdmins.length}`);
-      campusAdmins.forEach(admin => {
-        if (college.hasInstitutes) {
-          console.log(`    - ${admin.fullName} (${admin.institute})`);
-        } else {
-          console.log(`    - ${admin.fullName} (Overall College Management)`);
-        }
+      // Papers by publication type
+      console.log('\n📊 Papers by Publication Type:');
+      console.log('==============================');
+      const pubTypes = ['scopus', 'sci', 'webOfScience', 'pubmed', 'abdc'];
+      pubTypes.forEach(type => {
+        const count = created.filter(p => p.publicationType === type).length;
+        console.log(`${type}: ${count} papers`);
       });
-      
-      // Show faculty count with Author ID status
-      const facultyUsers = collegeUsers.filter(u => u.role === 'faculty');
-      const facultyWithAuthorIds = facultyUsers.filter(u => 
-        u.authorId.scopus || u.authorId.sci || u.authorId.webOfScience
-      );
-      console.log(`  Faculty: ${facultyUsers.length} (${facultyWithAuthorIds.length} with Author IDs)`);
+
+      // Q-rating distribution
+      console.log('\n🏆 Q-Rating Distribution:');
+      console.log('========================');
+      const qRatings = ['Q1', 'Q2', 'Q3', 'Q4'];
+      qRatings.forEach(rating => {
+        const count = created.filter(p => p.qRating === rating).length;
+        console.log(`${rating}: ${count} papers (${((count/created.length)*100).toFixed(1)}%)`);
+      });
+
+      // Sample papers showing random nature
+      console.log('\n📋 Sample Papers (Showing Random Subject Assignment):');
+      console.log('====================================================');
+      created.slice(0, 5).forEach((paper, index) => {
+        const user = users.find(u => u.facultyId === paper.facultyId);
+        console.log(`${index + 1}. "${paper.title}"`);
+        console.log(`   Faculty: ${user?.fullName} (${user?.department} Dept.)`);
+        console.log(`   Journal: ${paper.journal}`);
+        console.log(`   Subject Area: ${paper.subjectArea} (Random!)`);
+        console.log(`   Categories: ${paper.subjectCategories.join(', ')}`);
+        console.log(`   Year: ${paper.year}, Q-Rating: ${paper.qRating}`);
+        console.log('');
+      });
     }
 
-    // Set createdBy: all users except super_admin are created by super_admin
-    const superAdmins = createdUsers.filter(u => u.role === 'super_admin');
-    const firstSuperAdmin = superAdmins[0];
-    if (firstSuperAdmin) {
-      await User.updateMany(
-        { _id: { $ne: firstSuperAdmin._id }, role: { $ne: 'super_admin' } },
-        { $set: { createdBy: firstSuperAdmin._id } }
-      );
-      console.log('\n🔗 Updated createdBy references (all non-super-admin users created by first super_admin)');
-    }
+    console.log('✨ Paper seeding completed with COMPLETELY RANDOM subject areas for all users!');
+    console.log('🎯 Result: Faculty from any department can have papers in any subject area');
 
-    // Sample Author IDs for testing
-    console.log('\n📋 Sample Faculty with Author IDs (for testing):');
-    console.log('================================================');
-    const sampleFaculty = facultyUsers.filter(u => 
-      u.authorId.scopus || u.authorId.sci || u.authorId.webOfScience
-    ).slice(0, 5);
-    
-    sampleFaculty.forEach(faculty => {
-      console.log(`${faculty.email}:`);
-      console.log(`  Name: ${faculty.fullName}`);
-      console.log(`  Faculty ID: ${faculty.facultyId}`);
-      console.log(`  Scopus: ${faculty.authorId.scopus || 'Not set'}`);
-      console.log(`  SCI: ${faculty.authorId.sci || 'Not set'}`);
-      console.log(`  Web of Science: ${faculty.authorId.webOfScience || 'Not set'}`);
-      console.log('');
-    });
-
-  } catch (error) {
-    console.error('❌ Error creating users:', error.message);
-    if (error.name === 'ValidationError') {
+  } catch (err) {
+    console.error('❌ Error seeding papers:', err.message);
+    if (err.name === 'ValidationError') {
       console.error('Validation errors:');
-      Object.values(error.errors).forEach(err => {
-        console.error(`  - ${err.path}: ${err.message}`);
+      Object.values(err.errors).forEach(error => {
+        console.error(`  - ${error.path}: ${error.message}`);
       });
     }
+    console.error('Stack trace:', err.stack);
     process.exit(1);
   } finally {
     await mongoose.connection.close();
-    console.log('\n🔌 Disconnected from MongoDB');
+    console.log('🔌 Disconnected from MongoDB');
   }
-};
+}
 
 run();
