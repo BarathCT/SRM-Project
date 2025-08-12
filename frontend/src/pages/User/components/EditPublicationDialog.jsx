@@ -32,39 +32,6 @@ import {
   Save,
 } from "lucide-react";
 
-/**
-/  EditPublicationDialog
-/  A responsive, optimized, white/blue professional dialog for editing ALL publication fields.
-/  - Controlled component: Parent provides `value` and `onChange`.
-/  - Includes inline validation and UX enhancements.
-/  - Accessible and keyboard-friendly.
-/
-/  Props:
-/   - open: boolean
-/   - onOpenChange: (open: boolean) => void
-/   - value: EditData | null
-/   - onChange: (updater: (prev) => next | nextObject) => void
-/   - onSubmit: (currentValue: EditData) => void
-/   - onCancel?: () => void
-/   - isSubmitting?: boolean
-/   - subjectAreas: Record<string, string[]>
-/   - publicationTypes: string[]
-/   - qRatings: string[]
-/
-/  Example integration:
-/    <EditPublicationDialog
-/      open={editDialogOpen}
-/      onOpenChange={setEditDialogOpen}
-/      value={editData}
-/      onChange={setEditData}
-/      onSubmit={() => updatePaper()}      // uses outer editData
-/      onCancel={() => setEditDialogOpen(false)}
-/      isSubmitting={saving}
-/      subjectAreas={SUBJECT_AREAS}
-/      publicationTypes={PUBLICATION_TYPES}
-/      qRatings={Q_RATINGS}
-/    />
-*/
 export default function EditPublicationDialog({
   open,
   onOpenChange,
