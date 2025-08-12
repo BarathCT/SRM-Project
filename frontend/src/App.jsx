@@ -4,11 +4,10 @@ import Navbar from './components/Navbar';
 import UserManagement from './pages/Admin/UserManagement/UserManagement';
 import UploadPage from './pages/User/UploadPage';
 
-import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard';
-import CampusAdminDashboard from './pages/Admin/CampusAdminDashboard';
+import SuperAdminDashboard from './pages/User/SuperAdminDashboard/SuperAdminDashboard';
+import CampusAdminDashboard from './pages/User/CampusAdminDashboard/CampusAdminDashboard';
 import SettingsPage from './pages/Settings/SettingsPage';
 import FacultyDashboard from './pages/User/FacultyDashboard/FacultyDashboard';
-import ScholarDashboard from './pages/User/ScholarDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
 
@@ -38,12 +37,6 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
             <Route path="/faculty" element={<FacultyDashboard />} />
             <Route path="/faculty/upload" element={<UploadPage />} />
-          </Route>
-
-          {/* Scholar routes */}
-          <Route element={<ProtectedRoute allowedRoles={['scholar']} />}>
-            <Route path="/scholar" element={<ScholarDashboard />} />
-            <Route path="/scholar/upload" element={<UploadPage />} />
           </Route>
 
           {/* Common routes accessible to all authenticated users */}
