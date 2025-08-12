@@ -7,7 +7,7 @@ import UploadPage from './pages/User/UploadPage';
 import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard';
 import CampusAdminDashboard from './pages/Admin/CampusAdminDashboard';
 import SettingsPage from './pages/Settings/SettingsPage';
-import FacultyDashboard from './pages/User/FacultyDashboard';
+import FacultyDashboard from './pages/User/FacultyDashboard/FacultyDashboard';
 import ScholarDashboard from './pages/User/ScholarDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
