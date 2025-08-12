@@ -41,25 +41,35 @@ import {
   Square,
   Trash2,
   Download,
+  Users,
+  Building,
 } from "lucide-react";
 
 export default function PublicationsFilterCard({
   // options
   filterOptions,
 
-  // values
+  // standard values
   searchTerm,
   selectedYear,
   selectedQRating,
   selectedPublicationType,
   selectedSubjectArea,
 
-  // value handlers
+  // campus admin specific values (optional)
+  selectedAuthor,
+  selectedDepartment,
+
+  // standard value handlers
   onSearchTermChange,
   onYearChange,
   onQRatingChange,
   onPublicationTypeChange,
   onSubjectAreaChange,
+
+  // campus admin specific handlers (optional)
+  onAuthorChange,
+  onDepartmentChange,
 
   // actions
   hasActiveFilters,
@@ -74,6 +84,9 @@ export default function PublicationsFilterCard({
   exportFields,
   onExportFieldsChange,
   onExport,
+
+  // campus admin flag
+  showCampusFilters = false,
 }) {
   return (
     <Card className="mb-6 border border-blue-100 shadow-md bg-white">
@@ -85,7 +98,7 @@ export default function PublicationsFilterCard({
               Filters & Actions
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Filter and manage your publications
+              {showCampusFilters ? "Filter and manage institute publications" : "Filter and manage your publications"}
             </CardDescription>
           </div>
 
@@ -127,13 +140,13 @@ export default function PublicationsFilterCard({
                         Delete Selected Publications
                       </AlertDialogTitle>
                       <AlertDialogDescription className="text-gray-600">
-                        This action cannot be undone.
+                        This action cannot be undone. {selectedCount} publication{selectedCount > 1 ? 's' : ''} will be permanently deleted.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel className="border-gray-300">Cancel</AlertDialogCancel>
                       <AlertDialogAction onClick={onBulkDelete} className="bg-red-600 hover:bg-red-700">
-                        Delete
+                        Delete {selectedCount} Publication{selectedCount > 1 ? 's' : ''}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -159,14 +172,14 @@ export default function PublicationsFilterCard({
                     Customize Export Fields
                   </DialogTitle>
                   <DialogDescription className="text-gray-600">
-                    Select the fields to include in your CSV.
+                    Select the fields to include in your CSV export.
                   </DialogDescription>
                 </DialogHeader>
 
                 <ScrollArea className="max-h-96">
                   <div className="space-y-4 p-4">
                     <div>
-                      <h4 className="font-medium text-sm text-gray-700 mb-3">Essential</h4>
+                      <h4 className="font-medium text-sm text-gray-700 mb-3">Essential Fields</h4>
                       <div className="grid grid-cols-2 gap-3">
                         {["title", "authors", "journal", "publisher", "year", "qRating"].map((field) => (
                           <div key={field} className="flex items-center space-x-2">
@@ -177,7 +190,7 @@ export default function PublicationsFilterCard({
                               className="border-blue-300"
                             />
                             <label htmlFor={field} className="text-sm font-medium capitalize text-gray-700">
-                              {field.replace(/([A-Z])/g, " $1")}
+                              {field === 'qRating' ? 'Q Rating' : field.replace(/([A-Z])/g, " $1")}
                             </label>
                           </div>
                         ))}
@@ -187,7 +200,7 @@ export default function PublicationsFilterCard({
                     <Separator className="bg-blue-100" />
 
                     <div>
-                      <h4 className="font-medium text-sm text-gray-700 mb-3">Additional</h4>
+                      <h4 className="font-medium text-sm text-gray-700 mb-3">Additional Fields</h4>
                       <div className="grid grid-cols-2 gap-3">
                         {Object.keys(exportFields)
                           .filter((f) => !["title", "authors", "journal", "publisher", "year", "qRating"].includes(f))
@@ -200,7 +213,18 @@ export default function PublicationsFilterCard({
                                 className="border-blue-300"
                               />
                               <label htmlFor={field} className="text-sm font-medium capitalize text-gray-700">
-                                {field.replace(/([A-Z])/g, " $1")}
+                                {field === 'doi' ? 'DOI' : 
+                                 field === 'publicationType' ? 'Publication Type' :
+                                 field === 'subjectArea' ? 'Subject Area' :
+                                 field === 'subjectCategories' ? 'Subject Categories' :
+                                 field === 'claimedBy' ? 'Claimed By' :
+                                 field === 'authorNo' ? 'Author Number' :
+                                 field === 'isStudentScholar' ? 'Student Scholar' :
+                                 field === 'studentScholars' ? 'Scholar Names' :
+                                 field === 'typeOfIssue' ? 'Type of Issue' :
+                                 field === 'publicationId' ? 'Publication ID' :
+                                 field === 'pageNo' ? 'Page Numbers' :
+                                 field.replace(/([A-Z])/g, " $1")}
                               </label>
                             </div>
                           ))}
@@ -225,13 +249,13 @@ export default function PublicationsFilterCard({
       </CardHeader>
 
       <CardContent className="pt-6 bg-white">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${showCampusFilters ? 'lg:grid-cols-8' : 'lg:grid-cols-6'}`}>
           {/* Search */}
-          <div className="lg:col-span-2">
+          <div className={showCampusFilters ? "lg:col-span-2" : "lg:col-span-2"}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search title, journal, or authors…"
+                placeholder={showCampusFilters ? "Search title, journal, authors, or faculty..." : "Search title, journal, or authors…"}
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}
                 className="pl-10 border-blue-200 focus:border-blue-500 focus:ring-blue-500 bg-white"
@@ -246,7 +270,7 @@ export default function PublicationsFilterCard({
             </SelectTrigger>
             <SelectContent className="bg-white border-blue-200">
               <SelectItem value="all">All Years</SelectItem>
-              {filterOptions.years.map((y) => (
+              {filterOptions.years?.map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
                 </SelectItem>
@@ -261,7 +285,7 @@ export default function PublicationsFilterCard({
             </SelectTrigger>
             <SelectContent className="bg-white border-blue-200">
               <SelectItem value="all">All Q Ratings</SelectItem>
-              {filterOptions.qRatings.map((q) => (
+              {filterOptions.qRatings?.map((q) => (
                 <SelectItem key={q} value={q}>
                   {q}
                 </SelectItem>
@@ -276,9 +300,9 @@ export default function PublicationsFilterCard({
             </SelectTrigger>
             <SelectContent className="bg-white border-blue-200">
               <SelectItem value="all">All Types</SelectItem>
-              {filterOptions.publicationTypes.map((t) => (
+              {filterOptions.publicationTypes?.map((t) => (
                 <SelectItem key={t} value={t}>
-                  {t}
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -291,26 +315,67 @@ export default function PublicationsFilterCard({
             </SelectTrigger>
             <SelectContent className="bg-white border-blue-200">
               <SelectItem value="all">All Subjects</SelectItem>
-              {filterOptions.subjectAreas.map((a) => (
+              {filterOptions.subjectAreas?.map((a) => (
                 <SelectItem key={a} value={a}>
-                  {a}
+                  {a.length > 30 ? a.substring(0, 30) + '...' : a}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {/* Campus Admin Specific Filters */}
+          {showCampusFilters && (
+            <>
+              {/* Author Filter */}
+              <Select value={selectedAuthor} onValueChange={onAuthorChange}>
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white">
+                  <SelectValue placeholder="Author" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-blue-200">
+                  <SelectItem value="all">All Authors</SelectItem>
+                  {filterOptions.authors?.map((author) => (
+                    <SelectItem key={author} value={author}>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-3 w-3 text-blue-600" />
+                        {author}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Department Filter */}
+              <Select value={selectedDepartment} onValueChange={onDepartmentChange}>
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white">
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-blue-200">
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {filterOptions.departments?.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      <div className="flex items-center gap-2">
+                        <Building className="h-3 w-3 text-blue-600" />
+                        {dept}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
 
-        {/* Active filters */}
+        {/* Active filters display */}
         {hasActiveFilters && (
           <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex flex-wrap gap-2 items-center">
               <span className="text-sm font-medium text-blue-700 flex items-center gap-1">
                 <Filter className="h-4 w-4" />
-                Active:
+                Active Filters:
               </span>
               {searchTerm && (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
-                  Search: {searchTerm}
+                  Search: "{searchTerm}"
                 </Badge>
               )}
               {selectedYear !== "all" && (
@@ -320,7 +385,7 @@ export default function PublicationsFilterCard({
               )}
               {selectedQRating !== "all" && (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
-                  Q: {selectedQRating}
+                  Q-Rating: {selectedQRating}
                 </Badge>
               )}
               {selectedPublicationType !== "all" && (
@@ -330,7 +395,19 @@ export default function PublicationsFilterCard({
               )}
               {selectedSubjectArea !== "all" && (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
-                  Subject: {selectedSubjectArea}
+                  Subject: {selectedSubjectArea.length > 20 ? selectedSubjectArea.substring(0, 20) + '...' : selectedSubjectArea}
+                </Badge>
+              )}
+              {showCampusFilters && selectedAuthor !== "all" && (
+                <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300">
+                  <Users className="h-3 w-3 mr-1" />
+                  Author: {selectedAuthor}
+                </Badge>
+              )}
+              {showCampusFilters && selectedDepartment !== "all" && (
+                <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-300">
+                  <Building className="h-3 w-3 mr-1" />
+                  Dept: {selectedDepartment}
                 </Badge>
               )}
             </div>
