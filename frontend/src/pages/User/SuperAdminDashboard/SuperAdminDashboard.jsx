@@ -64,6 +64,39 @@ export default function SuperAdminDashboard() {
   const [selectedPublicationType, setSelectedPublicationType] = useState("all");
   const [selectedSubjectArea, setSelectedSubjectArea] = useState("all");
 
+  // Export functionality state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFields, setExportFields] = useState({
+    // Essential fields for super admin
+    title: true,
+    authors: true,
+    journal: true,
+    publisher: true,
+    year: true,
+    qRating: true,
+    claimedBy: true,
+    department: true,
+    campus: true,
+    
+    // Administrative fields
+    publicationId: false,
+    authorNo: false,
+    isStudentScholar: false,
+    studentScholars: false,
+    typeOfIssue: false,
+    
+    // Technical fields
+    doi: false,
+    pageNo: false,
+    publicationType: false,
+    subjectArea: false,
+    subjectCategories: false,
+    
+    // Additional metadata
+    volume: false,
+    issue: false,
+  });
+
   // User finder
   const [finderOpen, setFinderOpen] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
@@ -198,8 +231,23 @@ export default function SuperAdminDashboard() {
     const qRatings = [...new Set(scopePapers.map((p) => p.qRating).filter(Boolean))].sort();
     const publicationTypes = [...new Set(scopePapers.map((p) => p.publicationType).filter(Boolean))].sort();
     const subjectAreas = [...new Set(scopePapers.map((p) => p.subjectArea).filter(Boolean))].sort();
-    return { years, qRatings, publicationTypes, subjectAreas };
-  }, [scopePapers]);
+    
+    // Super admin specific filter options
+    const authors = [...new Set(scopePapers.map((p) => p.claimedBy).filter(Boolean))].sort();
+    const departments = [...new Set(scopePapers.map((p) => {
+      const user = users.find(u => u.facultyId === p.facultyId);
+      return user?.department;
+    }).filter(Boolean))].sort();
+    
+    return { 
+      years, 
+      qRatings, 
+      publicationTypes, 
+      subjectAreas,
+      authors,
+      departments
+    };
+  }, [scopePapers, users]);
 
   // Publications filters
   const hasActiveFilters = useMemo(
@@ -341,6 +389,118 @@ export default function SuperAdminDashboard() {
     setSelectedPapers(new Set());
     setSelectAll(false);
     toast.info("Cleared selection", { duration: 1500 });
+  };
+
+  // Export functionality
+  const handleExport = () => {
+    try {
+      // Get data to export (selected papers or all filtered papers)
+      const dataToExport = selectedPapers.size > 0 
+        ? scopePapers.filter((p) => selectedPapers.has(p._id))
+        : filteredPapers;
+
+      if (!dataToExport.length) {
+        toast.warning("No publications to export", { duration: 2000 });
+        return;
+      }
+
+      // Get selected fields
+      const selectedFields = Object.entries(exportFields)
+        .filter(([_, selected]) => selected)
+        .map(([field, _]) => field);
+
+      if (!selectedFields.length) {
+        toast.warning("Please select at least one field to export", { duration: 2000 });
+        return;
+      }
+
+      // Build header mapping for super admin
+      const headerMap = {
+        title: "Title",
+        authors: "Authors",
+        journal: "Journal",
+        publisher: "Publisher",
+        year: "Year",
+        qRating: "Q Rating",
+        claimedBy: "Claimed By",
+        department: "Department",
+        campus: "Campus",
+        publicationId: "Publication ID",
+        authorNo: "Author Number",
+        isStudentScholar: "Student Scholar",
+        studentScholars: "Scholar Names",
+        typeOfIssue: "Type of Issue",
+        doi: "DOI",
+        pageNo: "Page Numbers",
+        publicationType: "Publication Type",
+        subjectArea: "Subject Area",
+        subjectCategories: "Subject Categories",
+        volume: "Volume",
+        issue: "Issue",
+      };
+
+      // Create CSV headers
+      const headers = selectedFields.map((field) => headerMap[field] || field);
+
+      // Create CSV rows
+      const rows = dataToExport.map((paper) => {
+        return selectedFields.map((field) => {
+          let value = "";
+
+          switch (field) {
+            case "authors":
+              value = (paper.authors || []).map((a) => a.name).join("; ");
+              break;
+            case "subjectCategories":
+              value = (paper.subjectCategories || []).join("; ");
+              break;
+            case "studentScholars":
+              value = (paper.studentScholars || [])
+                .map((s) => typeof s === "string" ? s : s.name)
+                .join("; ");
+              break;
+            case "department":
+              const user = users.find(u => u.facultyId === paper.facultyId);
+              value = user?.department || "N/A";
+              break;
+            case "campus":
+              const userForCampus = users.find(u => u.facultyId === paper.facultyId);
+              value = userForCampus?.college || "N/A";
+              break;
+            default:
+              value = paper[field] ?? "";
+          }
+
+          return value;
+        });
+      });
+
+      // Generate CSV content
+      const csvContent = [headers, ...rows]
+        .map((row) =>
+          row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
+        )
+        .join("\n");
+
+      // Download CSV file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `superadmin_publications_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Close dialog and show success message
+      setExportDialogOpen(false);
+      toast.academic(`Successfully exported ${dataToExport.length} publications`, { duration: 2500 });
+
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Export failed. Please try again.", { duration: 3000 });
+    }
   };
 
   // Delete (super admin can delete any paper)
@@ -718,73 +878,16 @@ export default function SuperAdminDashboard() {
                 toast.error("Some deletions failed", { duration: 2500 });
               }
             }}
-            exportDialogOpen={false}
-            onExportDialogOpenChange={() => {}}
-            exportFields={{
-              title: true,
-              authors: true,
-              journal: true,
-              publisher: true,
-              year: true,
-              qRating: true,
-              doi: true,
-              publicationType: true,
-              subjectArea: true,
-              subjectCategories: true,
-              claimedBy: true,
-              volume: false,
-              issue: false,
-              pageNo: false,
-              publicationId: false,
-              authorNo: false,
-              isStudentScholar: false,
-              studentScholars: false,
-              typeOfIssue: false,
-            }}
-            onExportFieldsChange={() => {}}
-            onExport={() => {
-              const data = selectedPapers.size ? scopePapers.filter((p) => selectedPapers.has(p._id)) : filteredPapers;
-              if (!data.length) return toast.warning("No publications to export");
-              const headerMap = {
-                title: "Title",
-                authors: "Authors",
-                journal: "Journal",
-                publisher: "Publisher",
-                year: "Year",
-                qRating: "Q Rating",
-                doi: "DOI",
-                publicationType: "Publication Type",
-                subjectArea: "Subject Area",
-                subjectCategories: "Subject Categories",
-                claimedBy: "Claimed By",
-              };
-              const fields = Object.keys(headerMap);
-              const headers = fields.map((k) => headerMap[k]);
-              const rows = data.map((p) =>
-                fields.map((f) => {
-                  switch (f) {
-                    case "authors":
-                      return (p.authors || []).map((a) => a.name).join("; ");
-                    case "subjectCategories":
-                      return (p.subjectCategories || []).join("; ");
-                    default:
-                      return p[f] ?? "";
-                  }
-                })
-              );
-              const csv = [headers, ...rows]
-                .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-                .join("\n");
-              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `superadmin_publications_${new Date().toISOString().slice(0, 10)}.csv`;
-              a.click();
-              URL.revokeObjectURL(url);
-              toast.academic(`Exported ${data.length} publications`, { duration: 2200 });
-            }}
-            showCampusFilters={false}
+            // Export props
+            exportDialogOpen={exportDialogOpen}
+            onExportDialogOpenChange={setExportDialogOpen}
+            exportFields={exportFields}
+            onExportFieldsChange={setExportFields}
+            onExport={handleExport}
+            // Super admin props
+            isSuperAdmin={true}
+            userRole="super_admin"
+            showCampusFilters={true}
           />
         )}
 
