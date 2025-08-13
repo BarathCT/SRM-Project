@@ -782,13 +782,13 @@ const CampusAdminDashboard = () => {
                 icon={<UserCheck className="h-8 w-8 text-blue-600" />}
                 loading={loading}
               />
-              <StatsCard
+             {/* <StatsCard
                 title="Active Faculty"
                 value={`${campusStats.activeFaculty}/${campusStats.totalFaculty}`}
                 subtitle="Publishing faculty members"
                 icon={<Users className="h-8 w-8 text-blue-600" />}
                 loading={loading}
-              />
+              />*/}
               <StatsCard
                 title="Q1 Publications"
                 value={(campusStats.qDistribution || {}).Q1 || 0}

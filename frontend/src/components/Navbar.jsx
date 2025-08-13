@@ -164,9 +164,22 @@ export default function Navbar() {
   };
 
   const handleManageUsers = () => {
-    navigate('/admin/users'); // or any route for user management
-  };
-
+  if (!user?.role) return;
+  
+  switch(user.role) {
+    case 'super_admin':
+      navigate('/super-admin/users');
+      break;
+    case 'campus_admin':
+      navigate('/campus-admin/users');
+      break;
+    case 'admin':
+      navigate('/admin/users');
+      break;
+    default:
+      navigate('/');
+  }
+};
   // Determine dashboard path based on role
   const getDashboardPath = () => {
     if (!user.role) return '/';
