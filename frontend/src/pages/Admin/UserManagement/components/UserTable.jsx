@@ -1,4 +1,4 @@
-import { User, Edit, Trash2, Users, Plus, X, Mail, BadgeCheck, Shield, Building2, Layers } from 'lucide-react';
+import { User, Edit, Trash2, Users, Plus, X, Mail, BadgeCheck, Shield, Building2, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ import {
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
+import { useState } from 'react';
 
 export default function UserTable({
   users,
@@ -30,7 +31,6 @@ export default function UserTable({
   resetFilters,
   setOpenDialog
 }) {
-  // Function to get initials for avatar
   const getInitials = (name) => {
     if (!name) return 'U';
     const names = name.split(' ');
@@ -39,12 +39,8 @@ export default function UserTable({
       : names[0][0];
   };
 
-  // Function to determine what to display in the institute column based on role
   const renderInstituteColumn = (user) => {
-    // Default to showing both if currentUser isn't loaded yet
     const userRole = currentUser?.role || 'super_admin';
-    
-    // For super admin, show both institute and department
     if (userRole === 'super_admin') {
       return (
         <div className="flex flex-col">
@@ -62,7 +58,6 @@ export default function UserTable({
         </div>
       );
     }
-    // For campus_admin, show only department (no admin)
     return (
       <div className="flex items-center text-sm">
         <Layers className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
@@ -73,8 +68,39 @@ export default function UserTable({
     );
   };
 
-  // Get the current user's role safely
   const currentUserRole = currentUser?.role || 'super_admin';
+
+  // --- Pagination state ---
+  const itemsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    if (page > 0 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const startPage = Math.max(2, currentPage - 1);
+      const endPage = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = startPage; i <= endPage; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   return (
     <div className="rounded-lg border shadow-sm overflow-hidden">
@@ -119,8 +145,8 @@ export default function UserTable({
                 </TableCell>
               </TableRow>
             ))
-          ) : filteredUsers.length > 0 ? (
-            filteredUsers.map((user) => (
+          ) : paginatedUsers.length > 0 ? (
+            paginatedUsers.map((user) => (
               <TableRow key={user._id} className="hover:bg-gray-50/50">
                 <TableCell>
                   <div className="flex items-center space-x-3">
@@ -256,6 +282,51 @@ export default function UserTable({
           )}
         </TableBody>
       </Table>
+
+      {/* Pagination */}
+      
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 py-4 border-t bg-white">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="h-8 w-8"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {renderPageNumbers().map((page, idx) =>
+            page === '...' ? (
+              <span key={idx} className="px-2 text-gray-500">...</span>
+            ) : (
+              <Button
+                key={idx}
+                variant={currentPage === page ? "default" : "outline"}
+                size="icon"
+                className={`h-8 w-8 ${currentPage === page ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+                onClick={() => handlePageChange(page)}
+              >
+                {page}
+              </Button>
+            )
+          )}
+          <span className="ml-4 text-sm text-gray-500">
+  {filteredUsers.length} total
+</span>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="h-8 w-8"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

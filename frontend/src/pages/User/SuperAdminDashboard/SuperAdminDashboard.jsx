@@ -725,6 +725,41 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
+              {/* Summary cards */}
+        {!selectedUser && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatsCard
+              title="Total Publications"
+              value={stats.totalPapers}
+              subtitle={`Avg ${stats.avgPapersPerFaculty} per faculty`}
+              icon={<Building className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            />
+            <StatsCard
+              title="Active Faculty"
+              value={`${stats.activeFaculty}/${stats.totalFaculty}`}
+              subtitle="Contributing in current scope"
+              icon={<Users className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            />
+            <StatsCard
+              title="Q1 Publications"
+              value={(stats.qDistribution || {}).Q1 || 0}
+              subtitle={`${stats.q1Percentage}% of total`}
+              icon={<Award className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            />
+            <StatsCard
+              title="Subject Areas"
+              value={Object.keys(stats.subjectDistribution || {}).length}
+              subtitle="Distinct areas in scope"
+              icon={<Shield className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            />
+          </div>
+        )}
+
+        
         {/* Finder */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
@@ -770,39 +805,7 @@ export default function SuperAdminDashboard() {
           />
         </div>
 
-        {/* Summary cards */}
-        {!selectedUser && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatsCard
-              title="Total Publications"
-              value={stats.totalPapers}
-              subtitle={`Avg ${stats.avgPapersPerFaculty} per faculty`}
-              icon={<Building className="h-8 w-8 text-blue-600" />}
-              loading={scopeLoading}
-            />
-            <StatsCard
-              title="Active Faculty"
-              value={`${stats.activeFaculty}/${stats.totalFaculty}`}
-              subtitle="Contributing in current scope"
-              icon={<Users className="h-8 w-8 text-blue-600" />}
-              loading={scopeLoading}
-            />
-            <StatsCard
-              title="Q1 Publications"
-              value={(stats.qDistribution || {}).Q1 || 0}
-              subtitle={`${stats.q1Percentage}% of total`}
-              icon={<Award className="h-8 w-8 text-blue-600" />}
-              loading={scopeLoading}
-            />
-            <StatsCard
-              title="Subject Areas"
-              value={Object.keys(stats.subjectDistribution || {}).length}
-              subtitle="Distinct areas in scope"
-              icon={<Shield className="h-8 w-8 text-blue-600" />}
-              loading={scopeLoading}
-            />
-          </div>
-        )}
+        
 
         {/* Analytics */}
         {!selectedUser && (
