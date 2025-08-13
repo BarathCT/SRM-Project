@@ -163,8 +163,20 @@ export default function Navbar() {
     return user.email || '';
   };
 
+  // Updated handleManageUsers function to navigate to correct path based on role
   const handleManageUsers = () => {
-    navigate('/admin/users'); // or any route for user management
+    if (!user.role) return;
+    
+    switch(user.role) {
+      case 'super_admin':
+        navigate('/super-admin/users');
+        break;
+      case 'campus_admin':
+        navigate('/campus-admin/users');
+        break;
+      default:
+        navigate('/users'); // fallback for other admin roles
+    }
   };
 
   // Determine dashboard path based on role
@@ -179,7 +191,7 @@ export default function Navbar() {
         return '/admin';
       case 'faculty':
       case 'scholar':
-        return '/dashboard';
+        return '/faculty';
       default:
         return '/';
     }
@@ -377,7 +389,7 @@ export default function Navbar() {
             
             {canManageUsers && (
               <DropdownMenuItem 
-                onClick={() => navigate("/users")}
+                onClick={handleManageUsers}
                 className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
               >
                 <Users className="mr-2 h-4 w-4 text-gray-500" />

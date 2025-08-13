@@ -43,6 +43,7 @@ import {
   Download,
   Users,
   Building,
+  Shield,
 } from "lucide-react";
 
 export default function PublicationsFilterCard({
@@ -85,9 +86,113 @@ export default function PublicationsFilterCard({
   onExportFieldsChange,
   onExport,
 
-  // campus admin flag
+  // role flags
   showCampusFilters = false,
+  isSuperAdmin = false,
+  userRole = "user", // "user", "campus_admin", "super_admin"
 }) {
+  // Define field groups based on role
+  const getFieldGroups = () => {
+    const baseEssentialFields = ["title", "authors", "journal", "publisher", "year", "qRating"];
+    const baseAdditionalFields = Object.keys(exportFields || {}).filter(
+      (f) => !baseEssentialFields.includes(f)
+    );
+
+    if (isSuperAdmin || userRole === "super_admin") {
+      return {
+        essential: [...baseEssentialFields, "claimedBy", "department", "campus"],
+        administrative: ["publicationId", "authorNo", "isStudentScholar", "studentScholars", "typeOfIssue"],
+        technical: ["doi", "pageNo", "publicationType", "subjectArea", "subjectCategories"],
+        metadata: baseAdditionalFields.filter(f => 
+          !["publicationId", "authorNo", "isStudentScholar", "studentScholars", "typeOfIssue", 
+            "doi", "pageNo", "publicationType", "subjectArea", "subjectCategories",
+            "claimedBy", "department", "campus"].includes(f)
+        )
+      };
+    } else if (showCampusFilters || userRole === "campus_admin") {
+      return {
+        essential: [...baseEssentialFields, "claimedBy", "department"],
+        additional: baseAdditionalFields.filter(f => !["claimedBy", "department"].includes(f))
+      };
+    } else {
+      return {
+        essential: baseEssentialFields,
+        additional: baseAdditionalFields
+      };
+    }
+  };
+
+  const fieldGroups = getFieldGroups();
+
+  const getFieldLabel = (field) => {
+    const labels = {
+      'qRating': 'Q Rating',
+      'doi': 'DOI',
+      'publicationType': 'Publication Type',
+      'subjectArea': 'Subject Area',
+      'subjectCategories': 'Subject Categories',
+      'claimedBy': 'Claimed By',
+      'authorNo': 'Author Number',
+      'isStudentScholar': 'Student Scholar',
+      'studentScholars': 'Scholar Names',
+      'typeOfIssue': 'Type of Issue',
+      'publicationId': 'Publication ID',
+      'pageNo': 'Page Numbers',
+      'department': 'Department',
+      'campus': 'Campus',
+    };
+    
+    return labels[field] || field.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase());
+  };
+
+  const renderFieldGroup = (fields, groupTitle, icon = null) => {
+    if (!fields || fields.length === 0) return null;
+
+    return (
+      <div>
+        <h4 className="font-medium text-sm text-gray-700 mb-3 flex items-center gap-2">
+          {icon && icon}
+          {groupTitle}
+        </h4>
+        <div className="grid grid-cols-2 gap-3">
+          {fields.map((field) => (
+            <div key={field} className="flex items-center space-x-2">
+              <Checkbox
+                id={field}
+                checked={exportFields?.[field] || false}
+                onCheckedChange={(v) => onExportFieldsChange((prev) => ({ ...prev, [field]: !!v }))}
+                className="border-blue-300"
+              />
+              <label htmlFor={field} className="text-sm font-medium text-gray-700">
+                {getFieldLabel(field)}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const getRoleDescription = () => {
+    if (isSuperAdmin || userRole === "super_admin") {
+      return "Filter and manage all system publications with administrative controls";
+    } else if (showCampusFilters || userRole === "campus_admin") {
+      return "Filter and manage institute publications";
+    } else {
+      return "Filter and manage your publications";
+    }
+  };
+
+  const getSearchPlaceholder = () => {
+    if (isSuperAdmin || userRole === "super_admin") {
+      return "Search across all campuses, departments, faculty, and publications...";
+    } else if (showCampusFilters || userRole === "campus_admin") {
+      return "Search title, journal, authors, or faculty...";
+    } else {
+      return "Search title, journal, or authors…";
+    }
+  };
+
   return (
     <Card className="mb-6 border border-blue-100 shadow-md bg-white">
       <CardHeader className="bg-blue-50 border-b border-blue-100">
@@ -96,9 +201,12 @@ export default function PublicationsFilterCard({
             <CardTitle className="flex items-center gap-2 text-gray-900">
               <Filter className="h-5 w-5 text-blue-600" />
               Filters & Actions
+              {(isSuperAdmin || userRole === "super_admin") && (
+                <Shield className="h-4 w-4 text-amber-600" title="Super Admin" />
+              )}
             </CardTitle>
             <CardDescription className="text-gray-600">
-              {showCampusFilters ? "Filter and manage institute publications" : "Filter and manage your publications"}
+              {getRoleDescription()}
             </CardDescription>
           </div>
 
@@ -162,74 +270,58 @@ export default function PublicationsFilterCard({
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Custom Export
+                {(isSuperAdmin || userRole === "super_admin") ? "Advanced Export" : "Custom Export"}
               </Button>
 
-              <DialogContent className="max-w-2xl bg-white">
+              <DialogContent className="max-w-3xl bg-white">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 text-gray-900">
                     <Settings className="h-5 w-5 text-blue-600" />
-                    Customize Export Fields
+                    {(isSuperAdmin || userRole === "super_admin") ? "Advanced Export Configuration" : "Customize Export Fields"}
+                    {(isSuperAdmin || userRole === "super_admin") && (
+                      <Shield className="h-4 w-4 text-amber-600" />
+                    )}
                   </DialogTitle>
                   <DialogDescription className="text-gray-600">
                     Select the fields to include in your CSV export.
+                    {(isSuperAdmin || userRole === "super_admin") && " As super admin, you have access to all system fields."}
                   </DialogDescription>
                 </DialogHeader>
 
                 <ScrollArea className="max-h-96">
                   <div className="space-y-4 p-4">
-                    <div>
-                      <h4 className="font-medium text-sm text-gray-700 mb-3">Essential Fields</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        {["title", "authors", "journal", "publisher", "year", "qRating"].map((field) => (
-                          <div key={field} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={field}
-                              checked={exportFields[field]}
-                              onCheckedChange={(v) => onExportFieldsChange((prev) => ({ ...prev, [field]: !!v }))}
-                              className="border-blue-300"
-                            />
-                            <label htmlFor={field} className="text-sm font-medium capitalize text-gray-700">
-                              {field === 'qRating' ? 'Q Rating' : field.replace(/([A-Z])/g, " $1")}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    {/* Essential Fields */}
+                    {renderFieldGroup(fieldGroups.essential, "Essential Fields")}
 
                     <Separator className="bg-blue-100" />
 
-                    <div>
-                      <h4 className="font-medium text-sm text-gray-700 mb-3">Additional Fields</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        {Object.keys(exportFields)
-                          .filter((f) => !["title", "authors", "journal", "publisher", "year", "qRating"].includes(f))
-                          .map((field) => (
-                            <div key={field} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={field}
-                                checked={exportFields[field]}
-                                onCheckedChange={(v) => onExportFieldsChange((prev) => ({ ...prev, [field]: !!v }))}
-                                className="border-blue-300"
-                              />
-                              <label htmlFor={field} className="text-sm font-medium capitalize text-gray-700">
-                                {field === 'doi' ? 'DOI' : 
-                                 field === 'publicationType' ? 'Publication Type' :
-                                 field === 'subjectArea' ? 'Subject Area' :
-                                 field === 'subjectCategories' ? 'Subject Categories' :
-                                 field === 'claimedBy' ? 'Claimed By' :
-                                 field === 'authorNo' ? 'Author Number' :
-                                 field === 'isStudentScholar' ? 'Student Scholar' :
-                                 field === 'studentScholars' ? 'Scholar Names' :
-                                 field === 'typeOfIssue' ? 'Type of Issue' :
-                                 field === 'publicationId' ? 'Publication ID' :
-                                 field === 'pageNo' ? 'Page Numbers' :
-                                 field.replace(/([A-Z])/g, " $1")}
-                              </label>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
+                    {/* Role-specific field groups */}
+                    {(isSuperAdmin || userRole === "super_admin") ? (
+                      <>
+                        {renderFieldGroup(
+                          fieldGroups.administrative, 
+                          "Administrative Fields", 
+                          <Shield className="h-4 w-4 text-amber-600" />
+                        )}
+                        
+                        <Separator className="bg-blue-100" />
+                        
+                        {renderFieldGroup(
+                          fieldGroups.technical, 
+                          "Technical Fields", 
+                          <Settings className="h-4 w-4 text-blue-600" />
+                        )}
+                        
+                        {fieldGroups.metadata && fieldGroups.metadata.length > 0 && (
+                          <>
+                            <Separator className="bg-blue-100" />
+                            {renderFieldGroup(fieldGroups.metadata, "Metadata Fields")}
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      renderFieldGroup(fieldGroups.additional, "Additional Fields")
+                    )}
                   </div>
                 </ScrollArea>
 
@@ -237,7 +329,11 @@ export default function PublicationsFilterCard({
                   <Button variant="outline" onClick={() => onExportDialogOpenChange(false)} className="border-gray-300">
                     Cancel
                   </Button>
-                  <Button onClick={onExport} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button 
+                    onClick={onExport} 
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={!exportFields || Object.values(exportFields).every(v => !v)}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Export CSV
                   </Button>
@@ -249,13 +345,13 @@ export default function PublicationsFilterCard({
       </CardHeader>
 
       <CardContent className="pt-6 bg-white">
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${showCampusFilters ? 'lg:grid-cols-8' : 'lg:grid-cols-6'}`}>
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${showCampusFilters || isSuperAdmin ? 'lg:grid-cols-8' : 'lg:grid-cols-6'}`}>
           {/* Search */}
-          <div className={showCampusFilters ? "lg:col-span-2" : "lg:col-span-2"}>
+          <div className={(showCampusFilters || isSuperAdmin) ? "lg:col-span-2" : "lg:col-span-2"}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder={showCampusFilters ? "Search title, journal, authors, or faculty..." : "Search title, journal, or authors…"}
+                placeholder={getSearchPlaceholder()}
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}
                 className="pl-10 border-blue-200 focus:border-blue-500 focus:ring-blue-500 bg-white"
@@ -323,8 +419,8 @@ export default function PublicationsFilterCard({
             </SelectContent>
           </Select>
 
-          {/* Campus Admin Specific Filters */}
-          {showCampusFilters && (
+          {/* Campus Admin & Super Admin Specific Filters */}
+          {(showCampusFilters || isSuperAdmin || userRole === "campus_admin" || userRole === "super_admin") && (
             <>
               {/* Author Filter */}
               <Select value={selectedAuthor} onValueChange={onAuthorChange}>
@@ -398,13 +494,13 @@ export default function PublicationsFilterCard({
                   Subject: {selectedSubjectArea.length > 20 ? selectedSubjectArea.substring(0, 20) + '...' : selectedSubjectArea}
                 </Badge>
               )}
-              {showCampusFilters && selectedAuthor !== "all" && (
+              {(showCampusFilters || isSuperAdmin) && selectedAuthor !== "all" && (
                 <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300">
                   <Users className="h-3 w-3 mr-1" />
                   Author: {selectedAuthor}
                 </Badge>
               )}
-              {showCampusFilters && selectedDepartment !== "all" && (
+              {(showCampusFilters || isSuperAdmin) && selectedDepartment !== "all" && (
                 <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-300">
                   <Building className="h-3 w-3 mr-1" />
                   Dept: {selectedDepartment}
