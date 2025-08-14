@@ -229,7 +229,7 @@ export default function PublicationsTable({
 
   return (
     <Card className="border border-blue-100 shadow-md bg-white">
-      <CardHeader className="bg-blue-50 border-b border-blue-100">
+      <CardHeader className="bg-white-50 border-b border-blue-100">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-gray-900">
@@ -291,11 +291,11 @@ export default function PublicationsTable({
                 <thead className="bg-blue-50 border-b border-blue-100">
                   <tr>
                     <th className="py-4 px-4 text-left">
-                      <Checkbox
+                      {/* <Checkbox
                         checked={selectAll}
                         onCheckedChange={onToggleSelectAll}
                         className="border-blue-300"
-                      />
+                      /> */}
                     </th>
                     <th className="py-4 px-4 text-left font-semibold text-gray-900">Publication Details</th>
                     {showAuthorInfo && (
