@@ -99,7 +99,7 @@ export default function DashboardHeader({
   };
 
   return (
-    <div className={cn("mb-8 border-b border-blue-100 pb-6 bg-gradient-to-r from-blue-50/50 to-white", className)}>
+    <div className={cn("mb-8  border-blue-100 pb-6 bg-gradient-to-r from-white-50/50 to-white", className)}>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         {/* Left: Title and meta */}
         <div className="flex-1">

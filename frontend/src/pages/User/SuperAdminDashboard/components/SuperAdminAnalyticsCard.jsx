@@ -218,7 +218,7 @@ export default function SuperAdminAnalyticsCard({
   if (loading) {
     return (
       <Card className="border border-blue-100 shadow-md bg-white">
-        <CardHeader className="bg-blue-50 border-b border-blue-100">
+        <CardHeader className="bg-white-50 border-b border-blue-100">
           <CardTitle className="flex items-center gap-2 text-gray-900">
             <BarChart3 className="h-5 w-5 text-blue-600" />
             Comparative Analytics
@@ -307,7 +307,7 @@ export default function SuperAdminAnalyticsCard({
 
   return (
     <Card className="border border-blue-100 shadow-md bg-white">
-      <CardHeader className="bg-blue-50 border-b border-blue-100">
+      <CardHeader className="bg-white-50 border-b border-blue-100">
         <CardTitle className="flex items-center gap-2 text-gray-900">
           <BarChart3 className="h-5 w-5 text-blue-600" />
           Comparative Analytics

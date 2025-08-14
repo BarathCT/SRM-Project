@@ -736,9 +736,9 @@ export default function SuperAdminDashboard() {
               loading={scopeLoading}
             />
             <StatsCard
-              title="Active Faculty"
-              value={`${stats.activeFaculty}/${stats.totalFaculty}`}
-              subtitle="Contributing in current scope"
+              title="Total Faculty"
+              value={`${stats.totalFaculty}`}
+              subtitle=" "
               icon={<Users className="h-8 w-8 text-blue-600" />}
               loading={scopeLoading}
             />
@@ -749,13 +749,13 @@ export default function SuperAdminDashboard() {
               icon={<Award className="h-8 w-8 text-blue-600" />}
               loading={scopeLoading}
             />
-            <StatsCard
+            {/* <StatsCard
               title="Subject Areas"
               value={Object.keys(stats.subjectDistribution || {}).length}
               subtitle="Distinct areas in scope"
               icon={<Shield className="h-8 w-8 text-blue-600" />}
               loading={scopeLoading}
-            />
+            /> */}
           </div>
         )}
 
