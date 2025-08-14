@@ -203,8 +203,8 @@ export default function CampusAnalyticsCard({ stats, loading }) {
   if (!chartData) return null;
 
   return (
-    <Card className="border border-blue-100 shadow-md bg-white">
-      <CardHeader className="bg-blue-50 border-b border-blue-100">
+    <Card className="border border-white-100 shadow-md bg-white">
+      <CardHeader className="bg-white-50 border-b border-blue-100">
         <CardTitle className="flex items-center gap-2 text-gray-900">
           <BarChart3 className="h-5 w-5 text-blue-600" />
           Campus Analytics

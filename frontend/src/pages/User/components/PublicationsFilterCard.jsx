@@ -195,7 +195,7 @@ export default function PublicationsFilterCard({
 
   return (
     <Card className="mb-6 border border-blue-100 shadow-md bg-white">
-      <CardHeader className="bg-blue-50 border-b border-blue-100">
+      <CardHeader className="bg-white-50 border-b border-blue-100">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2 text-gray-900">
