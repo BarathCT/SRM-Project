@@ -114,7 +114,7 @@ const FacultyDetailsCard = ({ faculty, papers, onClear }) => {
 
   return (
     <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+      <CardHeader className="bg-gradient-to-r from-white-50 to-white-50 border-b border-grey-200">
         <div className="flex items-start justify-between">
           <div className="space-y-3">
             {/* Header with name and role */}
