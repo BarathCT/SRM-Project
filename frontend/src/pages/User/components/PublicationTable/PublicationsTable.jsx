@@ -44,45 +44,25 @@ import EditPublicationDialog from "./EditPublicationDialog";
 /**
  * PublicationsTable
  *
- * Integrated EditPublicationDialog usage:
- * - Opens an in-place dialog for editing when "Edit Publication" is clicked.
- *
- * New props:
- * - onUpdatePaper: (updatedPaper) => (void | Promise)   // required to persist changes
- * - isUpdatingPaper: boolean                            // optional loading state while saving
- *
- * Original onEdit prop is no longer required. (Ignored if provided.)
+ * This version allows campus admin (showAuthorInfo=true) to select ANY publication (checkbox enabled for all).
  */
 export default function PublicationsTable({
-  // data
   papers,
-
-  // selection
   selectedPapers,
-  selectAll,              // (unused externally here but preserved for compatibility)
-  onToggleSelectAll,      // (unused because no header checkbox in provided code)
+  selectAll,
+  onToggleSelectAll,
   onToggleSelect,
-
-  // expand
   expandedIndex,
   onToggleExpand,
-
-  // delete action
   onDelete,
   deletingId,
-
-  // filters helper
   hasActiveFilters,
   onClearFilters,
-
-  // campus admin specific
   showAuthorInfo = false,
   users = [],
   currentUser,
   canEditPaper,
   canDeletePaper,
-
-  // NEW editing callbacks
   onUpdatePaper = () => {},
   isUpdatingPaper = false,
 }) {
@@ -115,17 +95,14 @@ export default function PublicationsTable({
         if (result && typeof result.then === "function") {
           await result;
         }
-        // Close dialog on successful save
         closeEditDialog();
       } catch (err) {
-        // Leave dialog open for retry
         console.error("Failed to update publication:", err);
       }
     },
     [onUpdatePaper, closeEditDialog]
   );
 
-  // Reset pagination on data change
   useEffect(() => {
     setPage(1);
   }, [papers]);
@@ -234,7 +211,6 @@ export default function PublicationsTable({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-
         {pages.map((p, idx) =>
           typeof p === "number" ? (
             <Button
@@ -254,7 +230,6 @@ export default function PublicationsTable({
             </span>
           )
         )}
-
         <Button
           variant="outline"
           size="sm"
@@ -354,45 +329,27 @@ export default function PublicationsTable({
                         : null;
                       const isOwn = isOwnPaper(paper);
                       const canEdit =
-                        !canEditPaper || canEditPaper(paper); // if no checker provided, allow
+                        !canEditPaper || canEditPaper(paper);
                       const canDelete =
                         !canDeletePaper || canDeletePaper(paper);
-                      const isSelectable =
-                        !showAuthorInfo || canDelete; // in institute view only own deletable/ selectable
+
+                      // Checkbox: campus admin can select any paper (restriction removed)
+                      const isSelectable = true;
+
                       const showDropdownMenu = !showAuthorInfo || isOwn;
 
                       return (
                         <React.Fragment key={paper._id}>
                           <tr
-                            className={`hover:bg-blue-50/60 transition-colors ${
-                              !isSelectable ? "bg-gray-50/30" : ""
-                            }`}
+                            className={`hover:bg-blue-50/60 transition-colors`}
                           >
                             <td className="py-4 px-4">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <Checkbox
-                                        checked={selectedPapers.has(paper._id)}
-                                        onCheckedChange={() =>
-                                          onToggleSelect(paper._id)
-                                        }
-                                        className="border-blue-300"
-                                        disabled={!isSelectable}
-                                      />
-                                    </div>
-                                  </TooltipTrigger>
-                                  {!isSelectable && (
-                                    <TooltipContent>
-                                      <p>
-                                        You can only select your own
-                                        publications
-                                      </p>
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                              </TooltipProvider>
+                              <Checkbox
+                                checked={selectedPapers.has(paper._id)}
+                                onCheckedChange={() => onToggleSelect(paper._id)}
+                                className="border-blue-300"
+                                disabled={false}
+                              />
                             </td>
                             <td className="py-4 px-4 align-top">
                               <div className="space-y-2">
@@ -833,7 +790,6 @@ export default function PublicationsTable({
                   </tbody>
                 </table>
               </div>
-
               {/* Footer */}
               <div className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-t border-blue-100 bg-white">
                 <span className="text-sm text-gray-600">
