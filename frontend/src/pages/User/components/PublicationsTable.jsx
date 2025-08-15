@@ -250,7 +250,7 @@ export default function PublicationsTable({
           </div>
           {!noResults && (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <Checkbox
                   checked={selectAll}
                   onCheckedChange={onToggleSelectAll}
@@ -259,7 +259,7 @@ export default function PublicationsTable({
                 <span className="text-sm text-gray-700 font-medium">
                   {showAuthorInfo ? "Select Your Papers" : "Select Visible"}
                 </span>
-              </div>
+              </div> */}
             </div>
           )}
         </div>
@@ -288,7 +288,7 @@ export default function PublicationsTable({
           <>
             <div className="overflow-x-auto">
               <table className="w-full bg-white">
-                <thead className="bg-blue-50 border-b border-blue-100">
+                <thead className="bg-white-50 border-b border-blue-100">
                   <tr>
                     <th className="py-4 px-4 text-left">
                       {/* <Checkbox

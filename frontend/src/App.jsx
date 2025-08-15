@@ -30,6 +30,7 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
             <Route path="/campus-admin" element={<CampusAdminDashboard />} />
             <Route path="/campus-admin/users" element={<UserManagement />} />
+            <Route path="/campus-admin/upload" element={<UploadPage />} />
           </Route>
 
 
