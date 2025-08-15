@@ -15,11 +15,11 @@ import {
 
 import DashboardHeader from "../components/dashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
-import PublicationsTable from "../components/PublicationsTable";
+import PublicationsTable from "../components/PublicationTable/PublicationsTable";
 import StatsCard from "../components/StatsCard";
 import CampusAnalyticsCard from "../CampusAdminDashboard/components/CampusAnalyticsCard";
 import FacultyDetailsCard from "../CampusAdminDashboard/components/FacultyDetailsCard";
-import EditPublicationDialog from "../components/EditPublicationDialog";
+import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
 import SuperUserFinder from "./components/SuperUserFinder";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 import SuperAdminAnalyticsCard from "./components/SuperAdminAnalyticsCard";

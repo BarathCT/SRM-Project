@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import { User, LogOut, ChevronDown, LayoutDashboard, Settings, Upload, Users, FilePlus, AlertCircle } from 'lucide-react';
+import {
+  User,
+  LogOut,
+  ChevronDown,
+  LayoutDashboard,
+  Settings,
+  Upload,
+  Users,
+  FilePlus,
+  AlertCircle
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -40,7 +50,7 @@ export default function Navbar() {
 
         setUser({
           ...decoded,
-          ...(data.data || data)
+            ...(data.data || data)
         });
       } catch (err) {
         console.error('Invalid token or failed to fetch user data');
@@ -59,16 +69,22 @@ export default function Navbar() {
     toast.success('You have been logged out successfully');
   };
 
-  // Check if faculty user has at least one Author ID
+  /**
+   * Author ID requirement:
+   * Now BOTH faculty and campus_admin must have at least one Author ID
+   * (Scopus, SCI, or Web of Science) to upload research papers.
+   */
+  const ROLES_REQUIRING_AUTHOR_ID = ['faculty', 'campus_admin'];
+
   const checkAuthorIdRequirement = async () => {
-    // Only faculty need Author IDs - campus admins are exempt
-    if (!user || user.role !== 'faculty') {
+    if (!user || !ROLES_REQUIRING_AUTHOR_ID.includes(user.role)) {
+      // Other roles are exempt
       return true;
     }
 
     const hasAtLeastOneAuthorId = !!(
-      user.authorId?.scopus || 
-      user.authorId?.sci || 
+      user.authorId?.scopus ||
+      user.authorId?.sci ||
       user.authorId?.webOfScience
     );
 
@@ -77,13 +93,13 @@ export default function Navbar() {
 
   const handleUploadClick = async () => {
     setLoading(true);
-    
+
     try {
       const canUpload = await checkAuthorIdRequirement();
-      
+
       if (!canUpload) {
         toast.warning(
-          'Author ID Required: You need to add at least one Author ID (Scopus, SCI, or Web of Science) before uploading research papers. Please go to Settings to add your Author IDs.',
+          'Author ID Required: You must add at least one Author ID (Scopus, SCI, or Web of Science) before uploading research papers.',
           {
             duration: 8000,
             action: {
@@ -95,9 +111,7 @@ export default function Navbar() {
         return;
       }
 
-      // If validation passes, navigate to upload page
       navigate(getUploadPath());
-      
     } catch (error) {
       console.error('Error checking Author ID requirement:', error);
       toast.error('Unable to verify Author ID requirements. Please try again.');
@@ -108,33 +122,31 @@ export default function Navbar() {
 
   const handleUploadFromDropdown = async () => {
     setLoading(true);
-    
+
     try {
       const canUpload = await checkAuthorIdRequirement();
-      
+
       if (!canUpload) {
         toast.academic(
-          'Research Upload Restricted: Faculty members must have at least one Author ID (Scopus, SCI, or Web of Science) to upload research papers.',
+          'Upload Restricted: Add at least one Author ID (Scopus, SCI, or Web of Science) to proceed.',
           {
             duration: 10000
           }
         );
-        
-        // Show additional info toast with action
+
         setTimeout(() => {
           toast.info(
-            'To add your Author IDs, go to Account Settings and fill in your research identifiers.',
+            'Open Account Settings to add your research identifiers.',
             {
               duration: 8000
             }
           );
         }, 1000);
-        
+
         return;
       }
 
-      navigate("/upload");
-      
+      navigate(getUploadPath());
     } catch (error) {
       console.error('Error checking Author ID requirement:', error);
       toast.error('Unable to verify upload permissions. Please try again.');
@@ -145,30 +157,24 @@ export default function Navbar() {
 
   if (!user) return null;
 
-  // Get initials from full name or email for avatar fallback
   const getInitials = (name) => {
     if (!name) return 'US';
     const names = name.trim().split(' ');
     return names.map(n => n.charAt(0)).join('').slice(0, 2).toUpperCase();
   };
 
-  // Get display name - fallback from email if fullName doesn't exist
   const getDisplayName = () => {
     if (user.fullName) return user.fullName;
     if (user.email) return user.email.split('@')[0];
     return 'User';
   };
 
-  // Get email or return empty string if undefined
-  const getEmail = () => {
-    return user.email || '';
-  };
+  const getEmail = () => user.email || '';
 
-  // Updated handleManageUsers function to navigate to correct path based on role
   const handleManageUsers = () => {
     if (!user.role) return;
-    
-    switch(user.role) {
+
+    switch (user.role) {
       case 'super_admin':
         navigate('/super-admin/users');
         break;
@@ -176,14 +182,13 @@ export default function Navbar() {
         navigate('/campus-admin/users');
         break;
       default:
-        navigate('/users'); // fallback for other admin roles
+        navigate('/users');
     }
   };
 
-  // Determine dashboard path based on role
   const getDashboardPath = () => {
     if (!user.role) return '/';
-    switch(user.role) {
+    switch (user.role) {
       case 'super_admin':
         return '/super-admin';
       case 'campus_admin':
@@ -200,19 +205,17 @@ export default function Navbar() {
 
   const getUploadPath = () => {
     if (!user.role) return '/';
-    switch(user.role) {
+    switch (user.role) {
       case 'faculty':
         return '/faculty/upload';
       case 'campus_admin':
-        return '/campus-admin/upload'; // Specific route for campus admin uploads
+        return '/campus-admin/upload';
       default:
         return '/upload';
     }
   };
 
-  // Check if user can upload research papers
-  // SHOW FOR: campus_admin, faculty, scholar, admin
-  // HIDE FOR: super_admin
+  // Roles permitted to see upload button
   const canUpload = user.role && [
     'campus_admin',
     'admin',
@@ -220,16 +223,18 @@ export default function Navbar() {
     'scholar'
   ].includes(user.role);
 
-  // Check if user can manage users
+  // Roles permitted to manage users
   const canManageUsers = user.role && ['super_admin', 'campus_admin', 'admin'].includes(user.role);
 
-  // Check if faculty has Author IDs for visual indicator
-  // (Only applies to faculty, campus admins don't need this)
-  const hasAuthorIds = user.role === 'faculty' ? !!(
-    user.authorId?.scopus || 
-    user.authorId?.sci || 
-    user.authorId?.webOfScience
-  ) : true;
+  // Author ID presence indicator applies to both faculty and campus_admin now
+  const requiresAuthorIds = ROLES_REQUIRING_AUTHOR_ID.includes(user.role);
+  const hasAuthorIds = !requiresAuthorIds
+    ? true
+    : !!(
+      user.authorId?.scopus ||
+      user.authorId?.sci ||
+      user.authorId?.webOfScience
+    );
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b px-6 py-3 flex items-center justify-between">
@@ -252,17 +257,17 @@ export default function Navbar() {
 
       {/* Right: Actions and Profile Dropdown */}
       <div className="flex items-center gap-4">
-        {/* Upload Button (for campus_admin, faculty, scholar, admin) */}
+        {/* Upload Button */}
         {canUpload && (
           <div className="relative">
-            <Button 
+            <Button
               variant="default"
               size="sm"
               onClick={handleUploadClick}
               disabled={loading}
               className={`gap-2 shadow-sm transition-colors ${
-                hasAuthorIds 
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                hasAuthorIds
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
                   : 'bg-orange-500 hover:bg-orange-600 text-white'
               }`}
             >
@@ -274,19 +279,19 @@ export default function Navbar() {
               <span className="hidden sm:inline">Upload Research</span>
               <span className="sm:hidden">Upload</span>
             </Button>
-            
-            {/* Warning indicator for faculty without Author IDs */}
-            {user.role === 'faculty' && !hasAuthorIds && (
+
+            {/* Warning indicator for required roles without Author IDs */}
+            {requiresAuthorIds && !hasAuthorIds && (
               <div className="absolute -top-1 -right-1">
                 <AlertCircle className="h-4 w-4 text-orange-500 bg-white rounded-full" />
               </div>
             )}
           </div>
         )}
-        
-        {/* User Management Button (for super_admin, campus_admin, admin) */}
+
+        {/* User Management Button */}
         {canManageUsers && (
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={handleManageUsers}
@@ -297,7 +302,7 @@ export default function Navbar() {
             <span className="sm:hidden">Users</span>
           </Button>
         )}
-        
+
         {/* Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -316,12 +321,12 @@ export default function Navbar() {
                   {getDisplayName()}
                 </span>
                 {user.role && (
-                  <Badge 
+                  <Badge
                     variant={
                       user.role === 'super_admin' ? 'default' :
-                      user.role === 'campus_admin' ? 'secondary' :
-                      user.role === 'admin' ? 'outline' :
-                      'destructive'
+                        user.role === 'campus_admin' ? 'secondary' :
+                          user.role === 'admin' ? 'outline' :
+                            'destructive'
                     }
                     className="h-5 text-xs capitalize px-1.5"
                   >
@@ -353,12 +358,12 @@ export default function Navbar() {
                     {getEmail()}
                   </p>
                   {user.role && (
-                    <Badge 
+                    <Badge
                       variant={
                         user.role === 'super_admin' ? 'default' :
-                        user.role === 'campus_admin' ? 'secondary' :
-                        user.role === 'admin' ? 'outline' :
-                        'destructive'
+                          user.role === 'campus_admin' ? 'secondary' :
+                            user.role === 'admin' ? 'outline' :
+                              'destructive'
                       }
                       className="h-5 text-xs capitalize mt-1 w-fit"
                     >
@@ -370,8 +375,8 @@ export default function Navbar() {
                       {user.college}
                     </span>
                   )}
-                  {/* Author ID Status for Faculty Only */}
-                  {user.role === 'faculty' && (
+                  {/* Author ID Status for roles that require IDs */}
+                  {requiresAuthorIds && (
                     <div className="flex items-center gap-1 mt-1">
                       {hasAuthorIds ? (
                         <Badge variant="outline" className="h-4 text-xs text-green-600 border-green-300">
@@ -387,19 +392,19 @@ export default function Navbar() {
                 </div>
               </div>
             </DropdownMenuItem>
-            
+
             <DropdownMenuSeparator className="my-1" />
-            
-            <DropdownMenuItem 
+
+            <DropdownMenuItem
               onClick={() => navigate(getDashboardPath())}
               className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
             >
               <LayoutDashboard className="mr-2 h-4 w-4 text-gray-500" />
               Dashboard
             </DropdownMenuItem>
-            
+
             {canManageUsers && (
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleManageUsers}
                 className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
               >
@@ -407,9 +412,9 @@ export default function Navbar() {
                 Manage Users
               </DropdownMenuItem>
             )}
-            
+
             {canUpload && (
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleUploadFromDropdown}
                 disabled={loading}
                 className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
@@ -421,31 +426,29 @@ export default function Navbar() {
                     <FilePlus className="mr-2 h-4 w-4 text-gray-500" />
                   )}
                   Upload Research
-                  {/* Show warning only for faculty without Author IDs */}
-                  {user.role === 'faculty' && !hasAuthorIds && (
+                  {requiresAuthorIds && !hasAuthorIds && (
                     <AlertCircle className="ml-auto h-4 w-4 text-orange-500" />
                   )}
                 </div>
               </DropdownMenuItem>
             )}
-            
-            <DropdownMenuItem 
+
+            <DropdownMenuItem
               asChild
               className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
             >
               <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4 text-gray-500" />
                 Account Settings
-                {/* Show warning only for faculty without Author IDs */}
-                {user.role === 'faculty' && !hasAuthorIds && (
+                {requiresAuthorIds && !hasAuthorIds && (
                   <AlertCircle className="ml-auto h-4 w-4 text-orange-500" />
                 )}
               </Link>
             </DropdownMenuItem>
-            
+
             <DropdownMenuSeparator className="my-1" />
-            
-            <DropdownMenuItem 
+
+            <DropdownMenuItem
               onClick={handleLogout}
               className="px-2 py-1-5 text-sm text-red-600 rounded-md hover:bg-red-50 cursor-pointer"
             >
