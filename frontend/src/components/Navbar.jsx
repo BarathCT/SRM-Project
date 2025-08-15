@@ -61,8 +61,9 @@ export default function Navbar() {
 
   // Check if faculty user has at least one Author ID
   const checkAuthorIdRequirement = async () => {
+    // Only faculty need Author IDs - campus admins are exempt
     if (!user || user.role !== 'faculty') {
-      return true; // Non-faculty users can upload without Author IDs
+      return true;
     }
 
     const hasAtLeastOneAuthorId = !!(
@@ -202,18 +203,28 @@ export default function Navbar() {
     switch(user.role) {
       case 'faculty':
         return '/faculty/upload';
+      case 'campus_admin':
+        return '/campus-admin/upload'; // Specific route for campus admin uploads
       default:
         return '/upload';
     }
   };
 
   // Check if user can upload research papers
-  const canUpload = user.role && ['admin', 'faculty', 'scholar'].includes(user.role);
+  // SHOW FOR: campus_admin, faculty, scholar, admin
+  // HIDE FOR: super_admin
+  const canUpload = user.role && [
+    'campus_admin',
+    'admin',
+    'faculty',
+    'scholar'
+  ].includes(user.role);
 
   // Check if user can manage users
   const canManageUsers = user.role && ['super_admin', 'campus_admin', 'admin'].includes(user.role);
 
   // Check if faculty has Author IDs for visual indicator
+  // (Only applies to faculty, campus admins don't need this)
   const hasAuthorIds = user.role === 'faculty' ? !!(
     user.authorId?.scopus || 
     user.authorId?.sci || 
@@ -241,7 +252,7 @@ export default function Navbar() {
 
       {/* Right: Actions and Profile Dropdown */}
       <div className="flex items-center gap-4">
-        {/* Upload Button (for admin, faculty, scholar) */}
+        {/* Upload Button (for campus_admin, faculty, scholar, admin) */}
         {canUpload && (
           <div className="relative">
             <Button 
@@ -359,7 +370,7 @@ export default function Navbar() {
                       {user.college}
                     </span>
                   )}
-                  {/* Author ID Status for Faculty */}
+                  {/* Author ID Status for Faculty Only */}
                   {user.role === 'faculty' && (
                     <div className="flex items-center gap-1 mt-1">
                       {hasAuthorIds ? (
@@ -410,6 +421,7 @@ export default function Navbar() {
                     <FilePlus className="mr-2 h-4 w-4 text-gray-500" />
                   )}
                   Upload Research
+                  {/* Show warning only for faculty without Author IDs */}
                   {user.role === 'faculty' && !hasAuthorIds && (
                     <AlertCircle className="ml-auto h-4 w-4 text-orange-500" />
                   )}
@@ -424,6 +436,7 @@ export default function Navbar() {
               <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4 text-gray-500" />
                 Account Settings
+                {/* Show warning only for faculty without Author IDs */}
                 {user.role === 'faculty' && !hasAuthorIds && (
                   <AlertCircle className="ml-auto h-4 w-4 text-orange-500" />
                 )}
