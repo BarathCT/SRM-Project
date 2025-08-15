@@ -1,4 +1,3 @@
-// Sidebar removed. Faculty selection moved to DashboardHeader "Find Faculty" button.
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "axios";
 import { useToast } from "@/components/Toast";
@@ -127,7 +126,6 @@ const CampusAdminDashboard = () => {
       const payload = JSON.parse(atob(token.split(".")[1]));
       setCurrentUser(payload);
       await Promise.all([fetchInstitutePapers(payload), fetchMyPapers(), fetchUsers(payload)]);
-      toast.academic("Dashboard loaded successfully", { duration: 2500 });
     } catch (error) {
       console.error("Dashboard initialization error:", error);
       toast.error("Failed to load dashboard", { duration: 4000 });
@@ -377,37 +375,31 @@ const CampusAdminDashboard = () => {
 
   const myStats = useMemo(() => ({ total: myPapers.length }), [myPapers]);
 
-  // Selections
+  // Selections (restriction removed: campus admin can select/check any paper)
   const handleInstituteSelectAll = useCallback(() => {
     if (instituteSelectAll) {
       setInstituteSelectedPapers(new Set());
       setInstituteSelectAll(false);
       toast.info("Deselected all", { duration: 1500 });
     } else {
-      const deletablePapers = filteredInstitutePapers.filter((paper) => canDeletePaper(paper));
-      const ids = new Set(deletablePapers.map((p) => p._id));
+      // Allow all visible (filtered) papers to be selected, not just own
+      const ids = new Set(filteredInstitutePapers.map((p) => p._id));
       setInstituteSelectedPapers(ids);
-      setInstituteSelectAll(ids.size === deletablePapers.length);
-      toast.success(`Selected ${ids.size} of your publications`, { duration: 1500 });
+      setInstituteSelectAll(ids.size === filteredInstitutePapers.length && ids.size > 0);
+      toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
     }
   }, [instituteSelectAll, filteredInstitutePapers, toast]);
 
   const handleInstituteSelect = useCallback(
     (id) => {
-      const paper = filteredInstitutePapers.find((p) => p._id === id);
-      if (!paper || !canDeletePaper(paper)) {
-        toast.warning("You can only select your own publications", { duration: 2000 });
-        return;
-      }
+      // Allow selection of any paper in filtered list, no restriction
       const next = new Set(instituteSelectedPapers);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       setInstituteSelectedPapers(next);
-
-      const ownPapers = filteredInstitutePapers.filter((p) => canDeletePaper(p));
-      setInstituteSelectAll(next.size > 0 && next.size === ownPapers.length);
+      setInstituteSelectAll(next.size === filteredInstitutePapers.length && next.size > 0);
     },
-    [instituteSelectedPapers, filteredInstitutePapers, toast]
+    [instituteSelectedPapers, filteredInstitutePapers.length]
   );
 
   const handleMySelectAll = useCallback(() => {
@@ -418,7 +410,7 @@ const CampusAdminDashboard = () => {
     } else {
       const ids = new Set(filteredMyPapers.map((p) => p._id));
       setMySelectedPapers(ids);
-      setMySelectAll(true);
+      setMySelectAll(ids.size === filteredMyPapers.length);
       toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
     }
   }, [mySelectAll, filteredMyPapers, toast]);

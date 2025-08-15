@@ -66,7 +66,7 @@ export const SUBJECT_AREAS = {
     "Fluid Flow and Transfer Processes",
     "Process Chemistry and Technology",
   ],
-  Chemistry: [
+  "Chemistry": [
     "Analytical Chemistry",
     "Chemistry (miscellaneous)",
     "Electrochemistry",
@@ -114,14 +114,14 @@ export const SUBJECT_AREAS = {
     "Economics, Econometrics and Finance (miscellaneous)",
     "Finance",
   ],
-  Energy: [
+  "Energy": [
     "Energy Engineering and Power Technology",
     "Energy (miscellaneous)",
     "Fuel Technology",
     "Nuclear Energy and Engineering",
     "Renewable Energy, Sustainability and the Environment",
   ],
-  Engineering: [
+  "Engineering": [
     "Aerospace Engineering",
     "Automotive Engineering",
     "Biomedical Engineering",
@@ -166,7 +166,7 @@ export const SUBJECT_AREAS = {
     "Polymers and Plastics",
     "Surfaces, Coatings and Films",
   ],
-  Mathematics: [
+  "Mathematics": [
     "Algebra and Number Theory",
     "Analysis",
     "Applied Mathematics",
@@ -182,7 +182,7 @@ export const SUBJECT_AREAS = {
     "Statistics and Probability",
     "Theoretical Computer Science",
   ],
-  Medicine: [
+  "Medicine": [
     "Anesthesiology and Pain Medicine",
     "Biochemistry (medical)",
     "Cardiology and Cardiovascular Medicine",
