@@ -1,13 +1,14 @@
-import React, { useMemo } from "react";
-import { Search, Filter, Users, Building2, Building, UserCheck, Shield } from "lucide-react";
+import React from "react";
 import { cn } from "@/lib/utils";
+import { Search, X, Users, UserCheck, Shield, Building2, Building } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-/**
- * SuperUserFinder
- * Simplified finder for super admin to search any faculty or campus admin across all colleges/institutes/departments.
- */
+const INITIAL_LIMIT = 10;
+
 export default function SuperUserFinder({
   users,
   papersInScope = [],
@@ -21,16 +22,15 @@ export default function SuperUserFinder({
   onUserInstituteFilterChange,
   userDeptFilter = "all",
   onUserDeptFilterChange,
-  userHasPubsOnly = false,
-  onUserHasPubsOnlyChange,
   colleges = [],
   institutesForFinder = [],
   departmentsForFinder = [],
   onSelectUser,
   selectedUserId,
+  onClose,
 }) {
   // Build publication counts for quick info
-  const paperCountByFaculty = useMemo(() => {
+  const paperCountByFaculty = React.useMemo(() => {
     const map = new Map();
     for (const p of papersInScope || []) {
       if (!p?.facultyId) continue;
@@ -39,7 +39,7 @@ export default function SuperUserFinder({
     return map;
   }, [papersInScope]);
 
-  const filteredUsers = useMemo(() => {
+  const filteredUsers = React.useMemo(() => {
     const term = (userSearchTerm || "").trim().toLowerCase();
     return (users || [])
       .filter((u) => userRoleFilter === "all" || u.role === userRoleFilter)
@@ -54,10 +54,15 @@ export default function SuperUserFinder({
         const dept = (u.department || "").toLowerCase();
         const college = (u.college || "").toLowerCase();
         const institute = (u.institute || "").toLowerCase();
-        return name.includes(term) || email.includes(term) || fid.includes(term) || 
-               dept.includes(term) || college.includes(term) || institute.includes(term);
+        return (
+          name.includes(term) ||
+          email.includes(term) ||
+          fid.includes(term) ||
+          dept.includes(term) ||
+          college.includes(term) ||
+          institute.includes(term)
+        );
       })
-      .filter((u) => (userHasPubsOnly ? (paperCountByFaculty.get(u.facultyId) || 0) > 0 : true))
       .sort((a, b) => {
         const ap = paperCountByFaculty.get(a.facultyId) || 0;
         const bp = paperCountByFaculty.get(b.facultyId) || 0;
@@ -71,118 +76,150 @@ export default function SuperUserFinder({
     userInstituteFilter,
     userDeptFilter,
     userSearchTerm,
-    userHasPubsOnly,
     paperCountByFaculty,
   ]);
+
+  // Pagination/limit for users
+  const [showLimit, setShowLimit] = React.useState(INITIAL_LIMIT);
+  React.useEffect(() => {
+    setShowLimit(INITIAL_LIMIT); // Reset limit on filter/search change
+  }, [userSearchTerm, userRoleFilter, userCollegeFilter, userInstituteFilter, userDeptFilter, users]);
+
+  const usersToShow = filteredUsers.slice(0, showLimit);
 
   // Get role badge variant
   const getRoleBadgeVariant = (role) => {
     switch (role) {
-      case 'super_admin':
-        return { variant: 'default', className: 'bg-red-600 text-white', icon: <Shield className="h-3 w-3" /> };
-      case 'campus_admin':
-        return { variant: 'secondary', className: 'bg-blue-600 text-white', icon: <Building2 className="h-3 w-3" /> };
-      case 'faculty':
-        return { variant: 'outline', className: 'bg-green-50 text-green-700 border-green-200', icon: <UserCheck className="h-3 w-3" /> };
+      case "super_admin":
+        return { variant: "default", className: "bg-red-600 text-white", icon: <Shield className="h-3 w-3" /> };
+      case "campus_admin":
+        return { variant: "secondary", className: "bg-blue-600 text-white", icon: <Building2 className="h-3 w-3" /> };
+      case "faculty":
+        return { variant: "outline", className: "bg-green-50 text-green-700 border-green-200", icon: <UserCheck className="h-3 w-3" /> };
       default:
-        return { variant: 'outline', className: 'bg-gray-50 text-gray-600', icon: <Users className="h-3 w-3" /> };
+        return { variant: "outline", className: "bg-gray-50 text-gray-600", icon: <Users className="h-3 w-3" /> };
     }
   };
 
   return (
-    <Card className="bg-white border border-gray-200 rounded-xl">
-      <CardContent className="p-4">
-        {/* Filters row */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
-          <div className="md:col-span-2 relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <input
-              type="search"
-              value={userSearchTerm}
-              onChange={(e) => onUserSearchTermChange?.(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Search name, email, faculty ID, department..."
-            />
-          </div>
+    <div
+      className="h-full flex flex-col p-5"
+      style={{ boxSizing: "border-box" }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Search className="h-5 w-5 text-blue-600" />
+          Find Faculty/Admin
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="h-8 w-8"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
 
-          <select
-            value={userRoleFilter}
-            onChange={(e) => onUserRoleFilterChange?.(e.target.value)}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            title="Role"
-          >
-            <option value="all">All roles</option>
-            <option value="faculty">Faculty</option>
-            <option value="campus_admin">Campus Admin</option>
-          </select>
+      {/* Search and Filters */}
+      <div className="space-y-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="search"
+            value={userSearchTerm}
+            onChange={(e) => onUserSearchTermChange?.(e.target.value)}
+            placeholder="Search name, email, faculty ID..."
+            className="pl-9"
+          />
+        </div>
 
-          <select
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Select value={userRoleFilter} onValueChange={onUserRoleFilterChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              <SelectItem value="faculty">Faculty</SelectItem>
+              <SelectItem value="campus_admin">Campus Admin</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
             value={userCollegeFilter}
-            onChange={(e) => {
-              onUserCollegeFilterChange?.(e.target.value);
+            onValueChange={(value) => {
+              onUserCollegeFilterChange?.(value);
               onUserInstituteFilterChange?.("all");
               onUserDeptFilterChange?.("all");
             }}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            title="College"
           >
-            <option value="all">All colleges</option>
-            {colleges.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All colleges" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All colleges</SelectItem>
+              {colleges.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <select
+          <Select
             value={userInstituteFilter}
-            onChange={(e) => {
-              onUserInstituteFilterChange?.(e.target.value);
+            onValueChange={(value) => {
+              onUserInstituteFilterChange?.(value);
               onUserDeptFilterChange?.("all");
             }}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            title="Institute"
             disabled={userCollegeFilter === "all"}
           >
-            <option value="all">All institutes</option>
-            {institutesForFinder.map((i) => (
-              <option key={i} value={i}>{i}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All institutes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All institutes</SelectItem>
+              {institutesForFinder.map((i) => (
+                <SelectItem key={i} value={i}>
+                  {i}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <select
+          <Select
             value={userDeptFilter}
-            onChange={(e) => onUserDeptFilterChange?.(e.target.value)}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            title="Department"
+            onValueChange={onUserDeptFilterChange}
             disabled={userCollegeFilter === "all" && userInstituteFilter === "all"}
           >
-            <option value="all">All departments</option>
-            {departmentsForFinder.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All departments</SelectItem>
+              {departmentsForFinder.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Additional filters */}
-        <div className="mb-4 flex items-center justify-between">
-          <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={userHasPubsOnly}
-              onChange={(e) => onUserHasPubsOnlyChange?.(e.target.checked)}
-              className="h-4 w-4"
-            />
-            With publications only
-          </label>
-          
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <Filter className="h-4 w-4" />
-            <span>Results: {filteredUsers.length}</span>
+        <div className="flex items-center justify-end">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium">{filteredUsers.length}</span>
+            <span>results</span>
           </div>
         </div>
+      </div>
 
-        {/* Simplified User List */}
-        <div className="max-h-[60vh] overflow-auto space-y-2 pr-1" role="listbox" aria-label="Users list">
-          {filteredUsers.map((u) => {
+      {/* User List */}
+      <ScrollArea className="flex-1 pr-2">
+        <div className="space-y-2">
+          {usersToShow.map((u) => {
             const count = paperCountByFaculty.get(u.facultyId) || 0;
             const isSelected = selectedUserId === u.facultyId;
             const roleBadge = getRoleBadgeVariant(u.role);
@@ -190,76 +227,100 @@ export default function SuperUserFinder({
             return (
               <button
                 key={u._id}
-                role="option"
-                aria-selected={isSelected}
                 onClick={() => onSelectUser?.(isSelected ? null : u)}
                 className={cn(
                   "w-full text-left border rounded-lg p-3 hover:bg-blue-50/60 transition focus:outline-none focus:ring-2 focus:ring-blue-500",
-                  isSelected ? "border-blue-300 bg-blue-50 shadow-md" : "border-gray-200 bg-white"
+                  isSelected
+                    ? "border-blue-300 bg-blue-50 shadow-md"
+                    : "border-gray-200 bg-white"
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className={cn(
-                        "text-sm font-semibold truncate",
-                        isSelected ? "text-blue-800" : "text-gray-900"
-                      )}>
+                      <h4
+                        className={cn(
+                          "text-sm font-semibold truncate",
+                          isSelected ? "text-blue-800" : "text-gray-900"
+                        )}
+                      >
                         {u.fullName}
                       </h4>
-                      
-                      <Badge 
+
+                      <Badge
                         variant={roleBadge.variant}
                         className={cn("text-xs", roleBadge.className)}
                       >
                         {roleBadge.icon}
-                        <span className="ml-1 capitalize">{u.role?.replace('_', ' ')}</span>
+                        <span className="ml-1 capitalize">
+                          {u.role?.replace("_", " ")}
+                        </span>
                       </Badge>
                     </div>
-                    
-                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                      <Building className="h-3 w-3 text-gray-400" />
-                      <span>{u.college}</span>
-                      {u.institute && u.institute !== 'N/A' && (
-                        <>
-                          <span>•</span>
-                          <span>{u.institute}</span>
-                        </>
+
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600">
+                      {u.college && (
+                        <span className="flex items-center gap-1">
+                          <Building className="h-3 w-3 text-gray-400" />
+                          {u.college}
+                        </span>
                       )}
-                      {u.department && u.department !== 'N/A' && (
-                        <>
-                          <span>•</span>
-                          <span>{u.department}</span>
-                        </>
+                      {u.institute && u.institute !== "N/A" && (
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3 text-gray-400" />
+                          {u.institute}
+                        </span>
+                      )}
+                      {u.department && u.department !== "N/A" && (
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3 text-gray-400" />
+                          {u.department}
+                        </span>
                       )}
                     </div>
                   </div>
-                  
-                  <span
+
+                  <Badge
+                    variant={count > 0 ? "default" : "outline"}
                     className={cn(
-                      "ml-3 shrink-0 text-sm px-3 py-1 rounded-full border font-medium",
-                      count > 0 
-                        ? "border-blue-200 bg-blue-50 text-blue-700" 
-                        : "border-gray-200 bg-gray-50 text-gray-600"
+                      "ml-3 shrink-0",
+                      count > 0
+                        ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                        : "bg-gray-100 text-gray-600"
                     )}
-                    title={`${count} publication${count !== 1 ? 's' : ''}`}
                   >
-                    {count}
-                  </span>
+                    {count} pub{count !== 1 ? "s" : ""}
+                  </Badge>
                 </div>
               </button>
             );
           })}
-          
+
           {filteredUsers.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <h3 className="font-medium text-gray-900 mb-2">No users found</h3>
-              <p className="text-sm">Try adjusting your search criteria or filters</p>
+            <div className="text-center py-8 text-gray-500">
+              <Users className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+              <h3 className="font-medium text-gray-900 mb-1">
+                No users found
+              </h3>
+              <p className="text-sm">Try adjusting your search or filters</p>
+            </div>
+          )}
+
+          {/* Show More button */}
+          {filteredUsers.length > showLimit && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg"
+                onClick={() => setShowLimit((l) => l + INITIAL_LIMIT)}
+              >
+                Show more
+              </Button>
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </ScrollArea>
+    </div>
   );
 }

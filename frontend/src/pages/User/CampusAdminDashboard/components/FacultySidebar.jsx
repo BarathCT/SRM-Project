@@ -1,47 +1,34 @@
-import React, { useMemo, useId, useState, useEffect, memo } from "react";
-import { Search, Users, ChevronsLeft, Filter, ListFilter } from "lucide-react";
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Search, X, Users, UserCheck, Shield, Building2, Building } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-/**
- * Small debounce hook to avoid filtering on every keystroke.
- */
-function useDebouncedValue(value, delay = 250) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return debounced;
-}
+const INITIAL_LIMIT = 10;
 
-const FacultySidebar = ({
+export default function FacultySidebar({
   users,
-  institutePapers,
-  departments = [],
-  selectedFacultyId,
-  onSelect,
-
-  // Filters
+  institutePapers = [],
   userSearchTerm,
   onUserSearchTermChange,
-  userDeptFilter,
+  userRoleFilter = "faculty",
+  onUserRoleFilterChange,
+  userDeptFilter = "all",
   onUserDeptFilterChange,
-  userHasPubsOnly,
-  onUserHasPubsOnlyChange,
-
-  // Optional: desktop collapse control
+  departments = [],
+  onSelect,
+  selectedFacultyId,
   onCollapse,
-
-  // Optional: loading state
+  userHasPubsOnly = false,
+  onUserHasPubsOnlyChange,
   loading = false,
-}) => {
-  const searchInputId = useId();
-  const deptSelectId = useId();
-  const pubsOnlyId = useId();
-
-  const debouncedSearch = useDebouncedValue(userSearchTerm, 200);
-
-  // Build a Map for O(1) lookup of publication counts
-  const paperCountByFaculty = useMemo(() => {
+  showRoleFilter = false, // for campus admin default to false
+}) {
+  // Publication count per faculty
+  const paperCountByFaculty = React.useMemo(() => {
     const map = new Map();
     for (const p of institutePapers || []) {
       if (!p?.facultyId) continue;
@@ -50,212 +37,228 @@ const FacultySidebar = ({
     return map;
   }, [institutePapers]);
 
-  // Precompute lowercase search once
-  const term = (debouncedSearch || "").trim().toLowerCase();
-
-  const filteredUsers = useMemo(() => {
-    const list = Array.isArray(users) ? users : [];
-    const out = [];
-
-    for (const u of list) {
-      if (userDeptFilter !== "all" && u.department !== userDeptFilter) continue;
-
-      if (term) {
+  // Filtering
+  const filteredUsers = React.useMemo(() => {
+    const term = (userSearchTerm || "").trim().toLowerCase();
+    return (users || [])
+      .filter((u) => userRoleFilter === "all" || u.role === userRoleFilter)
+      .filter((u) => userDeptFilter === "all" || u.department === userDeptFilter)
+      .filter((u) => {
+        if (!term) return true;
         const name = (u.fullName || "").toLowerCase();
         const email = (u.email || "").toLowerCase();
+        const fid = (u.facultyId || "").toLowerCase();
         const dept = (u.department || "").toLowerCase();
-        if (!name.includes(term) && !email.includes(term) && !dept.includes(term)) continue;
-      }
+        return (
+          name.includes(term) ||
+          email.includes(term) ||
+          fid.includes(term) ||
+          dept.includes(term)
+        );
+      })
+      .filter((u) => !userHasPubsOnly || (paperCountByFaculty.get(u.facultyId) || 0) > 0)
+      .sort((a, b) => {
+        const ap = paperCountByFaculty.get(a.facultyId) || 0;
+        const bp = paperCountByFaculty.get(b.facultyId) || 0;
+        if (bp !== ap) return bp - ap;
+        return (a.fullName || "").localeCompare(b.fullName || "");
+      });
+  }, [
+    users,
+    userRoleFilter,
+    userDeptFilter,
+    userSearchTerm,
+    userHasPubsOnly,
+    paperCountByFaculty,
+  ]);
 
-      const count = paperCountByFaculty.get(u.facultyId) || 0;
-      if (userHasPubsOnly && count === 0) continue;
+  // Pagination
+  const [showLimit, setShowLimit] = React.useState(INITIAL_LIMIT);
+  React.useEffect(() => {
+    setShowLimit(INITIAL_LIMIT);
+  }, [userSearchTerm, userRoleFilter, userDeptFilter, users, userHasPubsOnly]);
+  const usersToShow = filteredUsers.slice(0, showLimit);
 
-      out.push(u);
+  // Badge for role (mainly for future extension)
+  const getRoleBadgeVariant = (role) => {
+    switch (role) {
+      case "super_admin":
+        return { variant: "default", className: "bg-red-600 text-white", icon: <Shield className="h-3 w-3" /> };
+      case "campus_admin":
+        return { variant: "secondary", className: "bg-blue-600 text-white", icon: <Building2 className="h-3 w-3" /> };
+      case "faculty":
+        return { variant: "outline", className: "bg-green-50 text-green-700 border-green-200", icon: <UserCheck className="h-3 w-3" /> };
+      default:
+        return { variant: "outline", className: "bg-gray-50 text-gray-600", icon: <Users className="h-3 w-3" /> };
     }
-
-    // Sort by pubs desc, then name
-    out.sort((a, b) => {
-      const ap = paperCountByFaculty.get(a.facultyId) || 0;
-      const bp = paperCountByFaculty.get(b.facultyId) || 0;
-      if (ap !== bp) return bp - ap;
-      return (a.fullName || "").localeCompare(b.fullName || "");
-    });
-
-    return out;
-  }, [users, userDeptFilter, term, userHasPubsOnly, paperCountByFaculty]);
-
-  const totalFaculty = users?.length || 0;
-  const filteredCount = filteredUsers.length;
+  };
 
   return (
-    <aside className="bg-white border border-gray-200 rounded-xl p-4 h-full">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-blue-600" />
-          <h3 className="text-sm font-semibold text-gray-900">Faculty</h3>
-          <span className="ml-1 text-xs text-gray-500">
-            {loading ? "Loading…" : `${filteredCount}/${totalFaculty}`}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {selectedFacultyId && (
-            <button
-              onClick={() => onSelect(null)}
-              className="text-xs text-blue-700 hover:underline"
-              title="Clear selected faculty"
-            >
-              Clear
-            </button>
-          )}
-          {onCollapse && (
-            <button
-              onClick={onCollapse}
-              className="hidden lg:inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
-              title="Collapse sidebar"
-            >
-              <ChevronsLeft className="h-4 w-4" />
-              Collapse
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="relative mb-3">
-        <label htmlFor={searchInputId} className="sr-only">
-          Search faculty
-        </label>
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-        <input
-          id={searchInputId}
-          type="search"
-          placeholder="Search name, email, or department"
-          value={userSearchTerm}
-          onChange={(e) => onUserSearchTermChange(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Search faculty by name, email, or department"
-        />
-      </div>
-
-      {/* Filters */}
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <ListFilter className="h-4 w-4" />
-          Filters
-        </div>
-      </div>
-
-      {/* Department filter */}
-      <div className="mb-3">
-        <label htmlFor={deptSelectId} className="text-xs text-gray-600 mb-1 block">
-          Department
-        </label>
-        <select
-          id={deptSelectId}
-          value={userDeptFilter}
-          onChange={(e) => onUserDeptFilterChange(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="all">All departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Has publications only */}
-      <label
-        htmlFor={pubsOnlyId}
-        className="flex items-center gap-2 text-sm text-gray-700 mb-3 cursor-pointer select-none"
-      >
-        <input
-          id={pubsOnlyId}
-          type="checkbox"
-          checked={userHasPubsOnly}
-          onChange={(e) => onUserHasPubsOnlyChange(e.target.checked)}
-          className="h-4 w-4"
-        />
-        Show only faculty with publications
-      </label>
-
-      {/* List */}
-      <div
-        className="mt-2 space-y-1 max-h-[60vh] overflow-auto pr-1"
-        role="listbox"
-        aria-label="Faculty list"
-      >
-        {loading && (
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-3">
-                <div className="h-3 w-1/2 bg-gray-200 rounded mb-2" />
-                <div className="h-3 w-1/3 bg-gray-100 rounded" />
-              </div>
-            ))}
-          </div>
+    <div className="h-full flex flex-col p-5" style={{ boxSizing: "border-box" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Search className="h-5 w-5 text-blue-600" />
+          Find Faculty
+        </h2>
+        {onCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCollapse}
+            className="h-8 w-8"
+            title="Close"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         )}
+      </div>
 
-        {!loading &&
-          filteredUsers.map((u) => {
+      {/* Search and Filters */}
+      <div className="space-y-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="search"
+            value={userSearchTerm}
+            onChange={(e) => onUserSearchTermChange?.(e.target.value)}
+            placeholder="Search name, email, faculty ID..."
+            className="pl-9"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
+          {showRoleFilter && (
+            <Select value={userRoleFilter} onValueChange={onUserRoleFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="faculty">Faculty</SelectItem>
+                <SelectItem value="campus_admin">Campus Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
+          <Select
+            value={userDeptFilter}
+            onValueChange={onUserDeptFilterChange}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All departments</SelectItem>
+              {departments.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-end">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium">{filteredUsers.length}</span>
+            <span>results</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Faculty User List */}
+      <ScrollArea className="flex-1 pr-2">
+        <div className="space-y-2">
+          {usersToShow.map((u) => {
             const count = paperCountByFaculty.get(u.facultyId) || 0;
             const isSelected = selectedFacultyId === u.facultyId;
+            const roleBadge = getRoleBadgeVariant(u.role);
 
             return (
               <button
                 key={u.facultyId}
-                role="option"
-                aria-selected={isSelected}
                 onClick={() => onSelect(isSelected ? null : u.facultyId)}
-                className={[
-                  "w-full text-left border rounded-lg px-3 py-2 hover:bg-blue-50/60 transition focus:outline-none focus:ring-2 focus:ring-blue-500",
-                  isSelected ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-white",
-                ].join(" ")}
-                title={`${u.fullName}${u.department ? ` • ${u.department}` : ""}`}
+                className={cn(
+                  "w-full text-left border rounded-lg p-3 hover:bg-blue-50/60 transition focus:outline-none focus:ring-2 focus:ring-blue-500",
+                  isSelected
+                    ? "border-blue-300 bg-blue-50 shadow-md"
+                    : "border-gray-200 bg-white"
+                )}
               >
                 <div className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p
-                      className={[
-                        "text-sm font-medium truncate",
-                        isSelected ? "text-blue-800" : "text-gray-900",
-                      ].join(" ")}
-                    >
-                      {u.fullName}
-                    </p>
-                    <p className="text-xs text-gray-600 truncate">{u.department || "—"}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4
+                        className={cn(
+                          "text-sm font-semibold truncate",
+                          isSelected ? "text-blue-800" : "text-gray-900"
+                        )}
+                      >
+                        {u.fullName}
+                      </h4>
+                      {/* Only show badge for admin views */}
+                      {showRoleFilter && (
+                        <Badge
+                          variant={roleBadge.variant}
+                          className={cn("text-xs", roleBadge.className)}
+                        >
+                          {roleBadge.icon}
+                          <span className="ml-1 capitalize">
+                            {u.role?.replace("_", " ")}
+                          </span>
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600">
+                      {u.department && (
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3 text-gray-400" />
+                          {u.department}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span
-                    className={[
-                      "ml-2 shrink-0 text-xs px-2 py-0.5 rounded-full border",
+                  <Badge
+                    variant={count > 0 ? "default" : "outline"}
+                    className={cn(
+                      "ml-3 shrink-0",
                       count > 0
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-gray-50 text-gray-600",
-                    ].join(" ")}
-                    aria-label={`${count} publication${count === 1 ? "" : "s"}`}
+                        ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                        : "bg-gray-100 text-gray-600"
+                    )}
                   >
-                    {count}
-                  </span>
+                    {count} pub{count !== 1 ? "s" : ""}
+                  </Badge>
                 </div>
               </button>
             );
           })}
 
-        {!loading && !filteredUsers.length && (
-          <div className="text-xs text-gray-500 py-6 text-center">
-            No faculty found
-            {term || userHasPubsOnly || userDeptFilter !== "all" ? (
-              <div className="mt-1">
-                Try clearing filters
-                <Filter className="inline-block h-3.5 w-3.5 ml-1 text-gray-400 align-text-bottom" />
-              </div>
-            ) : null}
-          </div>
-        )}
-      </div>
-    </aside>
-  );
-};
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+              <h3 className="font-medium text-gray-900 mb-1">
+                No faculty found
+              </h3>
+              <p className="text-sm">Try adjusting your search or filters</p>
+            </div>
+          )}
 
-export default memo(FacultySidebar);
+          {/* Show More button */}
+          {filteredUsers.length > showLimit && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg"
+                onClick={() => setShowLimit((l) => l + INITIAL_LIMIT)}
+              >
+                Show more
+              </Button>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
