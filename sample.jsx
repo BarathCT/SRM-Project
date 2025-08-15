@@ -1,10 +1,6 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-} from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
+import { useToast } from "@/components/Toast";
 import {
   RefreshCw,
   Building2,
@@ -12,8 +8,9 @@ import {
   Award,
   Building,
   BookOpen,
-  X,
-  BarChart3,
+  Search,
+  Shield,
+  UserCheck,
 } from "lucide-react";
 
 import DashboardHeader from "../components/dashboardHeader";
@@ -26,15 +23,22 @@ import EditPublicationDialog from "../components/PublicationTable/EditPublicatio
 import SuperUserFinder from "./components/SuperUserFinder";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 import SuperAdminAnalyticsCard from "./components/SuperAdminAnalyticsCard";
-import { useToast } from "@/components/Toast";
 
+// Super admin should stick to backend enum to avoid validation errors
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
 
+/**
+ * SuperAdminDashboard
+ * - No "My Publications" tab
+ * - Global analytics across all colleges/institutes/departments
+ * - Scope selector: College → Institute (if applicable) → Department (if desired in analysis filters)
+ * - Powerful user finder across all (faculty and campus admins) to view person-level publications
+ */
 export default function SuperAdminDashboard() {
   const { toast } = useToast();
 
-  // Core state
+  // Users and scope
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,6 +67,7 @@ export default function SuperAdminDashboard() {
   // Export functionality state
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportFields, setExportFields] = useState({
+    // Essential fields for super admin
     title: true,
     authors: true,
     journal: true,
@@ -72,24 +77,30 @@ export default function SuperAdminDashboard() {
     claimedBy: true,
     department: true,
     campus: true,
+    
+    // Administrative fields
     publicationId: false,
     authorNo: false,
     isStudentScholar: false,
     studentScholars: false,
     typeOfIssue: false,
+    
+    // Technical fields
     doi: false,
     pageNo: false,
     publicationType: false,
     subjectArea: false,
     subjectCategories: false,
+    
+    // Additional metadata
     volume: false,
     issue: false,
   });
 
-  // Finder modal/drawer
+  // User finder
   const [finderOpen, setFinderOpen] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
-  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [userRoleFilter, setUserRoleFilter] = useState("all"); // "all" | "faculty" | "campus_admin"
   const [userCollegeFilter, setUserCollegeFilter] = useState("all");
   const [userInstituteFilter, setUserInstituteFilter] = useState("all");
   const [userDeptFilter, setUserDeptFilter] = useState("all");
@@ -105,16 +116,11 @@ export default function SuperAdminDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
 
-  // Analytics modal state
-  const [showAnalytics, setShowAnalytics] = useState(false);
-
-  // --- Effects ---
-
-  // Load all users (super admin)
+  // Init: load all users (super admin)
   useEffect(() => {
     const init = async () => {
-      setLoading(true);
       try {
+        setLoading(true);
         const token = localStorage.getItem("token");
         const res = await axios.get("http://localhost:5000/api/admin/users", {
           headers: { Authorization: `Bearer ${token}` },
@@ -122,7 +128,7 @@ export default function SuperAdminDashboard() {
         });
         setUsers(res.data || []);
         toast.academic("Loaded users for all colleges", { duration: 2200 });
-      } catch {
+      } catch (e) {
         toast.error("Failed to load users", { duration: 3000 });
       } finally {
         setLoading(false);
@@ -132,16 +138,19 @@ export default function SuperAdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Scope options
-  const colleges = useMemo(
-    () => ["all", ...Array.from(new Set(users.map((u) => u.college).filter(Boolean))).sort()],
-    [users]
-  );
+  // Derived options from users for scope selectors
+  const colleges = useMemo(() => {
+    return ["all", ...Array.from(new Set(users.map((u) => u.college).filter(Boolean))).sort()];
+  }, [users]);
+
   const institutes = useMemo(() => {
     if (selectedCollege === "all") return ["all"];
-    const list = users.filter((u) => u.college === selectedCollege).map((u) => u.institute || "N/A");
+    const list = users
+      .filter((u) => u.college === selectedCollege)
+      .map((u) => u.institute || "N/A");
     return ["all", ...Array.from(new Set(list)).sort()];
   }, [users, selectedCollege]);
+
   const departments = useMemo(() => {
     const scopeUsers = users.filter((u) => {
       if (selectedCollege !== "all" && u.college !== selectedCollege) return false;
@@ -151,21 +160,24 @@ export default function SuperAdminDashboard() {
     return ["all", ...Array.from(new Set(scopeUsers.map((u) => u.department).filter(Boolean))).sort()];
   }, [users, selectedCollege, selectedInstitute]);
 
-  // Load scope papers whenever scope changes
+  // Load scope papers whenever college/institute selection changes
   useEffect(() => {
-    if (!users.length) return;
     const fetchScopePapers = async () => {
-      setScopeLoading(true);
-      setScopePapers([]);
-      setExpanded(null);
-      setSelectedPapers(new Set());
-      setSelectAll(false);
       try {
+        setScopeLoading(true);
+        setScopePapers([]);
+        setExpanded(null);
+        setSelectedPapers(new Set());
+        setSelectAll(false);
+
         const token = localStorage.getItem("token");
-        // Build (college,institute) pairs
+
+        // Build institute list to fetch, based on users data
         let pairs = [];
         if (selectedCollege === "all") {
-          pairs = Array.from(new Set(users.map((u) => `${u.college}||${u.institute}`)))
+          pairs = Array.from(
+            new Set(users.map((u) => `${u.college}||${u.institute}`))
+          )
             .filter(Boolean)
             .map((s) => {
               const [college, institute] = s.split("||");
@@ -187,7 +199,8 @@ export default function SuperAdminDashboard() {
         } else {
           pairs = [{ college: selectedCollege, institute: selectedInstitute }];
         }
-        // Fetch for each pair
+
+        // Fetch papers for each (college,institute) pair (super_admin is authorized)
         const all = [];
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
@@ -198,39 +211,45 @@ export default function SuperAdminDashboard() {
             all.push(...(res.data || []));
           })
         );
+
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      } catch {
+      } catch (e) {
+        console.error("Scope papers fetch error", e);
         toast.error("Failed to load publications for scope", { duration: 3000 });
       } finally {
         setScopeLoading(false);
       }
     };
-    fetchScopePapers();
+
+    if (users.length) fetchScopePapers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users, selectedCollege, selectedInstitute]);
 
-  // Filter options for PublicationsFilterCard
+  // Filter options from scopePapers for PublicationsFilterCard
   const filterOptions = useMemo(() => {
     const years = [...new Set(scopePapers.map((p) => Number(p.year)).filter(Boolean))].sort((a, b) => b - a);
     const qRatings = [...new Set(scopePapers.map((p) => p.qRating).filter(Boolean))].sort();
     const publicationTypes = [...new Set(scopePapers.map((p) => p.publicationType).filter(Boolean))].sort();
     const subjectAreas = [...new Set(scopePapers.map((p) => p.subjectArea).filter(Boolean))].sort();
+    
+    // Super admin specific filter options
     const authors = [...new Set(scopePapers.map((p) => p.claimedBy).filter(Boolean))].sort();
-    const depts = [...new Set(scopePapers.map((p) => {
+    const departments = [...new Set(scopePapers.map((p) => {
       const user = users.find(u => u.facultyId === p.facultyId);
       return user?.department;
     }).filter(Boolean))].sort();
-    return {
-      years,
-      qRatings,
-      publicationTypes,
+    
+    return { 
+      years, 
+      qRatings, 
+      publicationTypes, 
       subjectAreas,
       authors,
-      departments: depts
+      departments
     };
   }, [scopePapers, users]);
 
-  // Publications filtering logic
+  // Publications filters
   const hasActiveFilters = useMemo(
     () =>
       searchTerm !== "" ||
@@ -243,7 +262,9 @@ export default function SuperAdminDashboard() {
 
   const filteredPapers = useMemo(() => {
     let data = scopePapers;
+    // Optional: restrict by selectedDepartment in scope analytics view
     if (selectedDepartment !== "all") {
+      // Keep only papers authored by users in selected department within current scope
       const deptFaculties = new Set(
         users
           .filter((u) => {
@@ -255,14 +276,15 @@ export default function SuperAdminDashboard() {
       );
       data = data.filter((p) => deptFaculties.has(p.facultyId));
     }
-    const term = searchTerm.trim().toLowerCase();
+
     return data.filter((paper) => {
+      const term = searchTerm.trim().toLowerCase();
       const matchesSearch =
         term === "" ||
         paper.title?.toLowerCase().includes(term) ||
         paper.journal?.toLowerCase().includes(term) ||
         paper.claimedBy?.toLowerCase().includes(term) ||
-        (paper.authors || []).some((a) => a.name?.toLowerCase().includes(term));
+        paper.authors?.some((a) => a.name?.toLowerCase().includes(term));
       const matchesYear = selectedYear === "all" || String(paper.year) === String(selectedYear);
       const matchesQ = selectedQRating === "all" || paper.qRating === selectedQRating;
       const matchesType = selectedPublicationType === "all" || paper.publicationType === selectedPublicationType;
@@ -282,7 +304,7 @@ export default function SuperAdminDashboard() {
     users,
   ]);
 
-  // Stats
+  // Stats for header cards and analytics
   const stats = useMemo(() => {
     const papers = filteredPapers;
     const total = papers.length;
@@ -329,32 +351,242 @@ export default function SuperAdminDashboard() {
     };
   }, [filteredPapers, users, selectedCollege, selectedInstitute]);
 
-  // Finder panel helpers
-  const institutesForFinder = useMemo(() => {
-    if (userCollegeFilter === "all") return [];
-    return Array.from(
-      new Set(
-        users
-          .filter((u) => u.college === userCollegeFilter)
-          .map((u) => u.institute)
-          .filter(Boolean)
-      )
-    ).sort();
-  }, [userCollegeFilter, users]);
-  const departmentsForFinder = useMemo(() => {
-    const list = users
-      .filter(
-        (u) =>
-          (userCollegeFilter === "all" || u.college === userCollegeFilter) &&
-          (userInstituteFilter === "all" || u.institute === userInstituteFilter)
-      )
-      .map((u) => u.department)
-      .filter(Boolean);
-    return Array.from(new Set(list)).sort();
-  }, [users, userCollegeFilter, userInstituteFilter]);
+  // Selection controls
+  const handleSelectAll = useCallback(() => {
+    if (selectAll) {
+      setSelectedPapers(new Set());
+      setSelectAll(false);
+      toast.info("Deselected all", { duration: 1500 });
+    } else {
+      const ids = new Set(filteredPapers.map((p) => p._id));
+      setSelectedPapers(ids);
+      setSelectAll(true);
+      toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
+    }
+  }, [selectAll, filteredPapers, toast]);
 
-  // User selection (SuperUserFinder)
-  const onSelectUser = useCallback(async (user) => {
+  const handleSelect = useCallback(
+    (id) => {
+      const next = new Set(selectedPapers);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      setSelectedPapers(next);
+      setSelectAll(next.size === filteredPapers.length);
+    },
+    [selectedPapers, filteredPapers.length]
+  );
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedYear("all");
+    setSelectedQRating("all");
+    setSelectedPublicationType("all");
+    setSelectedSubjectArea("all");
+    toast.info("Cleared filters", { duration: 1500 });
+  };
+
+  const clearSelection = () => {
+    setSelectedPapers(new Set());
+    setSelectAll(false);
+    toast.info("Cleared selection", { duration: 1500 });
+  };
+
+  // Export functionality
+  const handleExport = () => {
+    try {
+      // Get data to export (selected papers or all filtered papers)
+      const dataToExport = selectedPapers.size > 0 
+        ? scopePapers.filter((p) => selectedPapers.has(p._id))
+        : filteredPapers;
+
+      if (!dataToExport.length) {
+        toast.warning("No publications to export", { duration: 2000 });
+        return;
+      }
+
+      // Get selected fields
+      const selectedFields = Object.entries(exportFields)
+        .filter(([_, selected]) => selected)
+        .map(([field, _]) => field);
+
+      if (!selectedFields.length) {
+        toast.warning("Please select at least one field to export", { duration: 2000 });
+        return;
+      }
+
+      // Build header mapping for super admin
+      const headerMap = {
+        title: "Title",
+        authors: "Authors",
+        journal: "Journal",
+        publisher: "Publisher",
+        year: "Year",
+        qRating: "Q Rating",
+        claimedBy: "Claimed By",
+        department: "Department",
+        campus: "Campus",
+        publicationId: "Publication ID",
+        authorNo: "Author Number",
+        isStudentScholar: "Student Scholar",
+        studentScholars: "Scholar Names",
+        typeOfIssue: "Type of Issue",
+        doi: "DOI",
+        pageNo: "Page Numbers",
+        publicationType: "Publication Type",
+        subjectArea: "Subject Area",
+        subjectCategories: "Subject Categories",
+        volume: "Volume",
+        issue: "Issue",
+      };
+
+      // Create CSV headers
+      const headers = selectedFields.map((field) => headerMap[field] || field);
+
+      // Create CSV rows
+      const rows = dataToExport.map((paper) => {
+        return selectedFields.map((field) => {
+          let value = "";
+
+          switch (field) {
+            case "authors":
+              value = (paper.authors || []).map((a) => a.name).join("; ");
+              break;
+            case "subjectCategories":
+              value = (paper.subjectCategories || []).join("; ");
+              break;
+            case "studentScholars":
+              value = (paper.studentScholars || [])
+                .map((s) => typeof s === "string" ? s : s.name)
+                .join("; ");
+              break;
+            case "department":
+              const user = users.find(u => u.facultyId === paper.facultyId);
+              value = user?.department || "N/A";
+              break;
+            case "campus":
+              const userForCampus = users.find(u => u.facultyId === paper.facultyId);
+              value = userForCampus?.college || "N/A";
+              break;
+            default:
+              value = paper[field] ?? "";
+          }
+
+          return value;
+        });
+      });
+
+      // Generate CSV content
+      const csvContent = [headers, ...rows]
+        .map((row) =>
+          row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
+        )
+        .join("\n");
+
+      // Download CSV file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `superadmin_publications_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Close dialog and show success message
+      setExportDialogOpen(false);
+      toast.academic(`Successfully exported ${dataToExport.length} publications`, { duration: 2500 });
+
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Export failed. Please try again.", { duration: 3000 });
+    }
+  };
+
+  // Delete (super admin can delete any paper)
+  const deletePaper = async (id) => {
+    setDeletingId(id);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/papers/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setScopePapers((prev) => prev.filter((p) => p._id !== id));
+      setSelectedPapers((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast.success("Publication deleted", { duration: 2000 });
+    } catch {
+      toast.error("Delete failed", { duration: 2500 });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Edit
+  const startEdit = (paper) => {
+    setEditingId(paper._id);
+    setEditData({
+      title: paper.title || "",
+      journal: paper.journal || "",
+      publisher: paper.publisher || "",
+      year: paper.year || new Date().getFullYear(),
+      qRating: paper.qRating || "Q1",
+      doi: paper.doi || "",
+      volume: paper.volume || "",
+      issue: paper.issue || "",
+      pageNo: paper.pageNo || "",
+      publicationType: paper.publicationType || "scopus",
+      subjectArea: paper.subjectArea || "Computer Science",
+      subjectCategories: paper.subjectCategories?.length ? paper.subjectCategories : ["Artificial Intelligence"],
+      publicationId: paper.publicationId || "",
+      typeOfIssue: paper.typeOfIssue || "Regular Issue",
+      claimedBy: paper.claimedBy || "",
+      authorNo: paper.authorNo || "1",
+      isStudentScholar: paper.isStudentScholar || "no",
+      authors: paper.authors?.length
+        ? paper.authors.map((a) => ({ name: a.name || "", isCorresponding: !!a.isCorresponding }))
+        : [{ name: paper.claimedBy || "", isCorresponding: true }],
+      studentScholars: paper.studentScholars?.length
+        ? paper.studentScholars.map((s) => (typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }))
+        : [],
+    });
+    setEditDialogOpen(true);
+  };
+
+  const updatePaper = async () => {
+    if (!editData.title?.trim()) return toast.warning("Title is required");
+    if (!editData.journal?.trim()) return toast.warning("Journal is required");
+    if (!editData.publisher?.trim()) return toast.warning("Publisher is required");
+    if (!Number(editData.year)) return toast.warning("Valid year is required");
+    if (!PUBLICATION_TYPES.includes(editData.publicationType)) return toast.warning("Invalid publication type");
+    if (!Object.keys(SUBJECT_AREAS).includes(editData.subjectArea)) return toast.warning("Invalid subject area");
+    const validCats = SUBJECT_AREAS[editData.subjectArea] || [];
+    if (!editData.subjectCategories?.length || !editData.subjectCategories.every((c) => validCats.includes(c)))
+      return toast.warning("Choose valid subject categories for the selected area");
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`http://localhost:5000/api/papers/${editingId}`, editData, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+
+      setScopePapers((prev) => prev.map((p) => (p._id === editingId ? { ...p, ...editData } : p)));
+
+      setEditDialogOpen(false);
+      setEditingId(null);
+      setEditData(null);
+      toast.success("Publication updated", { duration: 2200 });
+    } catch (e) {
+      const msg = e.response?.data?.error || "Update failed";
+      toast.error(msg, { duration: 3000 });
+    }
+  };
+
+  // Finder: select user and load their papers (by institute then filter by facultyId)
+  const onSelectUser = async (user) => {
     setSelectedUserId(user ? user.facultyId : null);
     setSelectedUserPapers([]);
     if (!user) return;
@@ -370,25 +602,49 @@ export default function SuperAdminDashboard() {
       const papers = (res.data || []).filter((p) => p.facultyId === user.facultyId);
       setSelectedUserPapers(papers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       toast.academic(`Loaded ${papers.length} publications for ${user.fullName}`, { duration: 2200 });
-    } catch {
+    } catch (e) {
       toast.error("Failed to load user publications", { duration: 2800 });
     } finally {
       setSelectedUserLoading(false);
     }
-  }, [toast]);
+  };
 
   const selectedUser = useMemo(
     () => (selectedUserId ? users.find((u) => u.facultyId === selectedUserId) : null),
     [users, selectedUserId]
   );
-  const tablePapers = selectedUser ? selectedUserPapers : filteredPapers;
 
-  // --- Render ---
+  // Moved these useMemo hooks to top-level to preserve hook order across renders
+  const institutesForFinder = useMemo(() => {
+    if (userCollegeFilter === "all") return [];
+    return Array.from(
+      new Set(
+        users
+          .filter((u) => u.college === userCollegeFilter)
+          .map((u) => u.institute)
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [userCollegeFilter, users]);
+
+  const departmentsForFinder = useMemo(() => {
+    const list = users
+      .filter(
+        (u) =>
+          (userCollegeFilter === "all" || u.college === userCollegeFilter) &&
+          (userInstituteFilter === "all" || u.institute === userInstituteFilter)
+      )
+      .map((u) => u.department)
+      .filter(Boolean);
+    return Array.from(new Set(list)).sort();
+  }, [users, userCollegeFilter, userInstituteFilter]);
+
+  const tablePapers = selectedUser ? selectedUserPapers : filteredPapers;
 
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-lg border border-blue-100">
+        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-sm border border-blue-100">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Loading Super Admin Dashboard</h3>
@@ -406,77 +662,15 @@ export default function SuperAdminDashboard() {
           title="Super Admin Dashboard"
           subtitle="Global publications analysis across all colleges and institutes"
           icon={<Building2 className="h-6 w-6" />}
+          // No tab switch for super admin
           showTabSwitch={false}
-          onShowAnalytics={() => setShowAnalytics(true)}
-          facultyFinderOpen={finderOpen}
-          onFacultyFinderOpenChange={setFinderOpen}
+          // Finder (we'll render our own below for extra filters)
+          showFacultySelector={false}
+          users={users}
+          institutePapers={scopePapers}
+          selectedFacultyId={selectedUserId}
+          onSelectFaculty={() => {}}
         />
-
-        {/* Finder Drawer/Panel */}
-        {finderOpen && (
-          <div>
-            <div className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-full md:w-[500px] bg-white shadow-2xl flex flex-col overflow-y-scroll scrollbar-hide transition-all duration-300">
-              <SuperUserFinder
-                users={users}
-                papersInScope={scopePapers}
-                userSearchTerm={userSearchTerm}
-                onUserSearchTermChange={setUserSearchTerm}
-                userRoleFilter={userRoleFilter}
-                onUserRoleFilterChange={setUserRoleFilter}
-                userCollegeFilter={userCollegeFilter}
-                onUserCollegeFilterChange={setUserCollegeFilter}
-                userInstituteFilter={userInstituteFilter}
-                onUserInstituteFilterChange={setUserInstituteFilter}
-                userDeptFilter={userDeptFilter}
-                onUserDeptFilterChange={setUserDeptFilter}
-                userHasPubsOnly={userHasPubsOnly}
-                onUserHasPubsOnlyChange={setUserHasPubsOnly}
-                colleges={colleges.filter((c) => c !== "all")}
-                institutesForFinder={institutesForFinder}
-                departmentsForFinder={departmentsForFinder}
-                onSelectUser={onSelectUser}
-                selectedUserId={selectedUserId}
-                onClose={() => setFinderOpen(false)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Analytics Modal */}
-        {/* --- Analytics Section: Two Row Card Layout --- */}
-{showAnalytics && (
-  <section className="max-w-7xl mx-auto mb-8">
-    <div className="relative border border-blue-100 rounded-2xl shadow-lg bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
-      <header className="flex items-center justify-between px-8 py-5 border-b border-blue-100 bg-white/80 rounded-t-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="h-7 w-7 text-blue-600" />
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-            Analytics Overview
-          </h2>
-        </div>
-        <button
-          className="p-2 rounded-full hover:bg-blue-100 transition"
-          onClick={() => setShowAnalytics(false)}
-          aria-label="Close analytics"
-        >
-          <X className="h-6 w-6 text-gray-500" />
-        </button>
-      </header>
-      <main className="p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-2xl">
-        <div className="grid grid-cols-1 gap-y-8">
-          <CampusAnalyticsCard stats={stats} loading={scopeLoading} />
-          <SuperAdminAnalyticsCard
-            papers={filteredPapers}
-            users={users}
-            selectedCollege={selectedCollege}
-            selectedInstitute={selectedInstitute}
-            loading={scopeLoading}
-          />
-        </div>
-      </main>
-    </div>
-  </section>
-)}
 
         {/* Scope selectors */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -531,7 +725,7 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Summary cards */}
+              {/* Summary cards */}
         {!selectedUser && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatsCard
@@ -555,7 +749,82 @@ export default function SuperAdminDashboard() {
               icon={<Award className="h-8 w-8 text-blue-600" />}
               loading={scopeLoading}
             />
+            {/* <StatsCard
+              title="Subject Areas"
+              value={Object.keys(stats.subjectDistribution || {}).length}
+              subtitle="Distinct areas in scope"
+              icon={<Shield className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            /> */}
           </div>
+        )}
+
+        
+        {/* Finder */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-900">Find User</h3>
+              <span className="text-xs text-gray-500">Search any faculty or campus admin</span>
+            </div>
+            {selectedUser && (
+              <button
+                className="text-sm text-blue-700 hover:underline"
+                onClick={() => {
+                  setSelectedUserId(null);
+                  setSelectedUserPapers([]);
+                }}
+                title="Clear selected user"
+              >
+                Clear selection
+              </button>
+            )}
+          </div>
+
+          <SuperUserFinder
+            users={users}
+            papersInScope={scopePapers}
+            userSearchTerm={userSearchTerm}
+            onUserSearchTermChange={setUserSearchTerm}
+            userRoleFilter={userRoleFilter}
+            onUserRoleFilterChange={setUserRoleFilter}
+            userCollegeFilter={userCollegeFilter}
+            onUserCollegeFilterChange={setUserCollegeFilter}
+            userInstituteFilter={userInstituteFilter}
+            onUserInstituteFilterChange={setUserInstituteFilter}
+            userDeptFilter={userDeptFilter}
+            onUserDeptFilterChange={setUserDeptFilter}
+            userHasPubsOnly={userHasPubsOnly}
+            onUserHasPubsOnlyChange={setUserHasPubsOnly}
+            colleges={colleges.filter((c) => c !== "all")}
+            institutesForFinder={institutesForFinder}
+            departmentsForFinder={departmentsForFinder}
+            onSelectUser={onSelectUser}
+            selectedUserId={selectedUserId}
+          />
+        </div>
+
+        
+
+        {/* Analytics */}
+        {!selectedUser && (
+          <>
+            <div className="mb-6">
+              <CampusAnalyticsCard stats={stats} loading={scopeLoading} />
+            </div>
+
+            {/* NEW: Comparative analytics across colleges/institutes/departments */}
+            <div className="mb-6">
+              <SuperAdminAnalyticsCard
+                papers={filteredPapers}
+                users={users}
+                selectedCollege={selectedCollege}
+                selectedInstitute={selectedInstitute}
+                loading={scopeLoading}
+              />
+            </div>
+          </>
         )}
 
         {/* Selected user details */}
@@ -572,7 +841,7 @@ export default function SuperAdminDashboard() {
           </div>
         )}
 
-        {/* Publications filter (hidden when viewing a user) */}
+        {/* Publications filter (applies to scope when no user selected; hidden when viewing a user) */}
         {!selectedUser && (
           <PublicationsFilterCard
             filterOptions={filterOptions}
@@ -587,24 +856,35 @@ export default function SuperAdminDashboard() {
             onPublicationTypeChange={setSelectedPublicationType}
             onSubjectAreaChange={setSelectedSubjectArea}
             hasActiveFilters={hasActiveFilters}
-            onClearFilters={() => {
-              setSearchTerm("");
-              setSelectedYear("all");
-              setSelectedQRating("all");
-              setSelectedPublicationType("all");
-              setSelectedSubjectArea("all");
-              toast.info("Cleared filters", { duration: 1500 });
-            }}
+            onClearFilters={clearFilters}
             selectedCount={selectedPapers.size}
-            onClearSelection={() => {
-              setSelectedPapers(new Set());
-              setSelectAll(false);
-              toast.info("Cleared selection", { duration: 1500 });
+            onClearSelection={clearSelection}
+            onBulkDelete={async () => {
+              if (!selectedPapers.size) return;
+              try {
+                const token = localStorage.getItem("token");
+                await Promise.all(
+                  Array.from(selectedPapers).map((id) =>
+                    axios.delete(`http://localhost:5000/api/papers/${id}`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    })
+                  )
+                );
+                setScopePapers((prev) => prev.filter((p) => !selectedPapers.has(p._id)));
+                setSelectedPapers(new Set());
+                setSelectAll(false);
+                toast.success("Deleted selected publications", { duration: 2200 });
+              } catch {
+                toast.error("Some deletions failed", { duration: 2500 });
+              }
             }}
+            // Export props
             exportDialogOpen={exportDialogOpen}
             onExportDialogOpenChange={setExportDialogOpen}
             exportFields={exportFields}
             onExportFieldsChange={setExportFields}
+            onExport={handleExport}
+            // Super admin props
             isSuperAdmin={true}
             userRole="super_admin"
             showCampusFilters={true}
@@ -617,7 +897,8 @@ export default function SuperAdminDashboard() {
             <BookOpen className="h-4 w-4 text-blue-600" />
             {selectedUser ? (
               <>
-                Showing <span className="font-semibold text-gray-900">{selectedUserPapers.length}</span> of{" "}
+                Showing{" "}
+                <span className="font-semibold text-gray-900">{selectedUserPapers.length}</span> of{" "}
                 <span className="font-semibold text-gray-900">{selectedUserPapers.length}</span> publications for{" "}
                 <span className="font-medium text-blue-700">{selectedUser?.fullName}</span>
               </>
@@ -647,86 +928,15 @@ export default function SuperAdminDashboard() {
           papers={tablePapers}
           selectedPapers={selectedPapers}
           selectAll={selectAll}
-          onToggleSelectAll={() => {
-            if (selectAll) {
-              setSelectedPapers(new Set());
-              setSelectAll(false);
-              toast.info("Deselected all", { duration: 1500 });
-            } else {
-              const ids = new Set(filteredPapers.map((p) => p._id));
-              setSelectedPapers(ids);
-              setSelectAll(true);
-              toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
-            }
-          }}
-          onToggleSelect={(id) => {
-            const next = new Set(selectedPapers);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            setSelectedPapers(next);
-            setSelectAll(next.size === filteredPapers.length);
-          }}
+          onToggleSelectAll={handleSelectAll}
+          onToggleSelect={handleSelect}
           expandedIndex={expanded}
           onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
-          onEdit={(paper) => {
-            setEditingId(paper._id);
-            setEditData({
-              title: paper.title || "",
-              journal: paper.journal || "",
-              publisher: paper.publisher || "",
-              year: paper.year || new Date().getFullYear(),
-              qRating: paper.qRating || "Q1",
-              doi: paper.doi || "",
-              volume: paper.volume || "",
-              issue: paper.issue || "",
-              pageNo: paper.pageNo || "",
-              publicationType: paper.publicationType || "scopus",
-              subjectArea: paper.subjectArea || "Computer Science",
-              subjectCategories: paper.subjectCategories?.length ? paper.subjectCategories : ["Artificial Intelligence"],
-              publicationId: paper.publicationId || "",
-              typeOfIssue: paper.typeOfIssue || "Regular Issue",
-              claimedBy: paper.claimedBy || "",
-              authorNo: paper.authorNo || "1",
-              isStudentScholar: paper.isStudentScholar || "no",
-              authors: paper.authors?.length
-                ? paper.authors.map((a) => ({ name: a.name || "", isCorresponding: !!a.isCorresponding }))
-                : [{ name: paper.claimedBy || "", isCorresponding: true }],
-              studentScholars: paper.studentScholars?.length
-                ? paper.studentScholars.map((s) => (typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }))
-                : [],
-            });
-            setEditDialogOpen(true);
-          }}
-          onDelete={async (id) => {
-            setDeletingId(id);
-            try {
-              const token = localStorage.getItem("token");
-              await axios.delete(`http://localhost:5000/api/papers/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              setScopePapers((prev) => prev.filter((p) => p._id !== id));
-              setSelectedPapers((prev) => {
-                const next = new Set(prev);
-                next.delete(id);
-                return next;
-              });
-              toast.success("Publication deleted", { duration: 2000 });
-            } catch {
-              toast.error("Delete failed", { duration: 2500 });
-            } finally {
-              setDeletingId(null);
-            }
-          }}
+          onEdit={startEdit}
+          onDelete={deletePaper}
           deletingId={deletingId}
           hasActiveFilters={!selectedUser && hasActiveFilters}
-          onClearFilters={() => {
-            setSearchTerm("");
-            setSelectedYear("all");
-            setSelectedQRating("all");
-            setSelectedPublicationType("all");
-            setSelectedSubjectArea("all");
-            toast.info("Cleared filters", { duration: 1500 });
-          }}
+          onClearFilters={clearFilters}
           showAuthorInfo={true}
           users={users}
           currentUser={{ role: "super_admin" }}
@@ -735,14 +945,13 @@ export default function SuperAdminDashboard() {
         />
       </div>
 
+      {/* Edit Dialog */}
       <EditPublicationDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         value={editData}
         onChange={setEditData}
-        onSubmit={async () => {
-          // ...your update logic goes here
-        }}
+        onSubmit={updatePaper}
         onCancel={() => setEditDialogOpen(false)}
         isSubmitting={false}
         subjectAreas={SUBJECT_AREAS}

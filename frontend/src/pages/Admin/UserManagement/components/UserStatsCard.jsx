@@ -846,7 +846,7 @@ export default function UserStatsCard({
   if (loading) {
     return (
       <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
-        <Card className="border border-gray-200 bg-white shadow-lg overflow-hidden">
+        <Card className="border border-gray-200 bg-white shadow-sm overflow-hidden">
           <StatSkeleton />
         </Card>
       </div>
@@ -863,7 +863,7 @@ export default function UserStatsCard({
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className="relative">
-                  <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm">
                     <BarChart3 className="h-6 w-6 text-white" />
                   </div>
                 </div>
@@ -878,7 +878,7 @@ export default function UserStatsCard({
               </div>
 
               <div className="flex flex-col items-end">
-                <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 text-base font-semibold shadow-lg">
+                <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 text-base font-semibold shadow-sm">
                   {statistics.totalUsers} Total Users
                 </Badge>
               </div>

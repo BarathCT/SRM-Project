@@ -15,12 +15,12 @@ import {
   Tooltip,
   Legend,
   ArcElement,
-} from 'chart.js';
-import { Bar, Pie, Doughnut, Line } from 'react-chartjs-2';
-import { 
-  BarChart3, 
-  PieChart, 
-  TrendingUp, 
+} from "chart.js";
+import { Bar, Pie, Doughnut, Line } from "react-chartjs-2";
+import {
+  BarChart3,
+  PieChart,
+  TrendingUp,
   BookOpen,
   Award
 } from "lucide-react";
@@ -102,10 +102,10 @@ export default function CampusAnalyticsCard({ stats, loading }) {
       labels: ['Q1', 'Q2', 'Q3', 'Q4'],
       datasets: [{
         data: [
-          stats.qDistribution.Q1 || 0,
-          stats.qDistribution.Q2 || 0,
-          stats.qDistribution.Q3 || 0,
-          stats.qDistribution.Q4 || 0,
+          stats.qDistribution?.Q1 || 0,
+          stats.qDistribution?.Q2 || 0,
+          stats.qDistribution?.Q3 || 0,
+          stats.qDistribution?.Q4 || 0,
         ],
         backgroundColor: [
           '#3B82F6', // Q1 - Blue
@@ -119,7 +119,7 @@ export default function CampusAnalyticsCard({ stats, loading }) {
     };
 
     // Yearly Trend
-    const years = Object.keys(stats.yearlyTrend).sort();
+    const years = Object.keys(stats.yearlyTrend || {}).sort();
     const yearlyTrendData = {
       labels: years,
       datasets: [{
@@ -132,12 +132,12 @@ export default function CampusAnalyticsCard({ stats, loading }) {
     };
 
     // Subject Area Distribution (top 10)
-    const subjectEntries = Object.entries(stats.subjectDistribution)
+    const subjectEntries = Object.entries(stats.subjectDistribution || {})
       .sort(([,a], [,b]) => b - a)
       .slice(0, 10);
-    
+
     const subjectAreaData = {
-      labels: subjectEntries.map(([subject]) => 
+      labels: subjectEntries.map(([subject]) =>
         subject.length > 20 ? subject.substring(0, 20) + '...' : subject
       ),
       datasets: [{
@@ -149,7 +149,7 @@ export default function CampusAnalyticsCard({ stats, loading }) {
     };
 
     // Department Stats
-    const deptEntries = Object.entries(stats.departmentStats);
+    const deptEntries = Object.entries(stats.departmentStats || {});
     const departmentData = {
       labels: deptEntries.map(([dept]) => dept),
       datasets: [
@@ -203,7 +203,7 @@ export default function CampusAnalyticsCard({ stats, loading }) {
   if (!chartData) return null;
 
   return (
-    <Card className="border border-white-100 shadow-md bg-white">
+    <Card className="border border-blue-100 shadow-md bg-white">
       <CardHeader className="bg-white-50 border-b border-blue-100">
         <CardTitle className="flex items-center gap-2 text-gray-900">
           <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -249,25 +249,25 @@ export default function CampusAnalyticsCard({ stats, loading }) {
                   <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                     <span className="text-sm text-gray-700">Q1 Publications</span>
                     <span className="font-semibold text-blue-700">
-                      {stats.qDistribution.Q1 || 0} ({stats.q1Percentage}%)
+                      {stats.qDistribution?.Q1 || 0} ({stats.q1Percentage}%)
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                     <span className="text-sm text-gray-700">Q2 Publications</span>
                     <span className="font-semibold text-green-700">
-                      {stats.qDistribution.Q2 || 0}
+                      {stats.qDistribution?.Q2 || 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
                     <span className="text-sm text-gray-700">Q3 Publications</span>
                     <span className="font-semibold text-yellow-700">
-                      {stats.qDistribution.Q3 || 0}
+                      {stats.qDistribution?.Q3 || 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                     <span className="text-sm text-gray-700">Q4 Publications</span>
                     <span className="font-semibold text-red-700">
-                      {stats.qDistribution.Q4 || 0}
+                      {stats.qDistribution?.Q4 || 0}
                     </span>
                   </div>
                 </div>

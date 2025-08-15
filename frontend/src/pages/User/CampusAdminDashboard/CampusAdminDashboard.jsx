@@ -9,6 +9,8 @@ import {
   UserCheck,
   Building,
   BookOpen,
+  BarChart3,
+  X,
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
@@ -43,10 +45,13 @@ const CampusAdminDashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState("institute");
 
+  // Analytics section state
+  const [showAnalytics, setShowAnalytics] = useState(false);
+
   // Faculty finder panel open/close
   const [facultyFinderOpen, setFacultyFinderOpen] = useState(false);
 
-  // Faculty finder state (replaces sidebar)
+  // Faculty finder state
   const [selectedFacultyId, setSelectedFacultyId] = useState(null);
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [userDeptFilter, setUserDeptFilter] = useState("all");
@@ -684,7 +689,7 @@ const CampusAdminDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-lg border border-blue-100">
+        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-sm border border-blue-100">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Loading Campus Dashboard</h3>
@@ -697,7 +702,7 @@ const CampusAdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/30">
-      <div className="max-w-7xl mx-auto px_4 lg:px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
         <DashboardHeader
           title="Campus Admin Dashboard"
           subtitle={`${currentUser?.college} - ${currentUser?.institute} Publications Management`}
@@ -707,43 +712,60 @@ const CampusAdminDashboard = () => {
           showTabSwitch={currentUser?.role === "campus_admin"}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          /* Faculty Finder trigger */
-          showFacultySelector={true}
-          users={users}
-          institutePapers={institutePapers}
-          selectedFacultyId={selectedFacultyId}
-          onSelectFaculty={onSelectFaculty}
-          /* Control the new below-page finder panel */
+          onShowAnalytics={() => setShowAnalytics(true)}
           facultyFinderOpen={facultyFinderOpen}
           onFacultyFinderOpenChange={setFacultyFinderOpen}
-          /* Faculties filter state (still used by FacultySidebar) */
-          facultySearchTerm={userSearchTerm}
-          onFacultySearchChange={setUserSearchTerm}
-          facultyDeptFilter={userDeptFilter}
-          onFacultyDeptChange={setUserDeptFilter}
-          facultyHasPubsOnly={userHasPubsOnly}
-          onFacultyHasPubsOnlyChange={setUserHasPubsOnly}
-          departments={instituteFilterOptions.departments}
         />
 
-        {/* NEW: Inline Faculty Finder Panel below the header */}
+        {/* Analytics Section */}
+        {showAnalytics && (
+          <section className="max-w-7xl mx-auto mb-8">
+            <div className="relative border border-blue-100 rounded-2xl shadow-lg bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
+              <header className="flex items-center justify-between px-8 py-5 border-b border-blue-100 bg-white/80 rounded-t-2xl shadow-sm">
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="h-7 w-7 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+                    Analytics Overview
+                  </h2>
+                </div>
+                <button
+                  className="p-2 rounded-full hover:bg-blue-100 transition"
+                  onClick={() => setShowAnalytics(false)}
+                  aria-label="Close analytics"
+                  type="button"
+                >
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </header>
+              <main className="p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-2xl">
+                <div className="grid grid-cols-1 gap-y-8">
+                  <CampusAnalyticsCard stats={campusStats} loading={loading} />
+                </div>
+              </main>
+            </div>
+          </section>
+        )}
+
+        {/* Faculty Finder Sidebar Drawer (just like super admin) */}
         {facultyFinderOpen && (
-          <div id="faculty-finder-panel" className="mb-6">
-            <FacultySidebar
-              users={users}
-              institutePapers={institutePapers}
-              departments={instituteFilterOptions.departments}
-              selectedFacultyId={selectedFacultyId}
-              onSelect={onSelectFaculty}
-              userSearchTerm={userSearchTerm}
-              onUserSearchTermChange={setUserSearchTerm}
-              userDeptFilter={userDeptFilter}
-              onUserDeptFilterChange={setUserDeptFilter}
-              userHasPubsOnly={userHasPubsOnly}
-              onUserHasPubsOnlyChange={setUserHasPubsOnly}
-              onCollapse={() => setFacultyFinderOpen(false)}
-              loading={loading}
-            />
+          <div>
+            <div className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-full md:w-[350px] bg-white shadow-2xl flex flex-col overflow-y-scroll scrollbar-hide transition-all duration-300">
+              <FacultySidebar
+                users={users}
+                institutePapers={institutePapers}
+                departments={instituteFilterOptions.departments}
+                selectedFacultyId={selectedFacultyId}
+                onSelect={onSelectFaculty}
+                userSearchTerm={userSearchTerm}
+                onUserSearchTermChange={setUserSearchTerm}
+                userDeptFilter={userDeptFilter}
+                onUserDeptFilterChange={setUserDeptFilter}
+                userHasPubsOnly={userHasPubsOnly}
+                onUserHasPubsOnlyChange={setUserHasPubsOnly}
+                onCollapse={() => setFacultyFinderOpen(false)}
+                loading={loading}
+              />
+            </div>
           </div>
         )}
 
@@ -774,13 +796,6 @@ const CampusAdminDashboard = () => {
                 icon={<UserCheck className="h-8 w-8 text-blue-600" />}
                 loading={loading}
               />
-             {/* <StatsCard
-                title="Active Faculty"
-                value={`${campusStats.activeFaculty}/${campusStats.totalFaculty}`}
-                subtitle="Publishing faculty members"
-                icon={<Users className="h-8 w-8 text-blue-600" />}
-                loading={loading}
-              />*/}
               <StatsCard
                 title="Q1 Publications"
                 value={(campusStats.qDistribution || {}).Q1 || 0}
@@ -842,7 +857,7 @@ const CampusAdminDashboard = () => {
                   />
 
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm text_gray-700">
+                    <p className="text-sm text-gray-700">
                       Showing{" "}
                       <span className="font-semibold text-gray-900">{filteredInstitutePapers.length}</span>{" "}
                       of <span className="font-semibold text-gray-900">{selectedFacultyAllPapers.length}</span>{" "}
@@ -883,11 +898,6 @@ const CampusAdminDashboard = () => {
                 </>
               ) : (
                 <>
-                  {/* Institute analytics */}
-                  <div className="mb-2">
-                    <CampusAnalyticsCard stats={campusStats} loading={loading} />
-                  </div>
-
                   <PublicationsFilterCard
                     filterOptions={instituteFilterOptions}
                     searchTerm={instituteSearchTerm}
@@ -988,7 +998,7 @@ const CampusAdminDashboard = () => {
               showCampusFilters={false}
             />
 
-            <div className="mb-4 flex items-center justify_between">
+            <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-gray-700 flex items-center gap-2">
                 <UserCheck className="h-4 w-4 text-blue-600" />
                 Showing <span className="font-semibold text-gray-900">{filteredMyPapers.length}</span> of{" "}
