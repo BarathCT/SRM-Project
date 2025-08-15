@@ -575,7 +575,7 @@ export default function PublicationsTable({
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                   {/* Publication Details */}
                                   <Card className="border border-blue-100 shadow-sm bg-white">
-                                    <CardHeader className="pb-3 bg-blue-50 border-b border-blue-100">
+                                    <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                                       <CardTitle className="text-lg text-gray-900">
                                         Publication Details
                                       </CardTitle>
@@ -642,7 +642,7 @@ export default function PublicationsTable({
 
                                   {/* Author Information */}
                                   <Card className="border border-blue-100 shadow-sm bg-white">
-                                    <CardHeader className="pb-3 bg-blue-50 border-b border-blue-100">
+                                    <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                                       <CardTitle className="text-lg text-gray-900">
                                         Author Information
                                       </CardTitle>
@@ -719,7 +719,7 @@ export default function PublicationsTable({
 
                                   {/* Subject Classification */}
                                   <Card className="border border-blue-100 shadow-sm bg-white">
-                                    <CardHeader className="pb-3 bg-blue-50 border-b border-blue-100">
+                                    <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                                       <CardTitle className="text-lg text-gray-900">
                                         Subject Classification
                                       </CardTitle>
