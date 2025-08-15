@@ -23,6 +23,7 @@ import {
   Hash,
   ArrowLeft,
 } from "lucide-react";
+import Swal from "sweetalert2";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -408,8 +409,7 @@ const formSchema = z.object({
   authors: z.array(z.object({
     name: z.string().min(1, "Author name is required."),
     isCorresponding: z.boolean().default(false),
-  })
-  ).min(1, "At least one author is required.").max(15, "You can add up to 15 authors only."),
+  })).min(1, "At least one author is required.").max(15, "You can add up to 15 authors only."),
   title: z.string().min(1, "Title is required."),
   journalName: z.string().min(1, "Journal name is required."),
   publisherName: z.string().min(1, "Publisher name is required."),
@@ -417,9 +417,7 @@ const formSchema = z.object({
   issue: z.string().optional(),
   pageNo: z.string().optional(),
   doi: z.string().min(1, "A valid DOI is required."),
-  publication: z.enum(["scopus", "sci", "webOfScience", "pubmed", "abdc"], {
-    required_error: "Publication type is required."
-  }),
+  publication: z.enum(["scopus", "sci", "webOfScience", ""], { required_error: "Publication type is required." }).or(z.string()).optional(),
   facultyId: z.string().min(1, "Faculty ID is required."),
   publicationId: z.string().min(1, "Publication ID is required."),
   year: z.string().min(4, "Year must be 4 digits.").max(4, "Year must be 4 digits."),
@@ -435,8 +433,7 @@ const formSchema = z.object({
   subjectAreas: z.array(z.object({
     area: z.string().min(1, "Subject area is required."),
     categories: z.array(z.string()).min(1, "At least one subject category is required."),
-  })
-  ).min(1, "At least one subject area is required."),
+  })).min(1, "At least one subject area is required."),
 }).superRefine((data, ctx) => {
   if (data.isStudentScholar === 'yes') {
     if (!data.studentScholars || data.studentScholars.length === 0) {
@@ -448,14 +445,6 @@ const formSchema = z.object({
     }
   }
 });
-
-const publicationLabels = {
-  scopus: "Scopus ID",
-  sci: "SCI ID",
-  webOfScience: "Web of Science ID",
-  pubmed: "PubMed ID",
-  abdc: "ABDC ID"
-};
 
 function decodeToken(token) {
   try {
@@ -484,7 +473,6 @@ function SectionHeader({ step, icon: Icon, title, subtitle }) {
   );
 }
 
-// Subject Categories Multi-Select Component (blue/black/white palette)
 function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -619,7 +607,10 @@ export default function UploadPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [isCheckingDoi, setIsCheckingDoi] = useState(false);
-  const [doiStatus, setDoiStatus] = useState({ isDuplicate: null, message: "" });
+  // doiStatus: isDuplicate | validOnCrossref | message
+  const [doiStatus, setDoiStatus] = useState({ isDuplicate: null, validOnCrossref: false, message: "" });
+  // userAuthorIds will hold the author's saved identifiers from settings (scopus, sci, webOfScience)
+  const [userAuthorIds, setUserAuthorIds] = useState({ scopus: "", sci: "", webOfScience: "" });
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -661,13 +652,43 @@ export default function UploadPage() {
     }
     setIsAuthenticated(true);
     form.setValue('facultyId', payload.facultyId, { shouldValidate: true });
+
+    // Fetch user's author IDs from /api/settings to populate publication dropdown
+    (async () => {
+      try {
+        const res = await fetch('/api/settings', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return; // ignore silently, user may not have author IDs
+        const json = await res.json();
+        const apiData = json.data || json;
+        const authorId = apiData?.authorId || {};
+        setUserAuthorIds({
+          scopus: authorId.scopus || "",
+          sci: authorId.sci || "",
+          webOfScience: authorId.webOfScience || ""
+        });
+      } catch (e) {
+        // ignore - not critical
+        console.warn("Failed to fetch user author IDs", e);
+      }
+    })();
   }, [form, navigate]);
 
   const publicationType = form.watch("publication");
   const publicationLabel = useMemo(
-    () => (publicationType ? publicationLabels[publicationType] : "Publication ID"),
+    () => (publicationType ? { scopus: "Scopus ID", sci: "SCI ID", webOfScience: "Web of Science ID" }[publicationType] : "Publication ID"),
     [publicationType]
   );
+
+  // When publication type changes, populate publicationId from user's author ids
+  useEffect(() => {
+    if (publicationType && userAuthorIds[publicationType]) {
+      form.setValue('publicationId', userAuthorIds[publicationType], { shouldValidate: true });
+    } else {
+      form.setValue('publicationId', "", { shouldValidate: true });
+    }
+  }, [publicationType, userAuthorIds, form]);
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "authors" });
   const { fields: subjectFields, append: appendSubject, remove: removeSubject } = useFieldArray({ control: form.control, name: "subjectAreas" });
@@ -693,38 +714,79 @@ export default function UploadPage() {
   }, [form, watchAuthors]);
 
   const debouncedDoiCheck = useCallback(
-    debounce(async (doi) => {
-      if (!doi.trim()) {
-        setDoiStatus({ isDuplicate: null, message: "" });
+    debounce(async (doiRaw) => {
+      const doi = doiRaw?.trim?.();
+      if (!doi) {
+        setDoiStatus({ isDuplicate: null, validOnCrossref: false, message: "" });
         return;
       }
+      setIsCheckingDoi(true);
       try {
-        setIsCheckingDoi(true);
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/papers/doi/${encodeURIComponent(doi.trim())}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok) {
+
+        // Step 1: Check duplicate in DB
+        let dataDb = null;
+        try {
+          const resDb = await fetch(`http://localhost:5000/api/papers/doi/${encodeURIComponent(doi)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (resDb.ok) {
+            dataDb = await resDb.json();
+          } else {
+            // if server returned non-ok, ignore duplicate check but continue to Crossref
+            dataDb = { exists: false };
+          }
+        } catch {
+          dataDb = { exists: false };
+        }
+
+        if (dataDb && dataDb.exists) {
           setDoiStatus({
-            isDuplicate: !!data.exists,
-            message: data.exists ? "Duplicate DOI found." : "DOI is available."
+            isDuplicate: true,
+            validOnCrossref: false,
+            message: "Duplicate DOI found."
+          });
+          setIsCheckingDoi(false);
+          return;
+        }
+
+        // Step 2: Crossref lookup (normalize DOI lower-case)
+        // Crossref expects the DOI escaped; using encodeURIComponent and lowercase
+        const normalizedDoi = doi.toLowerCase();
+        const resCrossref = await fetch(`https://api.crossref.org/works/${encodeURIComponent(normalizedDoi)}`);
+        if (resCrossref.ok) {
+          setDoiStatus({
+            isDuplicate: false,
+            validOnCrossref: true,
+            message: ""
           });
         } else {
-          setDoiStatus({ isDuplicate: null, message: "DOI check failed." });
+          setDoiStatus({
+            isDuplicate: false,
+            validOnCrossref: false,
+            message: "You have entered an invalid DOI."
+          });
         }
-      } catch {
-        setDoiStatus({ isDuplicate: null, message: "DOI check failed." });
+      } catch (err) {
+        setDoiStatus({
+          isDuplicate: null,
+          validOnCrossref: false,
+          message: "Error checking DOI."
+        });
       } finally {
         setIsCheckingDoi(false);
       }
-    }, 500),
+    }, 350),
     []
   );
 
   async function onSubmit(values) {
     if (doiStatus.isDuplicate) {
       toast.error("This DOI is already registered.");
+      return;
+    }
+    if (!doiStatus.validOnCrossref) {
+      toast.error("Please enter a valid DOI before submitting.");
       return;
     }
 
@@ -736,15 +798,15 @@ export default function UploadPage() {
 
     const payload = {
       ...values,
-      year: values.year.toString(),
-      authorNo: values.authorNo.toString(),
+      year: values.year?.toString?.() ?? values.year,
+      authorNo: values.authorNo?.toString?.() ?? values.authorNo,
       subjectArea: values.subjectAreas[0]?.area || "",
       subjectCategories: values.subjectAreas[0]?.categories || []
     };
 
     setIsPending(true);
     try {
-      await toast.promise(
+      const data = await toast.promise(
         (async () => {
           const res = await fetch('http://localhost:5000/api/papers', {
             method: 'POST',
@@ -755,20 +817,24 @@ export default function UploadPage() {
             body: JSON.stringify(payload)
           });
 
-          let data;
+          console.log("Upload paper response status:", res.status);
+
+          let resJson = null;
           try {
-            data = await res.json();
-          } catch {
-            data = null;
+            resJson = await res.json();
+            console.log("Upload paper response json:", resJson);
+          } catch (e) {
+            console.warn("Response has no JSON body");
           }
 
-          if (!res.ok || !data?._id) {
-            const message = Array.isArray(data?.details)
-              ? `${data?.error || 'Submission failed'}: ${data.details.join(', ')}`
-              : data?.error || `Submission failed (${res.status})`;
+          if (!res.ok) {
+            const message = Array.isArray(resJson?.details)
+              ? `${resJson?.error || 'Submission failed'}: ${resJson.details.join(', ')}`
+              : resJson?.error || `Submission failed (${res.status})`;
             throw new Error(message);
           }
-          return data;
+
+          return resJson || { success: true };
         })(),
         {
           loading: 'Saving paper...',
@@ -776,6 +842,14 @@ export default function UploadPage() {
           error: (err) => err.message || 'Submission failed',
         }
       );
+
+      // success -> show SweetAlert and reset after user clicks OK
+      await Swal.fire({
+        icon: 'success',
+        title: 'Successfully Submitted!',
+        text: 'Your paper has been uploaded.',
+        confirmButtonColor: '#2563eb',
+      });
 
       form.reset({
         authors: [{ name: "", isCorresponding: false }],
@@ -798,9 +872,11 @@ export default function UploadPage() {
         isStudentScholar: "no",
         subjectAreas: [{ area: "", categories: [] }]
       });
-      setDoiStatus({ isDuplicate: null, message: "" });
-    } catch {
-      // handled by toast.promise
+      setDoiStatus({ isDuplicate: null, validOnCrossref: false, message: "" });
+
+    } catch (err) {
+      console.error("Submission error:", err);
+      // toast.promise already shows the error; nothing else needed
     } finally {
       setIsPending(false);
     }
@@ -808,11 +884,17 @@ export default function UploadPage() {
 
   if (!isAuthenticated) return null;
 
+  // build publication options from userAuthorIds: only include non-empty ones
+  const publicationOptions = [
+    { key: "scopus", label: "Scopus" },
+    { key: "sci", label: "SCI" },
+    { key: "webOfScience", label: "Web of Science" }
+  ].filter(opt => !!userAuthorIds[opt.key]);
+
   return (
     <div className="min-h-screen bg-blue-50">
       <div className="container mx-auto px-4 py-6">
         <div className="mx-auto w-full max-w-5xl space-y-6">
-          {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <Button
               type="button"
@@ -859,7 +941,7 @@ export default function UploadPage() {
                     )}
                   />
 
-                  {/* Section: Authors */}
+                  {/* Authors section - unchanged */}
                   <div className="space-y-4">
                     <SectionHeader
                       step={1}
@@ -929,7 +1011,7 @@ export default function UploadPage() {
                     )}
                   </div>
 
-                  {/* Section: Publication Info */}
+                  {/* Publication info */}
                   <div className="space-y-4">
                     <SectionHeader
                       step={2}
@@ -1045,6 +1127,7 @@ export default function UploadPage() {
                         )}
                       />
 
+                      {/* DOI field (same logic) */}
                       <FormField
                         control={form.control}
                         name="doi"
@@ -1064,59 +1147,82 @@ export default function UploadPage() {
                                     debouncedDoiCheck(e.target.value);
                                   }}
                                 />
-                                {isCheckingDoi && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-700" />}
+                                {isCheckingDoi && (
+                                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-700" />
+                                )}
+                                {doiStatus.validOnCrossref && !doiStatus.isDuplicate && (
+                                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
+                                )}
                               </div>
                             </FormControl>
-                            {doiStatus.message && !isCheckingDoi && (
-                              <div className="flex items-center text-sm mt-2 text-blue-800 bg-blue-100 border border-blue-200 rounded p-2">
-                                <AlertTriangle className="h-4 w-4 mr-2 text-blue-700" />
+
+                            {/* Show error message if invalid */}
+                            {doiStatus.message && !doiStatus.validOnCrossref && !isCheckingDoi && (
+                              <div className="flex items-center text-sm mt-2 text-red-800 bg-red-100 border border-red-200 rounded p-2">
+                                <AlertTriangle className="h-4 w-4 mr-2 text-red-700" />
                                 {doiStatus.message}
                               </div>
                             )}
+
+                            {/* Show Ensure DOI button only if valid */}
+                            {doiStatus.validOnCrossref && !doiStatus.isDuplicate && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 border-blue-600 text-blue-700 hover:bg-blue-50"
+                                onClick={() => window.open(`https://doi.org/${field.value.trim()}`, "_blank")}
+                              >
+                                Ensure DOI
+                              </Button>
+                            )}
+
                             <FormMessage className="text-blue-700" />
                           </FormItem>
                         )}
                       />
 
+                      {/* Publication dropdown - only show types the user has in their settings */}
                       <FormField
                         control={form.control}
                         name="publication"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-black">Publication</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                              <FormControl>
-                                <SelectTrigger className="text-black">
-                                  <SelectValue placeholder="Select publication type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="scopus">Scopus</SelectItem>
-                                <SelectItem value="sci">SCI</SelectItem>
-                                <SelectItem value="webOfScience">Web of Science</SelectItem>
-                                <SelectItem value="pubmed">PubMed</SelectItem>
-                                <SelectItem value="abdc">ABDC</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage className="text-blue-700" />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="facultyId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-black">Faculty ID</FormLabel>
                             <FormControl>
-                              <Input {...field} readOnly className="bg-blue-50" />
+                              <Select
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  // set publicationId automatically; effect also handles this
+                                  if (value && userAuthorIds[value]) {
+                                    form.setValue('publicationId', userAuthorIds[value], { shouldValidate: true });
+                                  } else {
+                                    form.setValue('publicationId', "", { shouldValidate: true });
+                                  }
+                                }}
+                                value={field.value ?? ""}
+                                disabled={publicationOptions.length === 0}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="text-black">
+                                    <SelectValue placeholder={publicationOptions.length ? "Select publication identifier" : "No identifiers available in profile"} />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {publicationOptions.map(opt => (
+                                    <SelectItem key={opt.key} value={opt.key}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
                         )}
                       />
 
+                      {/* PublicationId field - readOnly, populated from userAuthorIds */}
                       <FormField
                         control={form.control}
                         name="publicationId"
@@ -1124,13 +1230,14 @@ export default function UploadPage() {
                           <FormItem>
                             <FormLabel className="text-black">{publicationLabel}</FormLabel>
                             <FormControl>
-                              <Input placeholder={publicationType === 'scopus' ? '12345678900' : 'ID'} {...field} />
+                              <Input {...field} placeholder="Select publication type to auto-fill" readOnly className="bg-blue-50" />
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
                         )}
                       />
 
+                      {/* ClaimedBy select */}
                       <FormField
                         control={form.control}
                         name="claimedBy"
@@ -1182,7 +1289,8 @@ export default function UploadPage() {
                     </div>
                   </div>
 
-                  {/* Section: Subject Areas */}
+                  {/* ... rest of the form unchanged (subject areas, students, qRating, issueType, alert, submit) ... */}
+
                   <div className="space-y-4">
                     <SectionHeader
                       step={3}
@@ -1267,7 +1375,7 @@ export default function UploadPage() {
                     </Button>
                   </div>
 
-                  {/* Section: Student Scholars and Classification */}
+                  {/* Student scholars and other fields (unchanged) */}
                   <div className="space-y-4">
                     <SectionHeader
                       step={4}
@@ -1438,7 +1546,7 @@ export default function UploadPage() {
                   <div className="flex flex-col sm:flex-row gap-4">
                     <Button
                       type="submit"
-                      disabled={isPending}
+                      disabled={isPending || doiStatus.isDuplicate || !doiStatus.validOnCrossref}
                       className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 text-white"
                     >
                       {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
