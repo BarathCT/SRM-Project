@@ -15,8 +15,8 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 
 import DashboardHeader from "../components/dashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
-import PublicationsTable from "../components/PublicationsTable";
-import EditPublicationDialog from "../components/EditPublicationDialog";
+import PublicationsTable from "../components/PublicationTable/PublicationsTable";
+import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
 import StatsCard from "../components/StatsCard";
 import CampusAnalyticsCard from "./components/CampusAnalyticsCard";
 import FacultySidebar from "./components/FacultySidebar";

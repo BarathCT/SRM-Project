@@ -6,57 +6,18 @@ import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 import { sendUserWelcomeEmail } from '../utils/sendUserWelcomeMail.js';
 
-// Local helpers (duplicated from admin.js to avoid cross-file coupling)
-const normalizeCollegeName = (college) => {
-  if (!college || college === 'N/A') return 'N/A';
-  const upperCollege = college.toUpperCase();
-  const validColleges = ['SRMIST RAMAPURAM', 'SRM TRICHY', 'EASWARI ENGINEERING COLLEGE', 'TRP ENGINEERING COLLEGE'];
-  return validColleges.find((c) => c === upperCollege) || 'N/A';
-};
+// Centralized helpers (single source of truth)
+import {
+  normalizeCollegeName,
+  getCollegeData,
+  collegeRequiresInstitute
+} from '../utils/collegeData.js';
 
-const getCollegeData = (college) => {
-  const collegeOptions = [
-    {
-      name: 'SRMIST RAMAPURAM',
-      hasInstitutes: true,
-      institutes: [
-        { name: 'Science and Humanities', departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A'] },
-        {
-          name: 'Engineering and Technology',
-          departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
-        },
-        { name: 'Management', departments: ['Business Administration', 'Commerce', 'N/A'] },
-        { name: 'Dental', departments: ['General Dentistry', 'Orthodontics', 'N/A'] },
-        { name: 'SRM RESEARCH', departments: ['Ramapuram Research'] },
-      ],
-    },
-    {
-      name: 'SRM TRICHY',
-      hasInstitutes: true,
-      institutes: [
-        { name: 'Science and Humanities', departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A'] },
-        {
-          name: 'Engineering and Technology',
-          departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
-        },
-        { name: 'SRM RESEARCH', departments: ['Trichy Research'] },
-      ],
-    },
-    {
-      name: 'EASWARI ENGINEERING COLLEGE',
-      hasInstitutes: false,
-      departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
-    },
-    {
-      name: 'TRP ENGINEERING COLLEGE',
-      hasInstitutes: false,
-      departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A'],
-    },
-    { name: 'N/A', hasInstitutes: false, departments: ['N/A'] },
-  ];
-  return collegeOptions.find((c) => c.name === college) || collegeOptions.find((c) => c.name === 'N/A');
-};
+const router = express.Router();
 
+/* -------------------------------------------------------------------------- */
+/* Role permission helpers (OPTIONAL: move to a roles util if reused elsewhere) */
+/* -------------------------------------------------------------------------- */
 function canCreateRole(creatorRole, targetRole) {
   const rolePermissions = {
     super_admin: ['campus_admin', 'faculty'],
@@ -65,7 +26,9 @@ function canCreateRole(creatorRole, targetRole) {
   return rolePermissions[creatorRole]?.includes(targetRole) || false;
 }
 
-// Minimal auth (same logic as in admin.js)
+/* -------------------------------------------------------------------------- */
+/* Authentication (minimal)                                                   */
+/* -------------------------------------------------------------------------- */
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -73,18 +36,19 @@ function authenticate(req, res, next) {
   }
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { userId, role, email, college, institute, department }
+    req.user = jwt.verify(token, process.env.JWT_SECRET); // { userId, role, college, institute, department }
     next();
   } catch {
     return res.status(403).json({ message: 'Invalid token' });
   }
 }
 
-// Multer config for bulk upload
+/* -------------------------------------------------------------------------- */
+/* Multer config                                                              */
+/* -------------------------------------------------------------------------- */
 const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: function (req, file, cb) {
+  fileFilter: (req, file, cb) => {
     if (
       file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
       file.mimetype === 'application/vnd.ms-excel' ||
@@ -97,9 +61,9 @@ const upload = multer({
   },
 });
 
-const router = express.Router();
-
-// BULK UPLOAD: Create users from Excel/CSV file
+/* -------------------------------------------------------------------------- */
+/* POST /bulk-upload-users                                                    */
+/* -------------------------------------------------------------------------- */
 router.post('/bulk-upload-users', authenticate, upload.single('file'), async (req, res) => {
   const creator = req.user;
   const defaultRole = req.body.role || null;
@@ -119,9 +83,12 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      const rowIndex = i + 2; // account for header row in spreadsheet
       try {
+        // Extract / normalize fields (case-insensitive header support)
         const email = row.email || row.Email || row.EMAIL;
-        const fullName = row.fullName || row['Full Name'] || row.FULLNAME || row.name;
+        const fullName =
+          row.fullName || row['Full Name'] || row.FULLNAME || row.name;
         let password = row.password || row.Password || row.PASSWORD;
         let role = row.role || row.Role || row.ROLE || defaultRole;
         let college = normalizeCollegeName(row.college || row.College || row.COLLEGE);
@@ -129,46 +96,48 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
         let department = row.department || row.Department || row.DEPARTMENT;
         let facultyId = row.facultyId || row.FacultyId || row.FACULTYID;
 
+        // Campus admin can only create faculty (hardened)
         if (creator.role === 'campus_admin') {
-          role = 'faculty';
+            role = 'faculty';
         }
 
+        // Basic field validations
         if (!email || !fullName) {
-          failed++;
-          errors.push(`Row ${i + 2}: Missing email or fullName`);
+          failed++; errors.push(`Row ${rowIndex}: Missing email or fullName`);
           continue;
         }
-
         if (!role) {
-          failed++;
-          errors.push(`Row ${i + 2}: Role is missing`);
+          failed++; errors.push(`Row ${rowIndex}: Role is missing`);
           continue;
         }
-
         if (!canCreateRole(creator.role, role)) {
-          failed++;
-          errors.push(`Row ${i + 2}: You are not allowed to create a '${role}'`);
+          failed++; errors.push(`Row ${rowIndex}: You are not allowed to create role '${role}'`);
           continue;
         }
 
-        const existingUser = await User.findOne({ email: { $regex: `^${email}$`, $options: 'i' } });
+        // Duplicate user check
+        const existingUser = await User.findOne({
+          email: { $regex: `^${email}$`, $options: 'i' }
+        });
         if (existingUser) {
-          failed++;
-          errors.push(`Row ${i + 2}: User already exists`);
+          failed++; errors.push(`Row ${rowIndex}: User already exists`);
           continue;
         }
 
+        // Determine final values
         let finalCollege = college;
         let finalInstitute = institute;
         let finalDepartment = department;
         let finalFacultyId = facultyId;
 
         if (role === 'super_admin') {
+          // Normalize for super_admin
           finalCollege = 'N/A';
           finalInstitute = 'N/A';
           finalDepartment = 'N/A';
           finalFacultyId = 'N/A';
         } else {
+          // Creator-based overrides
           if (creator.role === 'super_admin') {
             finalCollege = college;
             finalInstitute = institute;
@@ -179,65 +148,68 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
             finalDepartment = department;
           }
 
-          if (role !== 'super_admin' && !finalFacultyId) {
-            failed++;
-            errors.push(`Row ${i + 2}: Faculty ID is required`);
+          // Faculty ID requirement (non super_admin)
+          if (!finalFacultyId) {
+            failed++; errors.push(`Row ${rowIndex}: Faculty ID is required for role '${role}'`);
             continue;
           }
 
           if (finalCollege !== 'N/A') {
-            const collegeData = getCollegeData(finalCollege);
-            if (collegeData.hasInstitutes) {
+            const cData = getCollegeData(finalCollege);
+            if (!cData) {
+              failed++; errors.push(`Row ${rowIndex}: Invalid college '${finalCollege}'`);
+              continue;
+            }
+
+            if (cData.hasInstitutes) {
+              // Institute required for certain roles
               if (role !== 'campus_admin' && (!finalInstitute || finalInstitute === 'N/A')) {
-                failed++;
-                errors.push(`Row ${i + 2}: Institute is required for college ${finalCollege}`);
+                failed++; errors.push(`Row ${rowIndex}: Institute is required for college '${finalCollege}'`);
                 continue;
               }
-              if (finalInstitute !== 'N/A') {
-                const validInstitute = collegeData.institutes.some((i) => i.name === finalInstitute);
-                if (!validInstitute) {
-                  failed++;
-                  errors.push(
-                    `Row ${i + 2}: Institute '${finalInstitute}' is not valid for college '${finalCollege}'`,
-                  );
+              if (finalInstitute && finalInstitute !== 'N/A') {
+                const validInst = cData.institutes.some(inst => inst.name === finalInstitute);
+                if (!validInst) {
+                  failed++; errors.push(`Row ${rowIndex}: Invalid institute '${finalInstitute}' for '${finalCollege}'`);
                   continue;
                 }
                 if (role !== 'campus_admin') {
+                  const instData = cData.institutes.find(inst => inst.name === finalInstitute);
                   if (!finalDepartment || finalDepartment === 'N/A') {
-                    failed++;
-                    errors.push(`Row ${i + 2}: Department is required for institute '${finalInstitute}'`);
+                    failed++; errors.push(`Row ${rowIndex}: Department is required for institute '${finalInstitute}'`);
                     continue;
                   }
-                  const instituteData = collegeData.institutes.find((i) => i.name === finalInstitute);
-                  if (!instituteData.departments.includes(finalDepartment)) {
-                    failed++;
-                    errors.push(
-                      `Row ${i + 2}: Department '${finalDepartment}' is not valid for institute '${finalInstitute}'`,
-                    );
+                  if (!instData.departments.includes(finalDepartment)) {
+                    failed++; errors.push(`Row ${rowIndex}: Department '${finalDepartment}' invalid for '${finalInstitute}'`);
                     continue;
+                  }
+                } else {
+                  // campus_admin => department forced based on RESEARCH or N/A
+                  if (finalInstitute !== 'SRM RESEARCH') {
+                    finalDepartment = 'N/A';
                   }
                 }
               }
             } else {
+              // College without institutes
               finalInstitute = 'N/A';
               if (role !== 'campus_admin') {
                 if (!finalDepartment || finalDepartment === 'N/A') {
-                  failed++;
-                  errors.push(`Row ${i + 2}: Department is required for college '${finalCollege}'`);
+                  failed++; errors.push(`Row ${rowIndex}: Department is required for college '${finalCollege}'`);
                   continue;
                 }
-                if (!collegeData.departments.includes(finalDepartment)) {
-                  failed++;
-                  errors.push(
-                    `Row ${i + 2}: Department '${finalDepartment}' is not valid for college '${finalCollege}'`,
-                  );
+                if (!cData.departments.includes(finalDepartment)) {
+                  failed++; errors.push(`Row ${rowIndex}: Department '${finalDepartment}' invalid for '${finalCollege}'`);
                   continue;
                 }
+              } else {
+                finalDepartment = 'N/A';
               }
             }
           }
         }
 
+        // Auto-generate password if omitted
         if (!password) {
           password = Math.random().toString(36).slice(-8);
         }
@@ -252,7 +224,7 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
           college: finalCollege,
           institute: finalInstitute,
           department: finalDepartment,
-          createdBy: creator.userId,
+          createdBy: creator.userId
         });
 
         await newUser.save();
@@ -268,23 +240,28 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
               collegeName: finalCollege,
               institute: finalInstitute,
               department: finalDepartment,
-              appUrl: process.env.APP_URL || 'https://scholarsync.example.com',
+              appUrl: process.env.APP_URL || 'https://scholarsync.example.com'
             });
-          } catch (mailErr) {
-            // Don't fail hard on email error; capture for summary
+          } catch {
+            // Ignore mail failure in batch summary
           }
         }
 
         success++;
       } catch (rowErr) {
         failed++;
-        errors.push(`Row ${i + 2}: ${rowErr.message}`);
+        errors.push(`Row ${rowIndex}: ${rowErr.message}`);
       }
     }
 
     res.json({
       success: true,
-      summary: { total: rows.length, success, failed, errors },
+      summary: {
+        total: rows.length,
+        success,
+        failed,
+        errors
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Bulk upload failed.' });
