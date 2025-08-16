@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
-import DashboardHeader from "../components/dashboardHeader";
+import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
 import PublicationsTable from "../components/PublicationTable/PublicationsTable";
 import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";

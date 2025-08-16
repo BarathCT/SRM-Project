@@ -190,7 +190,7 @@ export default function UserHeader({
             onClick={() => setOpenDialog(true)}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-            Add User
+            Add User 
           </Button>
         )}
 
