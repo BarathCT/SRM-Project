@@ -7,17 +7,17 @@ dotenv.config();
 async function diagnosePaperSchema() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ Connected to MongoDB');
+    console.log(' Connected to MongoDB');
 
     const schema = Paper.schema;
-    console.log('\n🔍 Paper Schema Detailed Analysis:');
+    console.log('\n Paper Schema Detailed Analysis:');
     console.log('==================================');
 
     // Get specific info about subjectArea and subjectCategories
     const subjectAreaPath = schema.path('subjectArea');
     const subjectCategoriesPath = schema.path('subjectCategories');
 
-    console.log('\n📋 subjectArea field:');
+    console.log('\n subjectArea field:');
     console.log('--------------------');
     if (subjectAreaPath) {
       console.log('Type:', subjectAreaPath.instance);
@@ -33,7 +33,7 @@ async function diagnosePaperSchema() {
       console.log('subjectArea field not found in schema');
     }
 
-    console.log('\n📋 subjectCategories field:');
+    console.log('\n subjectCategories field:');
     console.log('---------------------------');
     if (subjectCategoriesPath) {
       console.log('Type:', subjectCategoriesPath.instance);
@@ -54,14 +54,14 @@ async function diagnosePaperSchema() {
     }
 
     // List all schema paths to see the full structure
-    console.log('\n📋 All Schema Fields:');
+    console.log('\n All Schema Fields:');
     console.log('=====================');
     schema.eachPath((pathname, schematype) => {
       console.log(`${pathname}: ${schematype.instance} ${schematype.isRequired ? '(required)' : ''}`);
     });
 
     // Try different test documents to understand the validation
-    console.log('\n🧪 Testing Different Subject Area Values:');
+    console.log('\n Testing Different Subject Area Values:');
     console.log('==========================================');
 
     const testSubjectAreas = [
@@ -99,15 +99,15 @@ async function diagnosePaperSchema() {
         });
 
         await testDoc.validate();
-        console.log(`✅ "${subjectArea}" - VALID`);
+        console.log(` "${subjectArea}" - VALID`);
         
       } catch (error) {
-        console.log(`❌ "${subjectArea}" - INVALID: ${error.message}`);
+        console.log(` "${subjectArea}" - INVALID: ${error.message}`);
       }
     }
 
     // Test different category combinations
-    console.log('\n🧪 Testing Different Category Combinations:');
+    console.log('\n Testing Different Category Combinations:');
     console.log('===========================================');
 
     const testCategories = [
@@ -146,15 +146,15 @@ async function diagnosePaperSchema() {
         });
 
         await testDoc.validate();
-        console.log(`✅ ${JSON.stringify(categories)} - VALID`);
+        console.log(` ${JSON.stringify(categories)} - VALID`);
         
       } catch (error) {
-        console.log(`❌ ${JSON.stringify(categories)} - INVALID: ${error.message}`);
+        console.log(` ${JSON.stringify(categories)} - INVALID: ${error.message}`);
       }
     }
 
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error(' Error:', error.message);
     console.error('Stack:', error.stack);
   } finally {
     await mongoose.connection.close();
