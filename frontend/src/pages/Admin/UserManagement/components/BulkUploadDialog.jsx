@@ -423,7 +423,7 @@ export default function BulkUploadDialog({
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <h5 className="text-xs font-semibold text-gray-700 mb-1">✅ Features</h5>
+                  <h5 className="text-xs font-semibold text-gray-700 mb-1"> Features</h5>
                   <ul className="text-xs text-gray-600 space-y-0.5">
                     <li>• Excel dropdown validation</li>
                     <li>• Auto-generated passwords</li>
@@ -431,7 +431,7 @@ export default function BulkUploadDialog({
                   </ul>
                 </div>
                 <div>
-                  <h5 className="text-xs font-semibold text-gray-700 mb-1">📋 Requirements</h5>
+                  <h5 className="text-xs font-semibold text-gray-700 mb-1"> Requirements</h5>
                   <ul className="text-xs text-gray-600 space-y-0.5">
                     <li>• Use downloaded template</li>
                     <li>• Open in Microsoft Excel</li>
