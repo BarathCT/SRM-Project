@@ -24,6 +24,12 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider
+} from "@/components/ui/tooltip";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -1184,43 +1190,62 @@ export default function UploadPage() {
 
                       {/* Publication dropdown - only show types the user has in their settings */}
                       <FormField
-                        control={form.control}
-                        name="publication"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-black">Publication</FormLabel>
-                            <FormControl>
-                              <Select
-                                onValueChange={(value) => {
-                                  field.onChange(value);
-                                  // set publicationId automatically; effect also handles this
-                                  if (value && userAuthorIds[value]) {
-                                    form.setValue('publicationId', userAuthorIds[value], { shouldValidate: true });
-                                  } else {
-                                    form.setValue('publicationId', "", { shouldValidate: true });
-                                  }
-                                }}
-                                value={field.value ?? ""}
-                                disabled={publicationOptions.length === 0}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="text-black">
-                                    <SelectValue placeholder={publicationOptions.length ? "Select publication identifier" : "No identifiers available in profile"} />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {publicationOptions.map(opt => (
-                                    <SelectItem key={opt.key} value={opt.key}>
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage className="text-blue-700" />
-                          </FormItem>
-                        )}
-                      />
+  control={form.control}
+  name="publication"
+  render={({ field }) => (
+    <FormItem>
+      <div className="flex items-center gap-2">
+        <FormLabel className="text-black">Publication</FormLabel>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-4 w-4 text-gray-500 hover:text-gray-700 cursor-pointer" />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs text-sm">
+              This is your added Author ID.  
+              If you want to use another ID, please add it in the Settings page.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      <FormControl>
+        <Select
+          onValueChange={(value) => {
+            field.onChange(value);
+            if (value && userAuthorIds[value]) {
+              form.setValue("publicationId", userAuthorIds[value], { shouldValidate: true });
+            } else {
+              form.setValue("publicationId", "", { shouldValidate: true });
+            }
+          }}
+          value={field.value ?? ""}
+          disabled={publicationOptions.length === 0}
+        >
+          <FormControl>
+            <SelectTrigger className="text-black">
+              <SelectValue
+                placeholder={
+                  publicationOptions.length
+                    ? "Select publication identifier"
+                    : "No identifiers available in profile"
+                }
+              />
+            </SelectTrigger>
+          </FormControl>
+          <SelectContent>
+            {publicationOptions.map((opt) => (
+              <SelectItem key={opt.key} value={opt.key}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FormControl>
+      <FormMessage className="text-blue-700" />
+    </FormItem>
+  )}
+/>
 
                       {/* PublicationId field - readOnly, populated from userAuthorIds */}
                       <FormField
