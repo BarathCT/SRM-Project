@@ -1,128 +1,139 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent
+  Card, CardHeader, CardTitle, CardDescription, CardContent
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import {
-  Search,
-  Filter,
-  X,
-  Square,
-  Trash2,
-  Users,
-  Building,
-  Shield,
-  FileSpreadsheet,
-  GraduationCap,
-  MapPin
+  Search, Filter, X, Square, Trash2, Building, Shield, FileSpreadsheet
 } from "lucide-react";
-
 import ExportFieldsDialog from "./ExportFieldsDialog";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
+import {
+  getInstitutesForCollege,
+  getDepartments,
+  ALL_COLLEGE_NAMES,
+  collegesWithoutInstitutes
+} from "@/utils/collegeData";
 
-/**
- * PublicationsFilterCard
- * Optimized and compact filter component with organizational fields support.
- */
 export default function PublicationsFilterCard(props) {
   const {
-    // options
     filterOptions,
-
-    // standard values
     searchTerm,
     selectedYear,
     selectedQRating,
     selectedPublicationType,
     selectedSubjectArea,
-
-    // organizational filters
-    selectedAuthor,
-    selectedDepartment,
-    selectedCollege,
-    selectedInstitute,
-    selectedCampus,
-
-    // standard handlers
+    selectedSubjectCategory = "all",
+    selectedCollege = "all",
+    selectedInstitute = "all",
+    selectedDepartment = "all",
     onSearchTermChange,
     onYearChange,
     onQRatingChange,
     onPublicationTypeChange,
     onSubjectAreaChange,
-
-    // organizational handlers
-    onAuthorChange,
-    onDepartmentChange,
-    onCollegeChange,
-    onInstituteChange,
-    onCampusChange,
-
-    // selection / actions
+    onSubjectCategoryChange = () => {},
+    onCollegeChange = () => {},
+    onInstituteChange = () => {},
+    onDepartmentChange = () => {},
     hasActiveFilters,
     onClearFilters,
     selectedCount = 0,
     onClearSelection,
     onBulkDelete,
-
-    // export state & handlers
     exportDialogOpen,
     onExportDialogOpenChange,
     exportFields,
     onExportFieldsChange,
     onExport,
-
-    // role flags
     showCampusFilters = false,
     isSuperAdmin = false,
-    userRole = "user"
+    userRole = "user",
+    currentUser = null
   } = props;
 
   const isSuper = isSuperAdmin || userRole === "super_admin";
   const isCampusAdmin = userRole === "campus_admin";
   const showExtended = isSuper || showCampusFilters || isCampusAdmin;
 
-  // Get authors based on selected department for campus admin
-  const getFilteredAuthors = () => {
-    if (!isCampusAdmin || selectedDepartment === "all") {
-      return filterOptions.authors || [];
+  useEffect(() => {
+    if (isCampusAdmin && currentUser) {
+      if (selectedCollege !== (currentUser.college || "all")) {
+        onCollegeChange(currentUser.college || "all");
+      }
+      if (selectedInstitute !== (currentUser.institute || "all")) {
+        onInstituteChange(currentUser.institute || "all");
+      }
     }
-    
-    // In a real app, you would filter authors based on the selected department
-    // This is a placeholder - you would need to implement the actual filtering logic
-    // based on your data structure
-    return filterOptions.authors?.filter(author => 
-      author.department === selectedDepartment
-    ) || [];
+    // eslint-disable-next-line
+  }, [isCampusAdmin, currentUser]);
+
+  const colleges = useMemo(() => ['all', ...ALL_COLLEGE_NAMES.filter(c => c !== 'N/A')], []);
+  const institutes = useMemo(() => {
+    if (selectedCollege === 'all') return [];
+    const insts = getInstitutesForCollege(selectedCollege).filter(i => i !== 'N/A');
+    return insts.length > 0 ? ['all', ...insts] : [];
+  }, [selectedCollege]);
+
+  const departments = useMemo(() => {
+    if (isCampusAdmin && currentUser) {
+      if (!currentUser.college || !currentUser.institute) return [];
+      return getDepartments(currentUser.college, currentUser.institute).filter(d => d !== 'N/A');
+    }
+    if (selectedCollege === 'all') return [];
+    if (collegesWithoutInstitutes.includes(selectedCollege)) {
+      return getDepartments(selectedCollege, null).filter(d => d !== 'N/A');
+    }
+    if (selectedInstitute === 'all') return [];
+    return getDepartments(selectedCollege, selectedInstitute).filter(d => d !== 'N/A');
+  }, [isCampusAdmin, currentUser, selectedCollege, selectedInstitute]);
+
+  const showCollegeSelect = isSuper || (!isCampusAdmin && showCampusFilters);
+  const showInstituteSelect = (isSuper || (!isCampusAdmin && showCampusFilters)) && institutes.length > 0;
+  const showDepartmentSelect = (
+    isCampusAdmin ||
+    departments.length > 0 ||
+    (collegesWithoutInstitutes.includes(selectedCollege) && selectedCollege !== 'all')
+  );
+
+  const subjectCategories = useMemo(() => {
+    if (!selectedSubjectArea || selectedSubjectArea === "all") return [];
+    return SUBJECT_AREAS[selectedSubjectArea] || [];
+  }, [selectedSubjectArea]);
+
+  useEffect(() => {
+    if (selectedSubjectCategory !== "all" && !subjectCategories.includes(selectedSubjectCategory)) {
+      onSubjectCategoryChange("all");
+    }
+    // eslint-disable-next-line
+  }, [selectedSubjectArea]);
+
+  const handleSubjectAreaChange = (value) => {
+    onSubjectAreaChange(value);
+    onSubjectCategoryChange("all");
   };
+
+  const activeOrgFilters = [
+    (!isCampusAdmin && selectedCollege !== "all"),
+    (!isCampusAdmin && selectedInstitute !== "all"),
+    selectedDepartment !== "all",
+    selectedSubjectCategory !== "all"
+  ].filter(Boolean).length;
 
   const getRoleDescription = () => {
     if (isSuper) return "Filter and manage all system publications.";
-    if (isCampusAdmin) return "Filter and manage campus publications.";
+    if (isCampusAdmin) return `Filter and manage publications for ${currentUser?.institute || "your institute"}.`;
     return "Filter and manage your publications.";
   };
 
@@ -132,32 +143,11 @@ export default function PublicationsFilterCard(props) {
     return "Search title, journal, or authors…";
   };
 
-  // Flatten subject areas for the dropdown
-  const allSubjectAreas = Object.entries(SUBJECT_AREAS).flatMap(
-    ([category, subjects]) => [
-      { value: category, label: category, isCategory: true },
-      ...subjects.map(subject => ({ 
-        value: subject, 
-        label: subject,
-        isCategory: false 
-      }))
-    ]
-  );
-
-  // Count active organizational filters
-  const activeOrgFilters = [
-    selectedAuthor !== "all",
-    selectedDepartment !== "all", 
-    !isCampusAdmin && selectedCollege !== "all",
-    !isCampusAdmin && selectedInstitute !== "all",
-    !isCampusAdmin && selectedCampus !== "all"
-  ].filter(Boolean).length;
-
   return (
     <>
       <Card className="mb-4 border border-blue-100 shadow-sm bg-white">
         <CardHeader className="bg-white-50 border-b border-blue-100 pb-3">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-gray-900 text-lg">
                 <Filter className="h-5 w-5 text-blue-600" />
@@ -169,7 +159,6 @@ export default function PublicationsFilterCard(props) {
                 {getRoleDescription()}
               </CardDescription>
             </div>
-
             <div className="flex flex-wrap gap-2">
               {hasActiveFilters && (
                 <Button
@@ -182,7 +171,6 @@ export default function PublicationsFilterCard(props) {
                   Clear Filters
                 </Button>
               )}
-
               {selectedCount > 0 && (
                 <>
                   <Button
@@ -194,7 +182,6 @@ export default function PublicationsFilterCard(props) {
                     <Square className="h-3 w-3 mr-1" />
                     Clear Selection
                   </Button>
-
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -231,7 +218,6 @@ export default function PublicationsFilterCard(props) {
                   </AlertDialog>
                 </>
               )}
-
               <Button
                 onClick={() => onExportDialogOpenChange(true)}
                 variant="default"
@@ -246,222 +232,242 @@ export default function PublicationsFilterCard(props) {
         </CardHeader>
 
         <CardContent className="pt-4 bg-white">
-          {/* Basic Filters Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
-            {/* Search */}
-            <div className="lg:col-span-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder={getSearchPlaceholder()}
-                  value={searchTerm}
-                  onChange={(e) => onSearchTermChange(e.target.value)}
-                  className="pl-10 border-blue-200 focus:border-blue-500 focus:ring-blue-500 bg-white h-8 text-sm"
-                />
-              </div>
+          {/* Search Field - Full width on mobile, half on larger screens */}
+          <div className="mb-4 w-full">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder={getSearchPlaceholder()}
+                value={searchTerm}
+                onChange={(e) => onSearchTermChange(e.target.value)}
+                className="pl-10 border-blue-200 focus:border-blue-500 focus:ring-blue-500 bg-white h-10 text-sm w-full"
+              />
+            </div>
+          </div>
+
+          {/* Main Filters Grid - Responsive columns */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            {/* Year Filter */}
+            <div>
+              <Label htmlFor="year-filter" className="text-xs text-gray-600 mb-1 block">Year</Label>
+              <Select value={selectedYear} onValueChange={onYearChange}>
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                  <SelectValue placeholder="All Years" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-blue-200">
+                  <SelectItem value="all">All Years</SelectItem>
+                  {filterOptions.years?.map((y) => (
+                    <SelectItem key={`year-${y}`} value={String(y)} className="text-sm">
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Year */}
-            <Select value={selectedYear} onValueChange={onYearChange}>
-              <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent className="bg-white border-blue-200">
-                <SelectItem value="all">All Years</SelectItem>
-                {filterOptions.years?.map((y) => (
-                  <SelectItem key={y} value={String(y)} className="text-sm">
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Q Rating Filter */}
+            <div>
+              <Label htmlFor="q-rating-filter" className="text-xs text-gray-600 mb-1 block">Q Rating</Label>
+              <Select value={selectedQRating} onValueChange={onQRatingChange}>
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                  <SelectValue placeholder="All Q Ratings" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-blue-200">
+                  <SelectItem value="all">All Q Ratings</SelectItem>
+                  {filterOptions.qRatings?.map((q) => (
+                    <SelectItem key={`q-${q}`} value={q} className="text-sm">
+                      {q}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            {/* Q Rating */}
-            <Select value={selectedQRating} onValueChange={onQRatingChange}>
-              <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                <SelectValue placeholder="Q Rating" />
-              </SelectTrigger>
-              <SelectContent className="bg-white border-blue-200">
-                <SelectItem value="all">All Q Ratings</SelectItem>
-                {filterOptions.qRatings?.map((q) => (
-                  <SelectItem key={q} value={q} className="text-sm">
-                    {q}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Publication Type Filter */}
+            <div>
+              <Label htmlFor="pub-type-filter" className="text-xs text-gray-600 mb-1 block">Type</Label>
+              <Select value={selectedPublicationType} onValueChange={onPublicationTypeChange}>
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-blue-200">
+                  <SelectItem value="all">All Types</SelectItem>
+                  {filterOptions.publicationTypes?.map((t) => (
+                    <SelectItem key={`type-${t}`} value={t} className="text-sm">
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            {/* Publication Type */}
-            <Select value={selectedPublicationType} onValueChange={onPublicationTypeChange}>
-              <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent className="bg-white border-blue-200">
-                <SelectItem value="all">All Types</SelectItem>
-                {filterOptions.publicationTypes?.map((t) => (
-                  <SelectItem key={t} value={t} className="text-sm">
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Subject Area Filter */}
+            <div>
+              <Label htmlFor="subject-area" className="text-xs text-gray-600 mb-1 block">Subject Area</Label>
+              <Select 
+                value={selectedSubjectArea} 
+                onValueChange={handleSubjectAreaChange}
+              >
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                  <SelectValue placeholder="All Subject Areas" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-blue-200 max-h-[400px] overflow-y-auto">
+                  <SelectItem value="all">All Subject Areas</SelectItem>
+                  {Object.keys(SUBJECT_AREAS).map(area => (
+                    <SelectItem 
+                      key={`area-${area}`} 
+                      value={area}
+                      // removed any extra className for normal dropdown style
+                    >
+                      {area}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-            {/* Subject Area */}
-            <Select value={selectedSubjectArea} onValueChange={onSubjectAreaChange}>
-              <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent className="bg-white border-blue-200 max-h-[400px] overflow-y-auto">
-                <SelectItem value="all">All Subjects</SelectItem>
-                {allSubjectAreas.map((item) => (
-                  <SelectItem 
-                    key={item.value} 
-                    value={item.value} 
-                    className={`text-sm ${item.isCategory ? 'font-semibold bg-gray-100' : 'pl-6'}`}
-                  >
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Subject Category Filter - Full width on mobile, half on larger */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <Label htmlFor="subject-category" className="text-xs text-gray-600 mb-1 block">Subject Category</Label>
+              <Select
+                value={selectedSubjectCategory}
+                onValueChange={onSubjectCategoryChange}
+                disabled={selectedSubjectArea === "all" || subjectCategories.length === 0}
+              >
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-blue-200 max-h-[400px] overflow-y-auto">
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {subjectCategories.map((category) => (
+                    <SelectItem key={`category-${category}`} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Extended Organizational Filters */}
           {showExtended && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-              <Select value={selectedAuthor} onValueChange={onAuthorChange}>
-                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                  <SelectValue placeholder="Author" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-blue-200">
-                  <SelectItem value="all">All Authors</SelectItem>
-                  {getFilteredAuthors().map((author) => (
-                    <SelectItem 
-                      key={author.id || author} 
-                      value={author.id || author} 
-                      className="text-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Users className="h-3 w-3 text-blue-600" />
-                        {typeof author === 'string' ? 
-                          (author.length > 20 ? author.substring(0, 20) + "..." : author) :
-                          (author.name.length > 20 ? author.name.substring(0, 20) + "..." : author.name)
-                        }
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedDepartment} onValueChange={onDepartmentChange}>
-                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                  <SelectValue placeholder="Department" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-blue-200">
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {filterOptions.departments?.map((dept) => (
-                    <SelectItem key={dept} value={dept} className="text-sm">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-3 w-3 text-blue-600" />
-                        {dept.length > 20 ? dept.substring(0, 20) + "..." : dept}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {!isCampusAdmin && (
-                <>
-                  <Select value={selectedCollege} onValueChange={onCollegeChange}>
-                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                      <SelectValue placeholder="College" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+              {showCollegeSelect && (
+                <div>
+                  <Label htmlFor="college-filter" className="text-xs text-gray-600 mb-1 block">College</Label>
+                  <Select
+                    value={selectedCollege}
+                    onValueChange={(value) => {
+                      onCollegeChange(value);
+                      onInstituteChange('all');
+                      onDepartmentChange('all');
+                    }}
+                    disabled={isCampusAdmin}
+                  >
+                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                      <SelectValue placeholder="All Colleges" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-blue-200">
                       <SelectItem value="all">All Colleges</SelectItem>
-                      {filterOptions.colleges?.map((college) => (
-                        <SelectItem key={college} value={college} className="text-sm">
-                          <div className="flex items-center gap-2">
-                            <GraduationCap className="h-3 w-3 text-green-600" />
-                            {college.length > 20 ? college.substring(0, 20) + "..." : college}
-                          </div>
-                        </SelectItem>
+                      {colleges.filter(c => c !== 'all').map(college => (
+                        <SelectItem key={`college-${college}`} value={college}>{college}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-
-                  <Select value={selectedInstitute} onValueChange={onInstituteChange}>
-                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                      <SelectValue placeholder="Institute" />
+                </div>
+              )}
+              {showInstituteSelect && (
+                <div>
+                  <Label htmlFor="institute-filter" className="text-xs text-gray-600 mb-1 block">Institute</Label>
+                  <Select
+                    value={selectedInstitute}
+                    onValueChange={(value) => {
+                      onInstituteChange(value);
+                      onDepartmentChange('all');
+                    }}
+                    disabled={isCampusAdmin || selectedCollege === 'all'}
+                  >
+                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                      <SelectValue placeholder="All Institutes" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-blue-200">
                       <SelectItem value="all">All Institutes</SelectItem>
-                      {filterOptions.institutes?.map((institute) => (
-                        <SelectItem key={institute} value={institute} className="text-sm">
-                          <div className="flex items-center gap-2">
-                            <Building className="h-3 w-3 text-purple-600" />
-                            {institute.length > 20 ? institute.substring(0, 20) + "..." : institute}
-                          </div>
-                        </SelectItem>
+                      {institutes.filter(i => i !== 'all').map(institute => (
+                        <SelectItem key={`institute-${institute}`} value={institute}>{institute}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-
-                  <Select value={selectedCampus} onValueChange={onCampusChange}>
-                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-8 text-sm">
-                      <SelectValue placeholder="Campus" />
+                </div>
+              )}
+              {showDepartmentSelect && (
+                <div>
+                  <Label htmlFor="department-filter" className="text-xs text-gray-600 mb-1 block">
+                    Department
+                  </Label>
+                  <Select
+                    value={selectedDepartment}
+                    onValueChange={onDepartmentChange}
+                    disabled={
+                      (!isCampusAdmin && (selectedCollege === 'all' || (showInstituteSelect && selectedInstitute === 'all')))
+                    }
+                  >
+                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                      <SelectValue placeholder="All Departments" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-blue-200">
-                      <SelectItem value="all">All Campuses</SelectItem>
-                      {filterOptions.campuses?.map((campus) => (
-                        <SelectItem key={campus} value={campus} className="text-sm">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-3 w-3 text-amber-600" />
-                            {campus.length > 20 ? campus.substring(0, 20) + "..." : campus}
-                          </div>
-                        </SelectItem>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments.filter(d => d !== 'all').map(department => (
+                        <SelectItem key={`dept-${department}`} value={department}>{department}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </>
+                </div>
               )}
             </div>
           )}
 
-          {/* Active filters display */}
+          {/* Active Filters Badges */}
           {hasActiveFilters && (
-            <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-              <div className="flex flex-wrap gap-1 items-center">
+            <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+              <div className="flex flex-wrap gap-2 items-center">
                 <span className="text-xs font-medium text-blue-700 flex items-center gap-1">
                   <Filter className="h-3 w-3" />
-                  Active:
+                  Active Filters:
                 </span>
                 {searchTerm && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-5">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-6">
                     Search: "{searchTerm.length > 15 ? searchTerm.substring(0, 15) + "..." : searchTerm}"
                   </Badge>
                 )}
                 {selectedYear !== "all" && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-5">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-6">
                     Year: {selectedYear}
                   </Badge>
                 )}
                 {selectedQRating !== "all" && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-5">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-6">
                     Q: {selectedQRating}
                   </Badge>
                 )}
                 {selectedPublicationType !== "all" && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-5">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-6">
                     Type: {selectedPublicationType}
                   </Badge>
                 )}
                 {selectedSubjectArea !== "all" && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-5">
-                    Subject: {selectedSubjectArea.length > 15 ? selectedSubjectArea.substring(0, 15) + "..." : selectedSubjectArea}
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-6">
+                    Subject: {selectedSubjectArea}
+                  </Badge>
+                )}
+                {selectedSubjectCategory !== "all" && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs h-6">
+                    Category: {selectedSubjectCategory}
                   </Badge>
                 )}
                 {showExtended && activeOrgFilters > 0 && (
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300 text-xs h-5">
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300 text-xs h-6">
                     +{activeOrgFilters} org filter{activeOrgFilters > 1 ? "s" : ""}
                   </Badge>
                 )}
@@ -470,8 +476,6 @@ export default function PublicationsFilterCard(props) {
           )}
         </CardContent>
       </Card>
-
-      {/* Unified Export Dialog */}
       <ExportFieldsDialog
         open={exportDialogOpen}
         onOpenChange={onExportDialogOpenChange}

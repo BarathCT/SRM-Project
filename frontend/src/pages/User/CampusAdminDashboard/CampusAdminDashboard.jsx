@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
-import DashboardHeader from "../components/dashboardHeader";
+import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
 import PublicationsTable from "../components/PublicationTable/PublicationsTable";
 import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
@@ -69,6 +69,7 @@ const CampusAdminDashboard = () => {
   const [instituteSelectedQRating, setInstituteSelectedQRating] = useState("all");
   const [instituteSelectedPublicationType, setInstituteSelectedPublicationType] = useState("all");
   const [instituteSelectedSubjectArea, setInstituteSelectedSubjectArea] = useState("all");
+  const [instituteSelectedSubjectCategory, setInstituteSelectedSubjectCategory] = useState("all");
   const [instituteSelectedAuthor, setInstituteSelectedAuthor] = useState("all");
   const [instituteSelectedDepartment, setInstituteSelectedDepartment] = useState("all");
 
@@ -80,6 +81,7 @@ const CampusAdminDashboard = () => {
   const [mySelectedQRating, setMySelectedQRating] = useState("all");
   const [mySelectedPublicationType, setMySelectedPublicationType] = useState("all");
   const [mySelectedSubjectArea, setMySelectedSubjectArea] = useState("all");
+  const [mySelectedSubjectCategory, setMySelectedSubjectCategory] = useState("all");
 
   const debouncedMyText = useDebouncedValue(mySearchTerm, 250);
   const { toast } = useToast();
@@ -224,6 +226,7 @@ const CampusAdminDashboard = () => {
       instituteSelectedQRating !== "all" ||
       instituteSelectedPublicationType !== "all" ||
       instituteSelectedSubjectArea !== "all" ||
+      instituteSelectedSubjectCategory !== "all" ||
       instituteSelectedAuthor !== "all" ||
       instituteSelectedDepartment !== "all",
     [
@@ -233,6 +236,7 @@ const CampusAdminDashboard = () => {
       instituteSelectedQRating,
       instituteSelectedPublicationType,
       instituteSelectedSubjectArea,
+      instituteSelectedSubjectCategory,
       instituteSelectedAuthor,
       instituteSelectedDepartment,
     ]
@@ -244,8 +248,9 @@ const CampusAdminDashboard = () => {
       mySelectedYear !== "all" ||
       mySelectedQRating !== "all" ||
       mySelectedPublicationType !== "all" ||
-      mySelectedSubjectArea !== "all",
-    [mySearchTerm, mySelectedYear, mySelectedQRating, mySelectedPublicationType, mySelectedSubjectArea]
+      mySelectedSubjectArea !== "all" ||
+      mySelectedSubjectCategory !== "all",
+    [mySearchTerm, mySelectedYear, mySelectedQRating, mySelectedPublicationType, mySelectedSubjectArea, mySelectedSubjectCategory]
   );
 
   // Filter helpers
@@ -271,8 +276,8 @@ const CampusAdminDashboard = () => {
       if (instituteSelectedQRating !== "all" && paper.qRating !== instituteSelectedQRating) return false;
       if (instituteSelectedPublicationType !== "all" && paper.publicationType !== instituteSelectedPublicationType) return false;
       if (instituteSelectedSubjectArea !== "all" && paper.subjectArea !== instituteSelectedSubjectArea) return false;
+      if (instituteSelectedSubjectCategory !== "all" && !(paper.subjectCategories || []).includes(instituteSelectedSubjectCategory)) return false;
       if (instituteSelectedAuthor !== "all" && paper.claimedBy !== instituteSelectedAuthor) return false;
-
       if (instituteSelectedDepartment !== "all") {
         const dep = facultyDeptMap.get(paper.facultyId);
         if (dep !== instituteSelectedDepartment) return false;
@@ -287,6 +292,7 @@ const CampusAdminDashboard = () => {
     instituteSelectedQRating,
     instituteSelectedPublicationType,
     instituteSelectedSubjectArea,
+    instituteSelectedSubjectCategory,
     instituteSelectedAuthor,
     instituteSelectedDepartment,
     facultyDeptMap,
@@ -301,6 +307,7 @@ const CampusAdminDashboard = () => {
       if (mySelectedQRating !== "all" && paper.qRating !== mySelectedQRating) return false;
       if (mySelectedPublicationType !== "all" && paper.publicationType !== mySelectedPublicationType) return false;
       if (mySelectedSubjectArea !== "all" && paper.subjectArea !== mySelectedSubjectArea) return false;
+      if (mySelectedSubjectCategory !== "all" && !(paper.subjectCategories || []).includes(mySelectedSubjectCategory)) return false;
       return true;
     });
   }, [
@@ -310,6 +317,7 @@ const CampusAdminDashboard = () => {
     mySelectedQRating,
     mySelectedPublicationType,
     mySelectedSubjectArea,
+    mySelectedSubjectCategory
   ]);
 
   // Selected faculty
@@ -438,6 +446,7 @@ const CampusAdminDashboard = () => {
     setInstituteSelectedQRating("all");
     setInstituteSelectedPublicationType("all");
     setInstituteSelectedSubjectArea("all");
+    setInstituteSelectedSubjectCategory("all");
     setInstituteSelectedAuthor("all");
     setInstituteSelectedDepartment("all");
     toast.info("Cleared institute filters", { duration: 1500 });
@@ -448,6 +457,7 @@ const CampusAdminDashboard = () => {
     setMySelectedQRating("all");
     setMySelectedPublicationType("all");
     setMySelectedSubjectArea("all");
+    setMySelectedSubjectCategory("all");
     toast.info("Cleared my filters", { duration: 1500 });
   };
   const clearInstituteSelection = () => {
@@ -834,6 +844,7 @@ const CampusAdminDashboard = () => {
                     selectedQRating={instituteSelectedQRating}
                     selectedPublicationType={instituteSelectedPublicationType}
                     selectedSubjectArea={instituteSelectedSubjectArea}
+                    selectedSubjectCategory={instituteSelectedSubjectCategory}
                     selectedAuthor={"all"}
                     selectedDepartment={"all"}
                     onSearchTermChange={setInstituteSearchTerm}
@@ -841,6 +852,7 @@ const CampusAdminDashboard = () => {
                     onQRatingChange={setInstituteSelectedQRating}
                     onPublicationTypeChange={setInstituteSelectedPublicationType}
                     onSubjectAreaChange={setInstituteSelectedSubjectArea}
+                    onSubjectCategoryChange={setInstituteSelectedSubjectCategory}
                     onAuthorChange={() => {}}
                     onDepartmentChange={() => {}}
                     hasActiveFilters={hasInstituteActiveFilters}
@@ -905,6 +917,7 @@ const CampusAdminDashboard = () => {
                     selectedQRating={instituteSelectedQRating}
                     selectedPublicationType={instituteSelectedPublicationType}
                     selectedSubjectArea={instituteSelectedSubjectArea}
+                    selectedSubjectCategory={instituteSelectedSubjectCategory}
                     selectedAuthor={instituteSelectedAuthor}
                     selectedDepartment={instituteSelectedDepartment}
                     onSearchTermChange={setInstituteSearchTerm}
@@ -912,6 +925,7 @@ const CampusAdminDashboard = () => {
                     onQRatingChange={setInstituteSelectedQRating}
                     onPublicationTypeChange={setInstituteSelectedPublicationType}
                     onSubjectAreaChange={setInstituteSelectedSubjectArea}
+                    onSubjectCategoryChange={setInstituteSelectedSubjectCategory}
                     onAuthorChange={setInstituteSelectedAuthor}
                     onDepartmentChange={setInstituteSelectedDepartment}
                     hasActiveFilters={hasInstituteActiveFilters}
@@ -925,6 +939,9 @@ const CampusAdminDashboard = () => {
                     onExportFieldsChange={setExportFields}
                     onExport={exportSelectedData}
                     showCampusFilters={true}
+                    isSuperAdmin={false}
+                    userRole="campus_admin"
+                    currentUser={currentUser}
                   />
 
                   <div className="mb-2 flex items-center justify-between">
@@ -980,11 +997,13 @@ const CampusAdminDashboard = () => {
               selectedQRating={mySelectedQRating}
               selectedPublicationType={mySelectedPublicationType}
               selectedSubjectArea={mySelectedSubjectArea}
+              selectedSubjectCategory={mySelectedSubjectCategory}
               onSearchTermChange={setMySearchTerm}
               onYearChange={setMySelectedYear}
               onQRatingChange={setMySelectedQRating}
               onPublicationTypeChange={setMySelectedPublicationType}
               onSubjectAreaChange={setMySelectedSubjectArea}
+              onSubjectCategoryChange={setMySelectedSubjectCategory}
               hasActiveFilters={hasMyActiveFilters}
               onClearFilters={clearMyFilters}
               selectedCount={mySelectedPapers.size}
@@ -996,6 +1015,9 @@ const CampusAdminDashboard = () => {
               onExportFieldsChange={setExportFields}
               onExport={exportSelectedData}
               showCampusFilters={false}
+              isSuperAdmin={false}
+              userRole="campus_admin"
+              currentUser={currentUser}
             />
 
             <div className="mb-4 flex items-center justify-between">
