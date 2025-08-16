@@ -432,9 +432,14 @@ export default function PublicationsTable({
                               <p className="text-sm text-gray-600">
                                 {paper.publisher}
                               </p>
-                              <p className="text-xs text-gray-500 font-mono break-all">
+                              <a
+                                href={`https://doi.org/${paper.doi}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 font-mono break-all hover:underline"
+                              >
                                 {paper.doi}
-                              </p>
+                              </a>
                             </td>
                             <td className="py-4 px-4 align-top">
                               <div className="space-y-2">
