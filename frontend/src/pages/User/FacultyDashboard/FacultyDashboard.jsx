@@ -4,7 +4,7 @@ import { useToast } from "@/components/Toast";
 import { BookOpen, RefreshCw } from "lucide-react";
 
 // Components
-import DashboardHeader from "../components/dashboardHeader";
+import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
 import PublicationsTable from "../components/PublicationTable/PublicationsTable";
 import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";

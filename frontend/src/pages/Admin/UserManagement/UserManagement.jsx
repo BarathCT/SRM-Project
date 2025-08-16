@@ -11,60 +11,13 @@ import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
 import BulkUploadDialog from './components/BulkUploadDialog';
 
-// College options with their specific institutes and departments
-const COLLEGE_OPTIONS = [
-  { 
-    name: 'SRMIST RAMAPURAM',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities',
-        departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A']
-      },
-      { 
-        name: 'Engineering and Technology',
-        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
-      },
-      { 
-        name: 'Management',
-        departments: ['Business Administration', 'Commerce', 'N/A']
-      },
-      { 
-        name: 'Dental',
-        departments: ['General Dentistry', 'Orthodontics', 'N/A']
-      }
-    ]
-  },
-  { 
-    name: 'SRM TRICHY',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities',
-        departments: ['Mathematics', 'Physics', 'Chemistry', 'English', 'N/A']
-      },
-      { 
-        name: 'Engineering and Technology',
-        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
-      }
-    ]
-  },
-  { 
-    name: 'EASWARI ENGINEERING COLLEGE',
-    hasInstitutes: false,
-    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
-  },
-  { 
-    name: 'TRP ENGINEERING COLLEGE',
-    hasInstitutes: false,
-    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil', 'N/A']
-  },
-  { 
-    name: 'N/A',
-    hasInstitutes: false,
-    departments: ['N/A']
-  }
-];
+import {
+  collegeOptions as COLLEGE_OPTIONS,
+  getInstitutesForCollege,
+  getDepartments as getDepartmentsForCollegeAndInstitute,
+  collegesWithoutInstitutes,
+  ALL_COLLEGE_NAMES,
+} from '@/utils/collegeData';
 
 // Only allowed roles (admin removed)
 const ROLE_OPTIONS = [
@@ -230,27 +183,7 @@ export default function UserManagement() {
     }
   };
 
-  // Helper functions
-  const getInstitutesForCollege = (collegeName) => {
-    const college = COLLEGE_OPTIONS.find(c => c.name === collegeName);
-    if (!college || !college.hasInstitutes) return ['N/A'];
-    return college.institutes.map(i => i.name);
-  };
-
-  const getDepartmentsForCollegeAndInstitute = (collegeName, instituteName = 'N/A') => {
-    if (collegeName === 'N/A') return ['N/A'];
-    
-    const college = COLLEGE_OPTIONS.find(c => c.name === collegeName);
-    if (!college) return ['N/A'];
-    
-    if (!college.hasInstitutes) {
-      return college.departments || ['N/A'];
-    }
-    
-    const institute = college.institutes.find(i => i.name === instituteName);
-    return institute?.departments || ['N/A'];
-  };
-
+  // Helper functions using collegeData.js
   const canCreateRole = (role) => {
     if (!currentUser) return false;
     const creatorRole = currentUser.role;
@@ -289,6 +222,17 @@ export default function UserManagement() {
         }
       }
 
+      // For campus admin, always enforce their org context (college/institute/department)
+      let realPayload = { ...payload };
+      if (currentUser?.role === 'campus_admin') {
+        realPayload.college = currentUser.college;
+        realPayload.institute = currentUser.institute;
+        // For SRM RESEARCH, enforce department (faculty only)
+        if (payload.role === 'faculty' && currentUser.institute === 'SRM RESEARCH') {
+          realPayload.department = currentUser.department;
+        }
+      }
+
       const url = editMode 
         ? `${API_BASE_URL}/users/${currentUserId}`
         : `${API_BASE_URL}/users`;
@@ -300,7 +244,7 @@ export default function UserManagement() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(realPayload),
       });
 
       const contentType = res.headers.get('content-type');

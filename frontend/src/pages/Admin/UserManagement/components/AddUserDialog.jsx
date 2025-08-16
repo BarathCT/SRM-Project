@@ -20,187 +20,7 @@ import { User, Mail, Lock, Shield, BookOpen, BadgeCheck, Building2 } from 'lucid
 import { useToast } from '@/components/Toast';
 import { useEffect, useState } from 'react';
 
-// College to email domain mapping for normal colleges
-const collegeDomains = {
-  'SRMIST RAMAPURAM': 'srmist.edu.in',
-  'SRM TRICHY': 'srmtrichy.edu.in',
-  'EASWARI ENGINEERING COLLEGE': 'eec.srmrmp.edu.in',
-  'TRP ENGINEERING COLLEGE': 'trp.srmtrichy.edu.in',
-};
-
-// Allowed domains for SRM RESEARCH institute
-const researchAllowedDomains = [
-  'srmist.edu.in',
-  'srmtrichy.edu.in',
-  'eec.srmrmp.edu.in',
-  'trp.srmtrichy.edu.in'
-];
-
-// College options with updated SRM RESEARCH departments
-const collegeOptions = [
-  {
-    name: 'SRMIST RAMAPURAM',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities',
-        departments: [
-          'Mathematics',
-          'Physics',
-          'Chemistry',
-          'English',
-          'N/A'
-        ]
-      },
-      { 
-        name: 'Engineering and Technology',
-        departments: [
-          'Computer Science',
-          'Information Technology',
-          'Electronics',
-          'Mechanical',
-          'Civil',
-          'N/A'
-        ]
-      },
-      { 
-        name: 'Management',
-        departments: [
-          'Business Administration',
-          'Commerce',
-          'N/A'
-        ]
-      },
-      { 
-        name: 'Dental',
-        departments: [
-          'General Dentistry',
-          'Orthodontics',
-          'N/A'
-        ]
-      },
-      { 
-        name: 'SRM RESEARCH',
-        departments: [
-          'Ramapuram Research'
-        ]
-      }
-    ]
-  },
-  {
-    name: 'SRM TRICHY',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities',
-        departments: [
-          'Mathematics',
-          'Physics',
-          'Chemistry',
-          'English',
-          'N/A'
-        ]
-      },
-      { 
-        name: 'Engineering and Technology',
-        departments: [
-          'Computer Science',
-          'Information Technology',
-          'Electronics',
-          'Mechanical',
-          'Civil',
-          'N/A'
-        ]
-      },
-      { 
-        name: 'SRM RESEARCH',
-        departments: [
-          'Trichy Research'
-        ]
-      }
-    ]
-  },
-  {
-    name: 'EASWARI ENGINEERING COLLEGE',
-    hasInstitutes: false,
-    departments: [
-      'Computer Science',
-      'Information Technology',
-      'Electronics',
-      'Mechanical',
-      'Civil',
-      'N/A'
-    ]
-  },
-  {
-    name: 'TRP ENGINEERING COLLEGE',
-    hasInstitutes: false,
-    departments: [
-      'Computer Science',
-      'Information Technology',
-      'Electronics',
-      'Mechanical',
-      'Civil',
-      'N/A'
-    ]
-  },
-  {
-    name: 'N/A',
-    hasInstitutes: false,
-    departments: ['N/A']
-  }
-];
-
-// Helper functions to get institutes and departments
-function getInstitutesForCollege(collegeName) {
-  const college = collegeOptions.find(c => c.name === collegeName);
-  return college && college.hasInstitutes
-    ? college.institutes.map(inst => inst.name)
-    : [];
-}
-
-function getDepartmentsForCollegeAndInstitute(collegeName, instituteName) {
-  const college = collegeOptions.find(c => c.name === collegeName);
-  if (!college) return [];
-  if (!college.hasInstitutes) return college.departments;
-  const institute = college.institutes.find(i => i.name === instituteName);
-  return institute ? institute.departments : [];
-}
-
-// Enhanced email validation function with SRM RESEARCH logic
-const validateEmailDomain = (email, college, institute, currentUser) => {
-  if (!email) return true;
-  
-  const emailParts = email.split('@');
-  if (emailParts.length !== 2) return false;
-  
-  const domain = emailParts[1];
-  
-  // If SRM RESEARCH is selected as institute OR current user is from SRM RESEARCH, 
-  // allow any of the four research domains
-  if (institute === 'SRM RESEARCH' || currentUser?.institute === 'SRM RESEARCH') {
-    return researchAllowedDomains.includes(domain);
-  }
-  
-  // For normal college selections, enforce specific college domain
-  if (!college || !collegeDomains[college]) return true;
-  return domain === collegeDomains[college];
-};
-
-// Get appropriate email domain hint based on selection
-const getEmailDomainHint = (college, institute, currentUser) => {
-  // If current user is from SRM RESEARCH or SRM RESEARCH is selected, show all domains
-  if (institute === 'SRM RESEARCH' || currentUser?.institute === 'SRM RESEARCH') {
-    return researchAllowedDomains;
-  }
-  
-  if (college && collegeDomains[college]) {
-    return [collegeDomains[college]];
-  }
-  
-  return [];
-};
-
+// Accept collegeOptions, getInstitutesForCollege, getDepartmentsForCollegeAndInstitute as props!
 export default function AddUserDialog({
   open,
   onOpenChange,
@@ -211,10 +31,27 @@ export default function AddUserDialog({
   handleSubmit,
   getAvailableRoles,
   currentUser,
+  collegeOptions, // <-- Injected from UserManagement
+  getInstitutesForCollege, // <-- Injected from UserManagement
+  getDepartmentsForCollegeAndInstitute, // <-- Injected from UserManagement
 }) {
   const { toast } = useToast();
   const [availableInstitutes, setAvailableInstitutes] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
+
+  // College domain mapping
+  const collegeDomains = {
+    'SRMIST RAMAPURAM': 'srmist.edu.in',
+    'SRM TRICHY': 'srmtrichy.edu.in',
+    'EASWARI ENGINEERING COLLEGE': 'eec.srmrmp.edu.in',
+    'TRP ENGINEERING COLLEGE': 'trp.srmtrichy.edu.in',
+  };
+  const researchAllowedDomains = [
+    'srmist.edu.in',
+    'srmtrichy.edu.in',
+    'eec.srmrmp.edu.in',
+    'trp.srmtrichy.edu.in'
+  ];
 
   if (!form) return null;
 
@@ -223,14 +60,35 @@ export default function AddUserDialog({
     return college ? college.hasInstitutes : false;
   };
 
-  // Check if current user is from SRM RESEARCH
   const isCurrentUserFromSRMResearch = () => {
     return currentUser?.institute === 'SRM RESEARCH';
   };
 
-  // Check if the selected college has institutes
   const selectedCollegeHasInstitutes = () => {
     return form.college && collegeHasInstitutes(form.college);
+  };
+
+  // Email domain validation
+  const validateEmailDomain = (email, college, institute, currentUser) => {
+    if (!email) return true;
+    const emailParts = email.split('@');
+    if (emailParts.length !== 2) return false;
+    const domain = emailParts[1];
+    if (institute === 'SRM RESEARCH' || currentUser?.institute === 'SRM RESEARCH') {
+      return researchAllowedDomains.includes(domain);
+    }
+    if (!college || !collegeDomains[college]) return true;
+    return domain === collegeDomains[college];
+  };
+
+  const getEmailDomainHint = (college, institute, currentUser) => {
+    if (institute === 'SRM RESEARCH' || currentUser?.institute === 'SRM RESEARCH') {
+      return researchAllowedDomains;
+    }
+    if (college && collegeDomains[college]) {
+      return [collegeDomains[college]];
+    }
+    return [];
   };
 
   // Auto-suggest email domain when college changes (but not for SRM RESEARCH)
@@ -245,7 +103,6 @@ export default function AddUserDialog({
       const emailParts = form.email.split('@');
       const currentUsername = emailParts[0];
       const expectedDomain = collegeDomains[form.college];
-      
       if (currentUsername && emailParts[1] !== expectedDomain) {
         const newEmail = `${currentUsername}@${expectedDomain}`;
         if (form.email !== newEmail) {
@@ -259,12 +116,9 @@ export default function AddUserDialog({
   // Load institutes when college changes
   useEffect(() => {
     if (!open) return;
-    
     if (form.college && collegeHasInstitutes(form.college)) {
       const institutes = getInstitutesForCollege(form.college);
       setAvailableInstitutes(institutes);
-      
-      // Reset institute and department when college changes
       if (form.institute !== '' || form.department !== '') {
         setForm(prev => ({
           ...prev,
@@ -274,8 +128,6 @@ export default function AddUserDialog({
       }
     } else {
       setAvailableInstitutes([]);
-      
-      // For colleges without institutes, set institute to N/A
       if (form.institute !== 'N/A' || form.department !== '') {
         setForm(prev => ({
           ...prev,
@@ -290,7 +142,6 @@ export default function AddUserDialog({
   // Load departments when institute changes OR when dialog opens for campus admin
   useEffect(() => {
     if (!open) return;
-    
     // For campus admin from SRM RESEARCH, auto-set department when dialog opens
     if (currentUser?.role === 'campus_admin' && isCurrentUserFromSRMResearch() && !form.department) {
       setForm(prev => ({
@@ -301,11 +152,9 @@ export default function AddUserDialog({
       }));
       return;
     }
-    
     if (form.institute && form.institute !== 'N/A' && form.college) {
       const departments = getDepartmentsForCollegeAndInstitute(form.college, form.institute);
       setAvailableDepartments(departments);
-      
       // Auto-set department for SRM RESEARCH (only one department available)
       if (form.institute === 'SRM RESEARCH' && departments.length === 1) {
         setForm(prev => ({
@@ -314,14 +163,12 @@ export default function AddUserDialog({
         }));
         toast.info(`Department automatically set to: ${departments[0]}`);
       } else if (form.department !== '') {
-        // Reset department for other institutes
         setForm(prev => ({
           ...prev,
           department: ''
         }));
       }
     } else if (form.college && !collegeHasInstitutes(form.college)) {
-      // For colleges without institutes, load departments directly
       const departments = getDepartmentsForCollegeAndInstitute(form.college, 'N/A');
       setAvailableDepartments(departments);
     } else {
@@ -349,23 +196,18 @@ export default function AddUserDialog({
     if (!currentUser) return false;
     if (form.role === 'super_admin') return false;
     if (!form.college || form.college === 'N/A') return false;
-    
-    // UPDATED LOGIC: Campus admin for colleges WITHOUT institutes don't need department
+    // Campus admin for colleges WITHOUT institutes don't need department
     if (form.role === 'campus_admin' && !selectedCollegeHasInstitutes()) {
-      return false; // Hide department field for campus admin in colleges without institutes
+      return false;
     }
-    
-    // Campus admin for colleges WITH institutes still don't need department (existing logic)
+    // Campus admin for colleges WITH institutes still don't need department
     if (form.role === 'campus_admin') return false;
-    
     if (currentUser.role === 'super_admin') return true;
     if (currentUser.role === 'campus_admin' && form.role === 'faculty') return true;
     return false;
   };
 
-  // Check if department field should be disabled
   const isDepartmentDisabled = () => {
-    // Disable if SRM RESEARCH is selected OR if current user is from SRM RESEARCH
     return form.institute === 'SRM RESEARCH' || isCurrentUserFromSRMResearch();
   };
 
@@ -381,7 +223,6 @@ export default function AddUserDialog({
   // Handle role change
   const handleRoleChange = (value) => {
     const updates = { role: value };
-    
     if (value === 'super_admin') {
       updates.facultyId = 'N/A';
       updates.college = 'N/A';
@@ -389,17 +230,13 @@ export default function AddUserDialog({
       updates.department = 'N/A';
       toast.info('Super Admin selected - college and institute not required');
     } else if (value === 'campus_admin') {
-      // UPDATED LOGIC: Set department based on college type
       if (form.college && !selectedCollegeHasInstitutes()) {
-        // For colleges without institutes, campus admin gets N/A for both institute and department
         updates.institute = 'N/A';
         updates.department = 'N/A';
         toast.info('Campus Admin for college without institutes - no institute/department required');
       } else {
-        // For colleges with institutes, campus admin gets N/A only for department
         updates.department = 'N/A';
       }
-      
       if (currentUser?.role !== 'super_admin') {
         updates.college = currentUser.college;
         updates.institute = currentUser.institute;
@@ -408,7 +245,6 @@ export default function AddUserDialog({
       if (currentUser?.role === 'campus_admin') {
         updates.college = currentUser.college;
         updates.institute = currentUser.institute;
-        // For SRM RESEARCH campus admin, set the department
         if (isCurrentUserFromSRMResearch()) {
           updates.department = currentUser.department;
         } else {
@@ -418,20 +254,17 @@ export default function AddUserDialog({
         updates.department = '';
       }
     }
-    
     setForm({ ...form, ...updates });
   };
 
   // Handle college change
   const handleCollegeChange = (value) => {
     const updates = { college: value };
-    
     if (value === 'N/A') {
       updates.institute = 'N/A';
       updates.department = 'N/A';
     } else if (!collegeHasInstitutes(value)) {
       updates.institute = 'N/A';
-      // UPDATED LOGIC: For campus admin in colleges without institutes, set department to N/A
       if (form.role === 'campus_admin') {
         updates.department = 'N/A';
         toast.info(`Selected ${value} - Campus Admin manages entire college (no institute/department required)`);
@@ -444,14 +277,12 @@ export default function AddUserDialog({
       updates.department = '';
       toast.info(`Selected ${value} - please choose an institute`);
     }
-    
     setForm({ ...form, ...updates });
   };
 
   // Handle institute change
   const handleInstituteChange = (value) => {
     setForm({ ...form, institute: value, department: '' });
-    
     if (value === 'SRM RESEARCH') {
       toast.info('SRM RESEARCH selected - department will be auto-assigned');
     }
@@ -472,7 +303,7 @@ export default function AddUserDialog({
     return pwd;
   };
 
-  // Enhanced submit handler with complete validation
+  // --- CRITICAL CAMPUS ADMIN FIX: Use currentUser context for college/institute/department ---
   const handleSubmitWithToast = async () => {
     try {
       // Basic validation
@@ -480,13 +311,10 @@ export default function AddUserDialog({
         toast.error('Full name is required');
         return;
       }
-      
       if (!form.email?.trim()) {
         toast.error('Email is required');
         return;
       }
-
-      // Email domain validation with currentUser context
       if (!validateEmailDomain(form.email, form.college, form.institute, currentUser)) {
         const allowedDomains = getEmailDomainHint(form.college, form.institute, currentUser);
         toast.error(
@@ -494,45 +322,41 @@ export default function AddUserDialog({
         );
         return;
       }
-
-      // Faculty ID validation
       if (form.role !== 'super_admin' && !form.facultyId?.trim()) {
         toast.error('Faculty ID is required');
         return;
       }
-
-      // Institute validation
       if (shouldShowInstituteField() && !form.institute) {
         toast.error('Institute selection is required');
         return;
       }
-
-      // Department validation - UPDATED to handle campus admin in colleges without institutes
       if (shouldShowDepartmentField()) {
         if (isCurrentUserFromSRMResearch()) {
-          // For SRM RESEARCH campus admin, department should be auto-filled
           if (!form.department) {
             toast.error('Department should be auto-assigned for SRM RESEARCH');
             return;
           }
         } else {
-          // For others, department must be selected and not N/A
           if (!form.department || form.department === 'N/A') {
             toast.error('Department selection is required');
             return;
           }
         }
       }
-
-      // Prepare payload
+      // --- CAMPUS ADMIN: always enforce college/institute/department context for newly created users ---
       let payload = { ...form };
+      if (currentUser?.role === 'campus_admin') {
+        payload.college = currentUser.college;
+        payload.institute = currentUser.institute;
+        // If creating faculty under SRM RESEARCH, force department
+        if (form.role === 'faculty' && isCurrentUserFromSRMResearch()) {
+          payload.department = currentUser.department;
+        }
+      }
       if (!editMode) {
         payload.password = generatePassword();
       }
-
-      // Submit
       const result = await handleSubmit(payload);
-
       if (result?.error) {
         if (result.error.toLowerCase().includes('user already exists')) {
           toast.error('Email already exists');
@@ -541,12 +365,10 @@ export default function AddUserDialog({
         }
         return;
       }
-
       toast.success(
         editMode ? 'User updated successfully' : 'User created successfully'
       );
       onOpenChange(false);
-      
     } catch (error) {
       console.error('Submit error:', error);
       toast.error(
@@ -556,47 +378,31 @@ export default function AddUserDialog({
     }
   };
 
-  // Form validation - UPDATED to handle campus admin in colleges without institutes
+  // Form validation
   const isFormValid = () => {
-    // Basic validation
     const basicValid = form.fullName?.trim() && form.email?.trim() && form.role;
-    
     if (!basicValid) return false;
-
-    // Super admin only needs basic fields
     if (form.role === 'super_admin') {
       return validateEmailDomain(form.email, form.college, form.institute, currentUser);
     }
-
-    // Faculty ID required for non-super admin
     if (!form.facultyId?.trim()) return false;
-
-    // Email domain validation with currentUser context
     if (!validateEmailDomain(form.email, form.college, form.institute, currentUser)) return false;
-
-    // Super admin creating other roles
     if (currentUser?.role === 'super_admin' && form.role !== 'super_admin') {
       const collegeValid = form.college && form.college !== 'N/A';
       const instituteValid = !shouldShowInstituteField() || form.institute;
       const departmentValid = !shouldShowDepartmentField() || (form.department && form.department !== 'N/A');
       return collegeValid && instituteValid && departmentValid;
     }
-
-    // Campus admin creating faculty
     if (form.role === 'faculty' && currentUser?.role === 'campus_admin') {
-      // For SRM RESEARCH campus admin, department should be auto-filled
       if (isCurrentUserFromSRMResearch()) {
-        return !!form.department; // Just check if department exists
+        return !!form.department;
       }
-      // For other campus admin, department must be selected and not N/A
       return form.department && form.department !== 'N/A';
     }
-
     return (!shouldShowInstituteField() || form.institute) &&
            (!shouldShowDepartmentField() || form.department);
   };
 
-  // Get email domain hints with currentUser context
   const emailDomainHints = getEmailDomainHint(form.college, form.institute, currentUser);
 
   return (
@@ -677,8 +483,6 @@ export default function AddUserDialog({
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="w-full"
                   />
-                  
-                  {/* Email domain hints */}
                   {emailDomainHints.length > 0 && (
                     <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
                       {isCurrentUserFromSRMResearch() || form.institute === 'SRM RESEARCH' ? (
@@ -691,8 +495,6 @@ export default function AddUserDialog({
                       )}
                     </div>
                   )}
-
-                  {/* Email validation error */}
                   {form.email && !validateEmailDomain(form.email, form.college, form.institute, currentUser) && (
                     <p className="text-xs text-red-500 bg-red-50 p-2 rounded">
                       Invalid email domain. Allowed: {emailDomainHints.map(d => `@${d}`).join(', ')}
@@ -815,8 +617,6 @@ export default function AddUserDialog({
                     </span>
                   )}
                 </Label>
-                
-                {/* For SRM RESEARCH, show disabled input with auto-assigned value */}
                 {isDepartmentDisabled() ? (
                   <Input
                     id="department"
@@ -848,7 +648,6 @@ export default function AddUserDialog({
 
             {/* Information Cards */}
             <div className="space-y-4">
-              {/* Show inherited values when campus admin creates users */}
               {currentUser?.role === 'campus_admin' && form.role !== 'super_admin' && (
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
                   <p className="text-sm text-green-700 font-medium mb-2">
@@ -863,8 +662,6 @@ export default function AddUserDialog({
                   </ul>
                 </div>
               )}
-
-              {/* UPDATED: Campus admin for colleges without institutes notice */}
               {form.role === 'campus_admin' && form.college && !selectedCollegeHasInstitutes() && (
                 <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
                   <p className="text-sm text-orange-700 font-medium mb-2">
@@ -877,8 +674,6 @@ export default function AddUserDialog({
                   </ul>
                 </div>
               )}
-
-              {/* SRM RESEARCH special notice */}
               {(form.institute === 'SRM RESEARCH' || isCurrentUserFromSRMResearch()) && (
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
                   <p className="text-sm text-blue-700 font-medium mb-2">
@@ -894,7 +689,6 @@ export default function AddUserDialog({
             </div>
           </div>
         </div>
-        
         {/* Fixed Footer */}
         <DialogFooter className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
           <Button 
