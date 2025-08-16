@@ -108,7 +108,7 @@ export default function DashboardHeader({
                 )}
                 onClick={() => onTabChange?.("my")}
               >
-                My
+                My Papers
               </button>
             </div>
           )}
