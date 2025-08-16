@@ -183,7 +183,7 @@ export default function PublicationsFilterCard(props) {
                     Clear Selection
                   </Button>
                   <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                    {/* <AlertDialogTrigger asChild>
                       <Button
                         variant="destructive"
                         size="sm"
@@ -192,7 +192,7 @@ export default function PublicationsFilterCard(props) {
                         <Trash2 className="h-3 w-3 mr-1" />
                         Delete ({selectedCount})
                       </Button>
-                    </AlertDialogTrigger>
+                    </AlertDialogTrigger> */}
                     <AlertDialogContent className="bg-white">
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-gray-900">
