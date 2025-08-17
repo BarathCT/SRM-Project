@@ -2,17 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/Toast';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import ForgotPassword from './ForgotPassword';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
-import ForgotPassword from './ForgotPassword';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -26,7 +19,6 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate inputs
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
       toast.error('Email is required');
@@ -50,7 +42,7 @@ export default function Login() {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        credentials: 'include', // For HTTP-only cookies if used in backend
+        credentials: 'include',
         body: JSON.stringify({ 
           email: email.trim(), 
           password: password.trim() 
@@ -60,21 +52,18 @@ export default function Login() {
       const data = await response.json();
       
       if (!response.ok) {
-        // Handle specific error cases
         if (response.status === 401) {
           throw new Error(data.message || 'Invalid email or password');
         }
         throw new Error(data.message || 'Login failed');
       }
 
-      // Store token and user info in localStorage
       if (data.token) {
         localStorage.setItem('token', data.token);
       }
       localStorage.setItem('user', JSON.stringify(data.user));
       toast.success('Login successful');
 
-      // Redirect based on role (admin removed)
       switch(data.user.role) {
         case 'super_admin':
           navigate('/super-admin');
@@ -106,130 +95,124 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 border border-gray-100 shadow-lg rounded-xl overflow-hidden">
-        <CardHeader className="text-center space-y-4 pb-0 bg-gradient-to-r from-blue-400 to-blue-600 text-white pt-8">
-          <div className="flex flex-col items-center">
-            <div className="bg-white p-2 rounded-full shadow-md mb-3">
-              <img
-                src="/logo.jpg"
-                alt="ScholarSync"
-                className="h-14 w-14 rounded-full object-cover"
+    <div className="min-h-screen w-full flex items-center justify-center"
+      style={{
+        background: "linear-gradient(135deg, #e3f0fd 0%, #ffffff 80%, #c7e6fe 100%)"
+      }}
+    >
+      <div className="w-full max-w-md rounded-xl shadow-xl bg-white border border-blue-100 px-8 py-8 flex flex-col items-center">
+        <img
+          src="/logo.jpg"
+          alt="ScholarSync"
+          className="h-14 w-14 rounded-lg object-cover shadow mb-3 border border-blue-100"
+          draggable={false}
+        />
+        <h2 className="text-2xl font-bold text-blue-800 mb-1 tracking-tight">
+          ScholarSync
+        </h2>
+        <span className="text-base text-blue-500 mb-5">Research Management Portal</span>
+        <form
+          onSubmit={handleSubmit}
+          className="w-full flex flex-col gap-4"
+          noValidate
+        >
+          {/* Email Field */}
+          <div>
+            <Label htmlFor="email" className="text-sm font-medium text-blue-800 mb-1 block">
+              Email
+            </Label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Mail className="h-5 w-5 text-blue-400" />
+              </span>
+              <Input
+                id="email"
+                type="email"
+                placeholder="username@institution.edu"
+                className="pl-11 h-11 text-base border border-blue-200 rounded-md bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-300 text-blue-900"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                disabled={loading}
               />
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight">
-              ScholarSync
-            </CardTitle>
-            <CardDescription className="text-blue-100 my-3">
-              Research Management Portal
-            </CardDescription>
           </div>
-        </CardHeader>
-
-        <CardContent className="p-8 pt-6">
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {/* Email Field */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Institutional Email
+          {/* Password Field */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <Label htmlFor="password" className="text-sm font-medium text-blue-800">
+                Password
               </Label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-blue-500" />
-                </div>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="username@institution.edu"
-                  className="pl-10 h-11 text-base focus-visible:ring-blue-500 focus-visible:ring-2"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="username"
-                  disabled={loading}
-                />
-              </div>
+              <Button
+                variant="link"
+                type="button"
+                className="text-xs h-auto px-0 text-blue-600 hover:text-blue-900"
+                onClick={() => setShowForgot(true)}
+                disabled={loading}
+              >
+                Forgot?
+              </Button>
             </div>
-
-            {/* Password Field */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
-                </Label>
-                <Button
-                  variant="link"
-                  type="button"
-                  className="text-blue-600 hover:text-blue-800 text-xs h-auto px-0"
-                  onClick={() => setShowForgot(true)}
-                  disabled={loading}
-                >
-                  Forgot password?
-                </Button>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-blue-500" />
-                </div>
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  className="pl-10 h-11 text-base focus-visible:ring-blue-500 focus-visible:ring-2 pr-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  minLength={8}
-                  autoComplete="current-password"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  disabled={loading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Lock className="h-5 w-5 text-blue-400" />
+              </span>
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                className="pl-11 pr-11 h-11 text-base border border-blue-200 rounded-md bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-300 text-blue-900"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={8}
+                autoComplete="current-password"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                disabled={loading}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-blue-300 hover:text-blue-500" />
+                ) : (
+                  <Eye className="h-5 w-5 text-blue-300 hover:text-blue-500" />
+                )}
+              </button>
             </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          </div>
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            className="w-full h-11 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base shadow transition"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Signing in...
+              </>
+            ) : 'Sign In'}
+          </Button>
+          <div className="text-center">
+            <Button 
+              variant="link" 
+              className="text-blue-700 hover:text-blue-900 text-xs h-auto px-0"
+              onClick={handleContactSupport}
               disabled={loading}
+              type="button"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : 'Sign In'}
+              Need help? Contact support
             </Button>
-
-            {/* Help Section */}
-            <div className="text-center pt-2">
-              <p className="text-xs text-gray-500">
-                Need help?{' '}
-                <Button 
-                  variant="link" 
-                  className="text-blue-500 hover:text-blue-600 text-xs h-auto px-0"
-                  onClick={handleContactSupport}
-                  disabled={loading}
-                >
-                  Contact support
-                </Button>
-              </p>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
+          </div>
+        </form>
+        <footer className="mt-5 text-xs text-blue-300 text-center w-full">
+          &copy; {new Date().getFullYear()} ScholarSync. Powered by SRM Group.
+        </footer>
+      </div>
       {/* Forgot Password Modal */}
       {showForgot && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
