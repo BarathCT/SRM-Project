@@ -20,8 +20,8 @@ import PublicationsTable from "../components/PublicationTable/PublicationsTable"
 import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
 import StatsCard from "../components/StatsCard";
 import CampusAnalyticsCard from "./components/CampusAnalyticsCard";
-import FacultySidebar from "./components/FacultySidebar";
 import FacultyDetailsCard from "./components/FacultyDetailsCard";
+import UserFinderSidebar from "../components/UserFinderSidebar";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 
 /* Local debounce hook to reduce filtering cost while typing */
@@ -51,39 +51,43 @@ const CampusAdminDashboard = () => {
   // Faculty finder panel open/close
   const [facultyFinderOpen, setFacultyFinderOpen] = useState(false);
 
-  // Faculty finder state
-  const [selectedFacultyId, setSelectedFacultyId] = useState(null);
-  const [userSearchTerm, setUserSearchTerm] = useState("");
-  const [userDeptFilter, setUserDeptFilter] = useState("all");
-  const [userHasPubsOnly, setUserHasPubsOnly] = useState(false);
+  // Faculty finder filter state (DECOUPLED)
+  const [userFinderFilters, setUserFinderFilters] = useState({
+    searchTerm: "",
+    deptFilter: "all",
+  });
 
   // UI
   const [expanded, setExpanded] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Institute tab state
+  // Institute tab state (DECOUPLED)
   const [instituteSelectedPapers, setInstituteSelectedPapers] = useState(new Set());
   const [instituteSelectAll, setInstituteSelectAll] = useState(false);
-  const [instituteSearchTerm, setInstituteSearchTerm] = useState("");
-  const [instituteSelectedYear, setInstituteSelectedYear] = useState("all");
-  const [instituteSelectedQRating, setInstituteSelectedQRating] = useState("all");
-  const [instituteSelectedPublicationType, setInstituteSelectedPublicationType] = useState("all");
-  const [instituteSelectedSubjectArea, setInstituteSelectedSubjectArea] = useState("all");
-  const [instituteSelectedSubjectCategory, setInstituteSelectedSubjectCategory] = useState("all");
-  const [instituteSelectedAuthor, setInstituteSelectedAuthor] = useState("all");
-  const [instituteSelectedDepartment, setInstituteSelectedDepartment] = useState("all");
+  const [instituteFilters, setInstituteFilters] = useState({
+    searchTerm: "",
+    selectedYear: "all",
+    selectedQRating: "all",
+    selectedPublicationType: "all",
+    selectedSubjectArea: "all",
+    selectedSubjectCategory: "all",
+    selectedAuthor: "all",
+    selectedDepartment: "all",
+  });
 
   // My tab state
   const [mySelectedPapers, setMySelectedPapers] = useState(new Set());
   const [mySelectAll, setMySelectAll] = useState(false);
-  const [mySearchTerm, setMySearchTerm] = useState("");
-  const [mySelectedYear, setMySelectedYear] = useState("all");
-  const [mySelectedQRating, setMySelectedQRating] = useState("all");
-  const [mySelectedPublicationType, setMySelectedPublicationType] = useState("all");
-  const [mySelectedSubjectArea, setMySelectedSubjectArea] = useState("all");
-  const [mySelectedSubjectCategory, setMySelectedSubjectCategory] = useState("all");
+  const [myFilters, setMyFilters] = useState({
+    searchTerm: "",
+    selectedYear: "all",
+    selectedQRating: "all",
+    selectedPublicationType: "all",
+    selectedSubjectArea: "all",
+    selectedSubjectCategory: "all",
+  });
 
-  const debouncedMyText = useDebouncedValue(mySearchTerm, 250);
+  const debouncedMyText = useDebouncedValue(myFilters.searchTerm, 250);
   const { toast } = useToast();
 
   // Edit dialog states
@@ -116,6 +120,9 @@ const CampusAdminDashboard = () => {
     studentScholars: false,
     typeOfIssue: false,
   });
+
+  // Faculty selection in details card
+  const [selectedFacultyId, setSelectedFacultyId] = useState(null);
 
   useEffect(() => {
     initializeDashboard();
@@ -221,36 +228,43 @@ const CampusAdminDashboard = () => {
   const hasInstituteActiveFilters = useMemo(
     () =>
       selectedFacultyId !== null ||
-      instituteSearchTerm !== "" ||
-      instituteSelectedYear !== "all" ||
-      instituteSelectedQRating !== "all" ||
-      instituteSelectedPublicationType !== "all" ||
-      instituteSelectedSubjectArea !== "all" ||
-      instituteSelectedSubjectCategory !== "all" ||
-      instituteSelectedAuthor !== "all" ||
-      instituteSelectedDepartment !== "all",
+      instituteFilters.searchTerm !== "" ||
+      instituteFilters.selectedYear !== "all" ||
+      instituteFilters.selectedQRating !== "all" ||
+      instituteFilters.selectedPublicationType !== "all" ||
+      instituteFilters.selectedSubjectArea !== "all" ||
+      instituteFilters.selectedSubjectCategory !== "all" ||
+      instituteFilters.selectedAuthor !== "all" ||
+      instituteFilters.selectedDepartment !== "all",
     [
       selectedFacultyId,
-      instituteSearchTerm,
-      instituteSelectedYear,
-      instituteSelectedQRating,
-      instituteSelectedPublicationType,
-      instituteSelectedSubjectArea,
-      instituteSelectedSubjectCategory,
-      instituteSelectedAuthor,
-      instituteSelectedDepartment,
+      instituteFilters.searchTerm,
+      instituteFilters.selectedYear,
+      instituteFilters.selectedQRating,
+      instituteFilters.selectedPublicationType,
+      instituteFilters.selectedSubjectArea,
+      instituteFilters.selectedSubjectCategory,
+      instituteFilters.selectedAuthor,
+      instituteFilters.selectedDepartment,
     ]
   );
 
   const hasMyActiveFilters = useMemo(
     () =>
-      mySearchTerm !== "" ||
-      mySelectedYear !== "all" ||
-      mySelectedQRating !== "all" ||
-      mySelectedPublicationType !== "all" ||
-      mySelectedSubjectArea !== "all" ||
-      mySelectedSubjectCategory !== "all",
-    [mySearchTerm, mySelectedYear, mySelectedQRating, mySelectedPublicationType, mySelectedSubjectArea, mySelectedSubjectCategory]
+      myFilters.searchTerm !== "" ||
+      myFilters.selectedYear !== "all" ||
+      myFilters.selectedQRating !== "all" ||
+      myFilters.selectedPublicationType !== "all" ||
+      myFilters.selectedSubjectArea !== "all" ||
+      myFilters.selectedSubjectCategory !== "all",
+    [
+      myFilters.searchTerm,
+      myFilters.selectedYear,
+      myFilters.selectedQRating,
+      myFilters.selectedPublicationType,
+      myFilters.selectedSubjectArea,
+      myFilters.selectedSubjectCategory,
+    ]
   );
 
   // Filter helpers
@@ -265,36 +279,29 @@ const CampusAdminDashboard = () => {
 
   // Filtered institute papers
   const filteredInstitutePapers = useMemo(() => {
-    const lowerTerm = (instituteSearchTerm || "").trim().toLowerCase();
+    const lowerTerm = (instituteFilters.searchTerm || "").trim().toLowerCase();
     const scope = selectedFacultyId
       ? institutePapers.filter((p) => p.facultyId === selectedFacultyId)
       : institutePapers;
 
     return scope.filter((paper) => {
       if (!matchesText(paper, lowerTerm)) return false;
-      if (instituteSelectedYear !== "all" && String(paper.year) !== String(instituteSelectedYear)) return false;
-      if (instituteSelectedQRating !== "all" && paper.qRating !== instituteSelectedQRating) return false;
-      if (instituteSelectedPublicationType !== "all" && paper.publicationType !== instituteSelectedPublicationType) return false;
-      if (instituteSelectedSubjectArea !== "all" && paper.subjectArea !== instituteSelectedSubjectArea) return false;
-      if (instituteSelectedSubjectCategory !== "all" && !(paper.subjectCategories || []).includes(instituteSelectedSubjectCategory)) return false;
-      if (instituteSelectedAuthor !== "all" && paper.claimedBy !== instituteSelectedAuthor) return false;
-      if (instituteSelectedDepartment !== "all") {
+      if (instituteFilters.selectedYear !== "all" && String(paper.year) !== String(instituteFilters.selectedYear)) return false;
+      if (instituteFilters.selectedQRating !== "all" && paper.qRating !== instituteFilters.selectedQRating) return false;
+      if (instituteFilters.selectedPublicationType !== "all" && paper.publicationType !== instituteFilters.selectedPublicationType) return false;
+      if (instituteFilters.selectedSubjectArea !== "all" && paper.subjectArea !== instituteFilters.selectedSubjectArea) return false;
+      if (instituteFilters.selectedSubjectCategory !== "all" && !(paper.subjectCategories || []).includes(instituteFilters.selectedSubjectCategory)) return false;
+      if (instituteFilters.selectedAuthor !== "all" && paper.claimedBy !== instituteFilters.selectedAuthor) return false;
+      if (instituteFilters.selectedDepartment !== "all") {
         const dep = facultyDeptMap.get(paper.facultyId);
-        if (dep !== instituteSelectedDepartment) return false;
+        if (dep !== instituteFilters.selectedDepartment) return false;
       }
       return true;
     });
   }, [
     institutePapers,
     selectedFacultyId,
-    instituteSearchTerm,
-    instituteSelectedYear,
-    instituteSelectedQRating,
-    instituteSelectedPublicationType,
-    instituteSelectedSubjectArea,
-    instituteSelectedSubjectCategory,
-    instituteSelectedAuthor,
-    instituteSelectedDepartment,
+    instituteFilters,
     facultyDeptMap,
   ]);
 
@@ -303,21 +310,17 @@ const CampusAdminDashboard = () => {
     const lowerTerm = (debouncedMyText || "").trim().toLowerCase();
     return myPapers.filter((paper) => {
       if (!matchesText(paper, lowerTerm)) return false;
-      if (mySelectedYear !== "all" && String(paper.year) !== String(mySelectedYear)) return false;
-      if (mySelectedQRating !== "all" && paper.qRating !== mySelectedQRating) return false;
-      if (mySelectedPublicationType !== "all" && paper.publicationType !== mySelectedPublicationType) return false;
-      if (mySelectedSubjectArea !== "all" && paper.subjectArea !== mySelectedSubjectArea) return false;
-      if (mySelectedSubjectCategory !== "all" && !(paper.subjectCategories || []).includes(mySelectedSubjectCategory)) return false;
+      if (myFilters.selectedYear !== "all" && String(paper.year) !== String(myFilters.selectedYear)) return false;
+      if (myFilters.selectedQRating !== "all" && paper.qRating !== myFilters.selectedQRating) return false;
+      if (myFilters.selectedPublicationType !== "all" && paper.publicationType !== myFilters.selectedPublicationType) return false;
+      if (myFilters.selectedSubjectArea !== "all" && paper.subjectArea !== myFilters.selectedSubjectArea) return false;
+      if (myFilters.selectedSubjectCategory !== "all" && !(paper.subjectCategories || []).includes(myFilters.selectedSubjectCategory)) return false;
       return true;
     });
   }, [
     myPapers,
     debouncedMyText,
-    mySelectedYear,
-    mySelectedQRating,
-    mySelectedPublicationType,
-    mySelectedSubjectArea,
-    mySelectedSubjectCategory
+    myFilters,
   ]);
 
   // Selected faculty
@@ -388,14 +391,13 @@ const CampusAdminDashboard = () => {
 
   const myStats = useMemo(() => ({ total: myPapers.length }), [myPapers]);
 
-  // Selections (restriction removed: campus admin can select/check any paper)
+  // Selections
   const handleInstituteSelectAll = useCallback(() => {
     if (instituteSelectAll) {
       setInstituteSelectedPapers(new Set());
       setInstituteSelectAll(false);
       toast.info("Deselected all", { duration: 1500 });
     } else {
-      // Allow all visible (filtered) papers to be selected, not just own
       const ids = new Set(filteredInstitutePapers.map((p) => p._id));
       setInstituteSelectedPapers(ids);
       setInstituteSelectAll(ids.size === filteredInstitutePapers.length && ids.size > 0);
@@ -405,7 +407,6 @@ const CampusAdminDashboard = () => {
 
   const handleInstituteSelect = useCallback(
     (id) => {
-      // Allow selection of any paper in filtered list, no restriction
       const next = new Set(instituteSelectedPapers);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -441,23 +442,27 @@ const CampusAdminDashboard = () => {
 
   // Clear helpers
   const clearInstituteFilters = () => {
-    setInstituteSearchTerm("");
-    setInstituteSelectedYear("all");
-    setInstituteSelectedQRating("all");
-    setInstituteSelectedPublicationType("all");
-    setInstituteSelectedSubjectArea("all");
-    setInstituteSelectedSubjectCategory("all");
-    setInstituteSelectedAuthor("all");
-    setInstituteSelectedDepartment("all");
+    setInstituteFilters({
+      searchTerm: "",
+      selectedYear: "all",
+      selectedQRating: "all",
+      selectedPublicationType: "all",
+      selectedSubjectArea: "all",
+      selectedSubjectCategory: "all",
+      selectedAuthor: "all",
+      selectedDepartment: "all",
+    });
     toast.info("Cleared institute filters", { duration: 1500 });
   };
   const clearMyFilters = () => {
-    setMySearchTerm("");
-    setMySelectedYear("all");
-    setMySelectedQRating("all");
-    setMySelectedPublicationType("all");
-    setMySelectedSubjectArea("all");
-    setMySelectedSubjectCategory("all");
+    setMyFilters({
+      searchTerm: "",
+      selectedYear: "all",
+      selectedQRating: "all",
+      selectedPublicationType: "all",
+      selectedSubjectArea: "all",
+      selectedSubjectCategory: "all",
+    });
     toast.info("Cleared my filters", { duration: 1500 });
   };
   const clearInstituteSelection = () => {
@@ -688,12 +693,44 @@ const CampusAdminDashboard = () => {
     toast.academic(`Exported ${data.length} publications`, { duration: 2200 });
   };
 
-  const onSelectFaculty = (fid) => {
-    setSelectedFacultyId(fid);
+  // --- Decoupled UserFinderSidebar: Compute usersWithPubCount based on publication filter ---
+  const usersWithPubCount = useMemo(() => {
+    // For each user matching the *user sidebar* filter, show their publication count for *current pub filters*
+    return users.map((user) => {
+      const pubCount = filteredInstitutePapers.filter((pub) => pub.facultyId === user.facultyId).length;
+      return { ...user, pubCount };
+    });
+  }, [users, filteredInstitutePapers]);
+
+  // UserFinderSidebar: Filter users with only user filters, not pub filters
+  const userFinderSidebarUsers = useMemo(() => {
+    // Only filter users by userFinderFilters (not publication filter)
+    const term = userFinderFilters.searchTerm.trim().toLowerCase();
+    let filtered = users;
+    if (userFinderFilters.deptFilter !== "all") {
+      filtered = filtered.filter((u) => u.department === userFinderFilters.deptFilter);
+    }
+    if (term) {
+      filtered = filtered.filter((u) =>
+        (u.fullName || "").toLowerCase().includes(term) ||
+        (u.email || "").toLowerCase().includes(term) ||
+        (u.facultyId || "").toLowerCase().includes(term)
+      );
+    }
+    // Add pubCount from usersWithPubCount (guaranteed to match user.facultyId)
+    return filtered.map(u => {
+      const full = usersWithPubCount.find(uu => uu.facultyId === u.facultyId);
+      return { ...u, pubCount: full ? full.pubCount : 0 };
+    });
+  }, [users, userFinderFilters, usersWithPubCount]);
+
+  const onSelectFaculty = (faculty) => {
+    setSelectedFacultyId(faculty?.facultyId ?? null);
     setActiveTab("institute");
     setExpanded(null);
     setInstituteSelectedPapers(new Set());
     setInstituteSelectAll(false);
+    setFacultyFinderOpen(false);
   };
 
   if (loading) {
@@ -727,10 +764,29 @@ const CampusAdminDashboard = () => {
           onFacultyFinderOpenChange={setFacultyFinderOpen}
         />
 
+        {/* Faculty Finder Sidebar Drawer */}
+        <UserFinderSidebar
+          open={facultyFinderOpen}
+          onClose={() => setFacultyFinderOpen(false)}
+          users={userFinderSidebarUsers}
+          papers={filteredInstitutePapers}
+          selectedUserId={selectedFacultyId}
+          onSelectUser={onSelectFaculty}
+          searchTerm={userFinderFilters.searchTerm}
+          onSearchTermChange={v => setUserFinderFilters(f => ({ ...f, searchTerm: v }))}
+          deptFilter={userFinderFilters.deptFilter}
+          onDeptFilterChange={v => setUserFinderFilters(f => ({ ...f, deptFilter: v }))}
+          context="campus"
+          campusCollege={currentUser?.college}
+          campusInstitute={currentUser?.institute}
+          loading={loading}
+          title="Find Faculty"
+        />
+
         {/* Analytics Section */}
         {showAnalytics && (
           <section className="max-w-7xl mx-auto mb-8">
-            <div className="relative border border-blue-100 rounded-2xl shadow-md bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
+            <div className="relative border border-blue-100 rounded-2xl shadow-lg bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
               <header className="flex items-center justify-between px-8 py-5 border-b border-blue-100 bg-white/80 rounded-t-2xl shadow-sm">
                 <div className="flex items-center gap-3">
                   <BarChart3 className="h-7 w-7 text-blue-600" />
@@ -754,29 +810,6 @@ const CampusAdminDashboard = () => {
               </main>
             </div>
           </section>
-        )}
-
-        {/* Faculty Finder Sidebar Drawer (just like super admin) */}
-        {facultyFinderOpen && (
-          <div>
-            <div className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-full md:w-[350px] bg-white shadow-2xl flex flex-col overflow-y-scroll scrollbar-hide transition-all duration-300">
-              <FacultySidebar
-                users={users}
-                institutePapers={institutePapers}
-                departments={instituteFilterOptions.departments}
-                selectedFacultyId={selectedFacultyId}
-                onSelect={onSelectFaculty}
-                userSearchTerm={userSearchTerm}
-                onUserSearchTermChange={setUserSearchTerm}
-                userDeptFilter={userDeptFilter}
-                onUserDeptFilterChange={setUserDeptFilter}
-                userHasPubsOnly={userHasPubsOnly}
-                onUserHasPubsOnlyChange={setUserHasPubsOnly}
-                onCollapse={() => setFacultyFinderOpen(false)}
-                loading={loading}
-              />
-            </div>
-          </div>
         )}
 
         {activeTab === "my" ? (
@@ -839,20 +872,20 @@ const CampusAdminDashboard = () => {
                       authors: [],
                       departments: [],
                     }}
-                    searchTerm={instituteSearchTerm}
-                    selectedYear={instituteSelectedYear}
-                    selectedQRating={instituteSelectedQRating}
-                    selectedPublicationType={instituteSelectedPublicationType}
-                    selectedSubjectArea={instituteSelectedSubjectArea}
-                    selectedSubjectCategory={instituteSelectedSubjectCategory}
+                    searchTerm={instituteFilters.searchTerm}
+                    selectedYear={instituteFilters.selectedYear}
+                    selectedQRating={instituteFilters.selectedQRating}
+                    selectedPublicationType={instituteFilters.selectedPublicationType}
+                    selectedSubjectArea={instituteFilters.selectedSubjectArea}
+                    selectedSubjectCategory={instituteFilters.selectedSubjectCategory}
                     selectedAuthor={"all"}
                     selectedDepartment={"all"}
-                    onSearchTermChange={setInstituteSearchTerm}
-                    onYearChange={setInstituteSelectedYear}
-                    onQRatingChange={setInstituteSelectedQRating}
-                    onPublicationTypeChange={setInstituteSelectedPublicationType}
-                    onSubjectAreaChange={setInstituteSelectedSubjectArea}
-                    onSubjectCategoryChange={setInstituteSelectedSubjectCategory}
+                    onSearchTermChange={v => setInstituteFilters(f => ({ ...f, searchTerm: v }))}
+                    onYearChange={v => setInstituteFilters(f => ({ ...f, selectedYear: v }))}
+                    onQRatingChange={v => setInstituteFilters(f => ({ ...f, selectedQRating: v }))}
+                    onPublicationTypeChange={v => setInstituteFilters(f => ({ ...f, selectedPublicationType: v }))}
+                    onSubjectAreaChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectArea: v }))}
+                    onSubjectCategoryChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectCategory: v }))}
                     onAuthorChange={() => {}}
                     onDepartmentChange={() => {}}
                     hasActiveFilters={hasInstituteActiveFilters}
@@ -912,22 +945,22 @@ const CampusAdminDashboard = () => {
                 <>
                   <PublicationsFilterCard
                     filterOptions={instituteFilterOptions}
-                    searchTerm={instituteSearchTerm}
-                    selectedYear={instituteSelectedYear}
-                    selectedQRating={instituteSelectedQRating}
-                    selectedPublicationType={instituteSelectedPublicationType}
-                    selectedSubjectArea={instituteSelectedSubjectArea}
-                    selectedSubjectCategory={instituteSelectedSubjectCategory}
-                    selectedAuthor={instituteSelectedAuthor}
-                    selectedDepartment={instituteSelectedDepartment}
-                    onSearchTermChange={setInstituteSearchTerm}
-                    onYearChange={setInstituteSelectedYear}
-                    onQRatingChange={setInstituteSelectedQRating}
-                    onPublicationTypeChange={setInstituteSelectedPublicationType}
-                    onSubjectAreaChange={setInstituteSelectedSubjectArea}
-                    onSubjectCategoryChange={setInstituteSelectedSubjectCategory}
-                    onAuthorChange={setInstituteSelectedAuthor}
-                    onDepartmentChange={setInstituteSelectedDepartment}
+                    searchTerm={instituteFilters.searchTerm}
+                    selectedYear={instituteFilters.selectedYear}
+                    selectedQRating={instituteFilters.selectedQRating}
+                    selectedPublicationType={instituteFilters.selectedPublicationType}
+                    selectedSubjectArea={instituteFilters.selectedSubjectArea}
+                    selectedSubjectCategory={instituteFilters.selectedSubjectCategory}
+                    selectedAuthor={instituteFilters.selectedAuthor}
+                    selectedDepartment={instituteFilters.selectedDepartment}
+                    onSearchTermChange={v => setInstituteFilters(f => ({ ...f, searchTerm: v }))}
+                    onYearChange={v => setInstituteFilters(f => ({ ...f, selectedYear: v }))}
+                    onQRatingChange={v => setInstituteFilters(f => ({ ...f, selectedQRating: v }))}
+                    onPublicationTypeChange={v => setInstituteFilters(f => ({ ...f, selectedPublicationType: v }))}
+                    onSubjectAreaChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectArea: v }))}
+                    onSubjectCategoryChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectCategory: v }))}
+                    onAuthorChange={v => setInstituteFilters(f => ({ ...f, selectedAuthor: v }))}
+                    onDepartmentChange={v => setInstituteFilters(f => ({ ...f, selectedDepartment: v }))}
                     hasActiveFilters={hasInstituteActiveFilters}
                     onClearFilters={clearInstituteFilters}
                     selectedCount={instituteSelectedPapers.size}
@@ -992,18 +1025,18 @@ const CampusAdminDashboard = () => {
           <TabsContent value="my" className="space-y-6">
             <PublicationsFilterCard
               filterOptions={myFilterOptions}
-              searchTerm={mySearchTerm}
-              selectedYear={mySelectedYear}
-              selectedQRating={mySelectedQRating}
-              selectedPublicationType={mySelectedPublicationType}
-              selectedSubjectArea={mySelectedSubjectArea}
-              selectedSubjectCategory={mySelectedSubjectCategory}
-              onSearchTermChange={setMySearchTerm}
-              onYearChange={setMySelectedYear}
-              onQRatingChange={setMySelectedQRating}
-              onPublicationTypeChange={setMySelectedPublicationType}
-              onSubjectAreaChange={setMySelectedSubjectArea}
-              onSubjectCategoryChange={setMySelectedSubjectCategory}
+              searchTerm={myFilters.searchTerm}
+              selectedYear={myFilters.selectedYear}
+              selectedQRating={myFilters.selectedQRating}
+              selectedPublicationType={myFilters.selectedPublicationType}
+              selectedSubjectArea={myFilters.selectedSubjectArea}
+              selectedSubjectCategory={myFilters.selectedSubjectCategory}
+              onSearchTermChange={v => setMyFilters(f => ({ ...f, searchTerm: v }))}
+              onYearChange={v => setMyFilters(f => ({ ...f, selectedYear: v }))}
+              onQRatingChange={v => setMyFilters(f => ({ ...f, selectedQRating: v }))}
+              onPublicationTypeChange={v => setMyFilters(f => ({ ...f, selectedPublicationType: v }))}
+              onSubjectAreaChange={v => setMyFilters(f => ({ ...f, selectedSubjectArea: v }))}
+              onSubjectCategoryChange={v => setMyFilters(f => ({ ...f, selectedSubjectCategory: v }))}
               hasActiveFilters={hasMyActiveFilters}
               onClearFilters={clearMyFilters}
               selectedCount={mySelectedPapers.size}

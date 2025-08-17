@@ -2,7 +2,7 @@ import { UserCog, UserPlus, Info, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/Toast';
-import BulkUploadInstructions from './BulkUploadInstructions';
+import BulkUploadInstructions from './BulkUpload/BulkUploadInstructions';
 
 export default function UserHeader({
   currentUser = {},
