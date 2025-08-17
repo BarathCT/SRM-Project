@@ -304,6 +304,9 @@ export default function SuperAdminDashboard() {
   // Stats
   const stats = useMemo(() => {
     const papers = filteredPapers;
+     const filteredFaculty = users.filter(u => 
+      papers.some(p => p.facultyId === u.facultyId)
+    );
     const total = papers.length;
     const qDist = papers.reduce((acc, p) => {
       acc[p.qRating] = (acc[p.qRating] || 0) + 1;
@@ -320,7 +323,8 @@ export default function SuperAdminDashboard() {
     const departmentStats = users.reduce((acc, u) => {
       if (
         (selectedCollege !== "all" && u.college !== selectedCollege) ||
-        (selectedInstitute !== "all" && u.institute !== selectedInstitute)
+        (selectedInstitute !== "all" && u.institute !== selectedInstitute) ||
+        (selectedDepartment !== "all" && u.department !== selectedDepartment)
       ) {
         return acc;
       }
@@ -333,21 +337,23 @@ export default function SuperAdminDashboard() {
       acc[dep].papers += userPapers.length;
       acc[dep].q1Papers += userPapers.filter((p) => p.qRating === "Q1").length;
       acc[dep].recentPapers += userPapers.filter((p) => Number(p.year) >= new Date().getFullYear() - 1).length;
-      return acc;
+      return{
+        totalFaculty: filteredFaculty.length,
+        avgPapersPerFaculty: filteredFaculty.length ? (total / filteredFaculty.length).toFixed(1) : 0,
+      } ;
     }, {});
     return {
       totalPapers: total,
       activeFaculty: new Set(papers.map((p) => p.facultyId)).size,
-      totalFaculty: users.length,
+      totalFaculty: filteredFaculty.length,
       qDistribution: qDist,
       yearlyTrend,
       subjectDistribution,
       departmentStats,
       q1Percentage: total ? (((qDist.Q1 || 0) / total) * 100).toFixed(1) : 0,
-      avgPapersPerFaculty: users.length ? (total / users.length).toFixed(1) : 0,
+      avgPapersPerFaculty: filteredFaculty.length ? (total / users.length).toFixed(1) : 0,
     };
-  }, [filteredPapers, users, selectedCollege, selectedInstitute]);
-
+  }, [filteredPapers, users, selectedCollege, selectedInstitute, selectedDepartment]);
   // User selection (SuperUserFinder)
   const onSelectUser = useCallback(async (user) => {
     setSelectedUserId(user ? user.facultyId : null);
