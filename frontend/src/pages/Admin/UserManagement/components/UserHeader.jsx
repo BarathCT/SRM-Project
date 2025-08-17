@@ -1,4 +1,4 @@
-import { UserCog, UserPlus, Info, Download, FileText } from 'lucide-react';
+import { UserCog, UserPlus, Info, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/Toast';
@@ -9,6 +9,7 @@ export default function UserHeader({
   getAvailableRoles = () => [],
   setOpenDialog,
   setOpenBulkDialog,
+  setShowLogDialog,
   collegeOptions = [],
 }) {
   const { toast } = useToast();
@@ -106,55 +107,6 @@ export default function UserHeader({
 
   const instructions = getBulkUploadInstructions();
 
-  // Download template from backend
-  const downloadTemplate = async (templateType = null) => {
-    try {
-      const token = localStorage.getItem('token');
-      let url = '/api/admin/download-template';
-      
-      if (role === 'super_admin' && templateType) {
-        url += `?templateType=${templateType}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to download template');
-      }
-
-      // Get filename from response headers
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = 'template.xlsx';
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-
-      toast.success('Clean template downloaded! No sample data - start entering from row 2.');
-    } catch (error) {
-      console.error('Error downloading template:', error);
-      toast.error('Failed to download template');
-    }
-  };
-
   return (
     <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
       <div className="flex-1">
@@ -204,41 +156,9 @@ export default function UserHeader({
               <FileText className="mr-2 h-4 w-4" />
               Bulk Upload
             </Button>
-
-            {role === 'super_admin' ? (
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                  onClick={() => downloadTemplate('campus_admin')}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Campus Admin Template
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                  onClick={() => downloadTemplate('faculty')}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Faculty Template
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="outline" 
-                className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                onClick={() => downloadTemplate()}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download Template
-              </Button>
-            )}
-
             <BulkUploadInstructions
               currentUser={currentUser}
               instructions={instructions}
-              downloadTemplate={downloadTemplate}
               trigger={
                 <Button 
                   variant="outline" 
@@ -250,6 +170,17 @@ export default function UserHeader({
               }
             />
           </>
+        )}
+
+        {role === 'super_admin' && (
+          <Button
+            variant="outline"
+            className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            onClick={() => setShowLogDialog(true)}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Logs
+          </Button>
         )}
       </div>
     </div>

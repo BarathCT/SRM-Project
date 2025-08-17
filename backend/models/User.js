@@ -25,7 +25,12 @@ const userSchema = new mongoose.Schema({
     minlength: [8, 'Password must be at least 8 characters long']
   },
   fullName: { type: String, required: true, trim: true },
-  facultyId: { type: String, default: 'N/A' },
+  facultyId: { 
+    type: String, 
+    default: 'N/A',
+    unique: true, // <-- Make facultyId unique
+    sparse: true  // Allow multiple 'N/A' values (unique only when not null/'N/A')
+  },
   role: {
     type: String,
     enum: ['super_admin', 'campus_admin', 'faculty'],
@@ -107,7 +112,7 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Pre-validate consistency
+// Enhanced validation middleware
 userSchema.pre('validate', function(next) {
   if (this.role === 'super_admin') {
     this.college = 'N/A';
@@ -117,6 +122,7 @@ userSchema.pre('validate', function(next) {
     return next();
   }
 
+  // Common validations for both campus_admin and faculty
   if (this.facultyId === 'N/A') {
     return next(new Error('Faculty ID is required for non-super admin roles'));
   }
@@ -130,28 +136,47 @@ userSchema.pre('validate', function(next) {
     return next(new Error('Invalid college specified'));
   }
 
-  if (collegesWithoutInstitutes.includes(this.college)) {
-    this.institute = 'N/A';
-    if (!isValidDepartmentSelection(this.college, 'N/A', this.department)) {
-      return next(new Error(`Invalid department '${this.department}' for college '${this.college}'`));
+  // Campus Admin specific validations
+  if (this.role === 'campus_admin') {
+    this.department = 'N/A'; // Force department to be N/A for all campus admins
+    
+    if (collegesWithoutInstitutes.includes(this.college)) {
+      this.institute = 'N/A';
+    } else {
+      if (this.institute === 'N/A') {
+        return next(new Error('Institute is required for campus admins in colleges with institutes'));
+      }
     }
     return next();
   }
 
-  if (this.institute === 'N/A') {
-    return next(new Error('Institute is required for this college'));
-  }
+  // Faculty specific validations
+  if (this.role === 'faculty') {
+    if (this.department === 'N/A') {
+      return next(new Error('Department is required for faculty members'));
+    }
 
-  if (!isValidDepartmentSelection(this.college, this.institute, this.department)) {
-    return next(new Error(
-      `Invalid department '${this.department}' for institute '${this.institute}' in college '${this.college}'`
-    ));
+    if (collegesWithoutInstitutes.includes(this.college)) {
+      this.institute = 'N/A';
+      if (!isValidDepartmentSelection(this.college, 'N/A', this.department)) {
+        return next(new Error(`Invalid department '${this.department}' for college '${this.college}'`));
+      }
+    } else {
+      if (this.institute === 'N/A') {
+        return next(new Error('Institute is required for faculty in colleges with institutes'));
+      }
+      if (!isValidDepartmentSelection(this.college, this.institute, this.department)) {
+        return next(new Error(
+          `Invalid department '${this.department}' for institute '${this.institute}' in college '${this.college}'`
+        ));
+      }
+    }
   }
 
   next();
 });
 
-// Email domain restrictions
+// Email domain restrictions (unchanged)
 userSchema.pre('validate', function(next) {
   if (!this.isActive) return next();
   if (this.role === 'super_admin') return next();
@@ -183,18 +208,27 @@ userSchema.pre('validate', function(next) {
   next();
 });
 
-// Save hook: re-assert relationships (mainly for non-institute colleges)
+// Save hook: re-assert relationships
 userSchema.pre('save', function(next) {
-  const collegeData = getCollegeData(this.college);
-  if (collegesWithoutInstitutes.includes(this.college)) {
+  if (this.role === 'super_admin') {
+    this.college = 'N/A';
+    this.institute = 'N/A';
+    this.department = 'N/A';
+    this.facultyId = 'N/A';
+  } else if (this.role === 'campus_admin') {
+    this.department = 'N/A';
+    if (collegesWithoutInstitutes.includes(this.college)) {
+      this.institute = 'N/A';
+    }
+  } else if (this.role === 'faculty' && collegesWithoutInstitutes.includes(this.college)) {
     this.institute = 'N/A';
   }
   next();
 });
 
-// Indexes
+// Indexes (unchanged)
 userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ facultyId: 1 });
+userSchema.index({ facultyId: 1 }, { unique: true, sparse: true }); // Ensure unique facultyId, allow multiple N/A
 userSchema.index({ fullName: 'text' });
 userSchema.index({ role: 1 });
 userSchema.index({ college: 1 });

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import ExcelJS from 'exceljs';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
+import UserLog from '../models/UserLog.js'; // <-- ADD THIS LINE
 import { sendUserWelcomeEmail } from '../utils/sendUserWelcomeMail.js';
 
 // Centralized college / institute helpers
@@ -75,7 +76,7 @@ router.get('/download-template', authenticate, async (req, res) => {
           { header: 'fullName', key: 'fullName', width: 20 },
           { header: 'facultyId', key: 'facultyId', width: 15 },
           { header: 'email', key: 'email', width: 30 },
-            { header: 'college', key: 'college', width: 25 },
+          { header: 'college', key: 'college', width: 25 },
           { header: 'institute', key: 'institute', width: 25 }
         ];
       } else {
@@ -200,7 +201,7 @@ router.get('/users', authenticate, async (req, res) => {
 
 /* ----------------------------- POST /admin/users -------------------------- */
 router.post('/users', authenticate, async (req, res) => {
-  const { email, password, fullName, facultyId, role, college, institute, department } = req.body;
+  let { email, password, fullName, facultyId, role, college, institute, department } = req.body;
   const creator = req.user;
 
   try {
@@ -215,6 +216,19 @@ router.post('/users', authenticate, async (req, res) => {
 
     if (!canCreateRole(creator.role, role)) {
       return res.status(403).json({ message: `You are not allowed to create a '${role}'` });
+    }
+
+    // --- ENSURE department/institute are always set for SRM RESEARCH campus_admins ---
+    if (
+      creator.role === 'campus_admin' &&
+      creator.institute === 'SRM RESEARCH' &&
+      (creator.college === 'SRMIST RAMAPURAM' || creator.college === 'SRM TRICHY')
+    ) {
+      institute = 'SRM RESEARCH';
+      department = creator.college === 'SRMIST RAMAPURAM'
+        ? 'Ramapuram Research'
+        : 'Trichy Research';
+      college = creator.college;
     }
 
     let finalCollege = college;
@@ -290,7 +304,11 @@ router.post('/users', authenticate, async (req, res) => {
             });
           }
           if (creator.institute === 'SRM RESEARCH') {
-            const expectedDepartment = creator.department;
+            const expectedDepartment = creator.college === 'SRMIST RAMAPURAM'
+              ? 'Ramapuram Research'
+              : creator.college === 'SRM TRICHY'
+                ? 'Trichy Research'
+                : creator.department;
             if (department !== expectedDepartment) {
               return res.status(400).json({
                 message: `Department must be '${expectedDepartment}' for SRM RESEARCH institute`
@@ -325,7 +343,7 @@ router.post('/users', authenticate, async (req, res) => {
             });
           }
           const instData = collegeData.institutes.find(i => i.name === finalInstitute);
-            if (!instData.departments.includes(finalDepartment)) {
+          if (!instData.departments.includes(finalDepartment)) {
             return res.status(400).json({
               message: `Department '${finalDepartment}' is not valid for institute '${finalInstitute}' in college '${finalCollege}'`
             });
@@ -363,6 +381,34 @@ router.post('/users', authenticate, async (req, res) => {
     });
 
     await newUser.save();
+
+    // LOG CREATE ACTION
+    await UserLog.create({
+      actor: {
+        userId: creator.userId,
+        name: creator.fullName,
+        email: creator.email,
+        role: creator.role,
+      },
+      action: 'create',
+      targetUser: {
+        userId: newUser._id,
+        name: newUser.fullName,
+        email: newUser.email,
+        role: newUser.role,
+      },
+      before: null,
+      after: {
+        fullName: newUser.fullName,
+        email: newUser.email,
+        role: newUser.role,
+        facultyId: newUser.facultyId,
+        college: newUser.college,
+        institute: newUser.institute,
+        department: newUser.department
+      },
+      timestamp: new Date()
+    });
 
     if (['super_admin', 'campus_admin'].includes(creator.role)) {
       try {
@@ -402,7 +448,7 @@ router.post('/users', authenticate, async (req, res) => {
 
 /* --------------------------- PUT /admin/users/:id -------------------------- */
 router.put('/users/:id', authenticate, async (req, res) => {
-  const { role: updaterRole, userId: updaterId } = req.user;
+  const { role: updaterRole, userId: updaterId, fullName, email, role } = req.user;
 
   try {
     const userToUpdate = await User.findById(req.params.id);
@@ -558,11 +604,49 @@ router.put('/users/:id', authenticate, async (req, res) => {
       }
     }
 
+    const before = {
+      fullName: userToUpdate.fullName,
+      email: userToUpdate.email,
+      role: userToUpdate.role,
+      facultyId: userToUpdate.facultyId,
+      college: userToUpdate.college,
+      institute: userToUpdate.institute,
+      department: userToUpdate.department
+    };
+
     const updated = await User.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
       { new: true, runValidators: true }
     ).select('-password -__v');
+
+    // LOG UPDATE ACTION
+    await UserLog.create({
+      actor: {
+        userId: updaterId,
+        name: fullName,
+        email: email,
+        role: role,
+      },
+      action: 'update',
+      targetUser: {
+        userId: userToUpdate._id,
+        name: userToUpdate.fullName,
+        email: userToUpdate.email,
+        role: userToUpdate.role,
+      },
+      before,
+      after: {
+        fullName: updated.fullName,
+        email: updated.email,
+        role: updated.role,
+        facultyId: updated.facultyId,
+        college: updated.college,
+        institute: updated.institute,
+        department: updated.department
+      },
+      timestamp: new Date()
+    });
 
     res.json({ message: 'User updated successfully', user: updated });
   } catch (err) {
@@ -578,7 +662,7 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
 /* -------------------------- DELETE /admin/users/:id ----------------------- */
 router.delete('/users/:id', authenticate, async (req, res) => {
-  const { userId: deleterId } = req.user;
+  const { userId: deleterId, fullName, email, role } = req.user;
   try {
     const userToDelete = await User.findById(req.params.id);
     if (!userToDelete) return res.status(404).json({ message: 'User not found' });
@@ -588,10 +672,55 @@ router.delete('/users/:id', authenticate, async (req, res) => {
     if (!canModifyUser(req.user, userToDelete)) {
       return res.status(403).json({ message: 'You are not authorized to delete this user' });
     }
+
+    const before = {
+      fullName: userToDelete.fullName,
+      email: userToDelete.email,
+      role: userToDelete.role,
+      facultyId: userToDelete.facultyId,
+      college: userToDelete.college,
+      institute: userToDelete.institute,
+      department: userToDelete.department
+    };
+
     await User.findByIdAndDelete(req.params.id);
+
+    // LOG DELETE ACTION
+    await UserLog.create({
+      actor: {
+        userId: deleterId,
+        name: fullName,
+        email: email,
+        role: role,
+      },
+      action: 'delete',
+      targetUser: {
+        userId: userToDelete._id,
+        name: userToDelete.fullName,
+        email: userToDelete.email,
+        role: userToDelete.role,
+      },
+      before,
+      after: null,
+      timestamp: new Date()
+    });
+
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Error deleting user', error: err.message });
+  }
+});
+
+/* ---------------------- GET /admin/user-logs (Super Admin) ---------------- */
+router.get('/user-logs', authenticate, async (req, res) => {
+  if (req.user.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    const logs = await UserLog.find().sort({ timestamp: -1 }).limit(500);
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching logs', error: err.message });
   }
 });
 

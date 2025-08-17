@@ -62,6 +62,24 @@ const upload = multer({
 });
 
 /* -------------------------------------------------------------------------- */
+/* GET /user-keys (for pre-upload validation)                                 */
+/* -------------------------------------------------------------------------- */
+router.get('/user-keys', authenticate, async (req, res) => {
+  // Only super/campus admin
+  if (!['super_admin', 'campus_admin'].includes(req.user?.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  // Get all emails and facultyIds in the DB (for that college if campus_admin)
+  const filter = {};
+  if (req.user.role === 'campus_admin') filter.college = req.user.college;
+  const users = await User.find(filter).select('email facultyId -_id');
+  res.json({
+    emails: users.map(u => u.email?.toLowerCase()).filter(Boolean),
+    facultyIds: users.map(u => (u.facultyId || '').toLowerCase()).filter(Boolean),
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* POST /bulk-upload-users                                                    */
 /* -------------------------------------------------------------------------- */
 router.post('/bulk-upload-users', authenticate, upload.single('file'), async (req, res) => {
@@ -81,20 +99,49 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
     let failed = 0;
     const errors = [];
 
+    // Preload all emails and facultyIds from DB for duplicate check
+    const filter = {};
+    if (creator.role === 'campus_admin') filter.college = creator.college;
+    const allUsers = await User.find(filter).select('email facultyId -_id');
+    const dbEmails = new Set(allUsers.map(u => u.email?.toLowerCase()));
+    const dbFacultyIds = new Set(allUsers.map(u => (u.facultyId || '').toLowerCase()));
+
+    // In-memory maps for Excel duplicate detection
+    const seenEmails = new Set();
+    const seenFacultyIds = new Set();
+
+    // Allowed domains
+    const EMAIL_DOMAINS = {
+      'SRMIST RAMAPURAM': 'srmist.edu.in',
+      'SRM TRICHY': 'srmtrichy.edu.in',
+      'EASWARI ENGINEERING COLLEGE': 'eec.srmrmp.edu.in',
+      'TRP ENGINEERING COLLEGE': 'trp.srmtrichy.edu.in'
+    };
+    const RESEARCH_ALLOWED = [
+      'srmist.edu.in',
+      'srmtrichy.edu.in',
+      'eec.srmrmp.edu.in',
+      'trp.srmtrichy.edu.in'
+    ];
+
+    // Helper to get domain from email
+    const getDomain = (email) =>
+      (email && typeof email === 'string' && email.includes('@')) ? email.split('@')[1].toLowerCase() : '';
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowIndex = i + 2; // account for header row in spreadsheet
       try {
         // Extract / normalize fields (case-insensitive header support)
-        const email = row.email || row.Email || row.EMAIL;
+        const email = (row.email || row.Email || row.EMAIL || '').trim();
         const fullName =
           row.fullName || row['Full Name'] || row.FULLNAME || row.name;
         let password = row.password || row.Password || row.PASSWORD;
-        let role = row.role || row.Role || row.ROLE || defaultRole;
-        let college = normalizeCollegeName(row.college || row.College || row.COLLEGE);
-        let institute = row.institute || row.Institute || row.INSTITUTE;
+        let role = (row.role || row.Role || row.ROLE || defaultRole || '').toLowerCase();
+        let college = normalizeCollegeName(row.college || row.College || row.COLLEGE || creator.college || '');
+        let institute = row.institute || row.Institute || row.INSTITUTE || creator.institute || '';
         let department = row.department || row.Department || row.DEPARTMENT;
-        let facultyId = row.facultyId || row.FacultyId || row.FACULTYID;
+        let facultyId = (row.facultyId || row.FacultyId || row.FACULTYID || '').trim();
 
         // Campus admin can only create faculty (hardened)
         if (creator.role === 'campus_admin') {
@@ -115,12 +162,27 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
           continue;
         }
 
-        // Duplicate user check
-        const existingUser = await User.findOne({
-          email: { $regex: `^${email}$`, $options: 'i' }
-        });
-        if (existingUser) {
-          failed++; errors.push(`Row ${rowIndex}: User already exists`);
+        // Check file-level duplicate email
+        if (seenEmails.has(email.toLowerCase())) {
+          failed++; errors.push(`Row ${rowIndex}: Duplicate email '${email}' in uploaded file`);
+          continue;
+        }
+        seenEmails.add(email.toLowerCase());
+
+        // Check file-level duplicate facultyId
+        if (facultyId && seenFacultyIds.has(facultyId.toLowerCase())) {
+          failed++; errors.push(`Row ${rowIndex}: Duplicate facultyId '${facultyId}' in uploaded file`);
+          continue;
+        }
+        if (facultyId) seenFacultyIds.add(facultyId.toLowerCase());
+
+        // Duplicate user check in DB
+        if (dbEmails.has(email.toLowerCase())) {
+          failed++; errors.push(`Row ${rowIndex}: Email '${email}' already exists in database`);
+          continue;
+        }
+        if (facultyId && dbFacultyIds.has(facultyId.toLowerCase())) {
+          failed++; errors.push(`Row ${rowIndex}: FacultyId '${facultyId}' already exists in database`);
           continue;
         }
 
@@ -209,6 +271,20 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
           }
         }
 
+        // Email domain validation
+        const emailDomain = getDomain(email);
+        if (finalInstitute === 'SRM RESEARCH') {
+          if (!RESEARCH_ALLOWED.includes(emailDomain)) {
+            failed++; errors.push(`Row ${rowIndex}: Invalid email domain '${emailDomain}' for SRM RESEARCH (must be one of: ${RESEARCH_ALLOWED.join(', ')})`);
+            continue;
+          }
+        } else if (EMAIL_DOMAINS[finalCollege]) {
+          if (emailDomain !== EMAIL_DOMAINS[finalCollege]) {
+            failed++; errors.push(`Row ${rowIndex}: Email must end with '${EMAIL_DOMAINS[finalCollege]}' for college '${finalCollege}'`);
+            continue;
+          }
+        }
+
         // Auto-generate password if omitted
         if (!password) {
           password = Math.random().toString(36).slice(-8);
@@ -255,7 +331,7 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
     }
 
     res.json({
-      success: true,
+      success: errors.length === 0,
       summary: {
         total: rows.length,
         success,

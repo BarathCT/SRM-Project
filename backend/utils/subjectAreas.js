@@ -12,7 +12,7 @@ export const SUBJECT_AREAS = {
     "Insect Science",
     "Plant Science",
     "Soil Science",
-    "Agricultural and Biological Sciences (miscellaneous)",
+    "Agricultural and Biological Sciences (miscellaneous)"
   ],
   "Arts and Humanities": [
     "Archeology",
@@ -26,7 +26,7 @@ export const SUBJECT_AREAS = {
     "Music",
     "Philosophy",
     "Religious Studies",
-    "Visual Arts and Performing Arts",
+    "Visual Arts and Performing Arts"
   ],
   "Biochemistry, Genetics and Molecular Biology": [
     "Aging",
@@ -42,7 +42,7 @@ export const SUBJECT_AREAS = {
     "Genetics",
     "Molecular Biology",
     "Molecular Medicine",
-    "Structural Biology",
+    "Structural Biology"
   ],
   "Business, Management and Accounting": [
     "Accounting",
@@ -54,7 +54,7 @@ export const SUBJECT_AREAS = {
     "Marketing",
     "Organizational Behavior and Human Resource Management",
     "Strategy and Management",
-    "Tourism, Leisure and Hospitality Management",
+    "Tourism, Leisure and Hospitality Management"
   ],
   "Chemical Engineering": [
     "Bioengineering",
@@ -64,7 +64,7 @@ export const SUBJECT_AREAS = {
     "Colloid and Surface Chemistry",
     "Filtration and Separation",
     "Fluid Flow and Transfer Processes",
-    "Process Chemistry and Technology",
+    "Process Chemistry and Technology"
   ],
   "Chemistry": [
     "Analytical Chemistry",
@@ -73,7 +73,7 @@ export const SUBJECT_AREAS = {
     "Inorganic Chemistry",
     "Organic Chemistry",
     "Physical and Theoretical Chemistry",
-    "Spectroscopy",
+    "Spectroscopy"
   ],
   "Computer Science": [
     "Artificial Intelligence",
@@ -87,12 +87,12 @@ export const SUBJECT_AREAS = {
     "Human-Computer Interaction",
     "Information Systems",
     "Signal Processing",
-    "Software",
+    "Software"
   ],
   "Decision Sciences": [
     "Decision Sciences (miscellaneous)",
     "Information Systems and Management",
-    "Management Science and Operations Research",
+    "Management Science and Operations Research"
   ],
   "Earth and Planetary Sciences": [
     "Atmospheric Science",
@@ -107,19 +107,19 @@ export const SUBJECT_AREAS = {
     "Oceanography",
     "Paleontology",
     "Space and Planetary Science",
-    "Stratigraphy",
+    "Stratigraphy"
   ],
   "Economics, Econometrics and Finance": [
     "Economics and Econometrics",
     "Economics, Econometrics and Finance (miscellaneous)",
-    "Finance",
+    "Finance"
   ],
   "Energy": [
     "Energy Engineering and Power Technology",
     "Energy (miscellaneous)",
     "Fuel Technology",
     "Nuclear Energy and Engineering",
-    "Renewable Energy, Sustainability and the Environment",
+    "Renewable Energy, Sustainability and the Environment"
   ],
   "Engineering": [
     "Aerospace Engineering",
@@ -132,7 +132,7 @@ export const SUBJECT_AREAS = {
     "Industrial and Manufacturing Engineering",
     "Mechanical Engineering",
     "Ocean Engineering",
-    "Safety, Risk, Reliability and Quality",
+    "Safety, Risk, Reliability and Quality"
   ],
   "Environmental Science": [
     "Ecological Modeling",
@@ -146,7 +146,7 @@ export const SUBJECT_AREAS = {
     "Nature and Landscape Conservation",
     "Pollution",
     "Waste Management and Disposal",
-    "Water Science and Technology",
+    "Water Science and Technology"
   ],
   "Immunology and Microbiology": [
     "Applied Microbiology and Biotechnology",
@@ -154,7 +154,7 @@ export const SUBJECT_AREAS = {
     "Immunology and Microbiology (miscellaneous)",
     "Microbiology",
     "Parasitology",
-    "Virology",
+    "Virology"
   ],
   "Materials Science": [
     "Biomaterials",
@@ -164,7 +164,7 @@ export const SUBJECT_AREAS = {
     "Materials Science (miscellaneous)",
     "Metals and Alloys",
     "Polymers and Plastics",
-    "Surfaces, Coatings and Films",
+    "Surfaces, Coatings and Films"
   ],
   "Mathematics": [
     "Algebra and Number Theory",
@@ -180,7 +180,7 @@ export const SUBJECT_AREAS = {
     "Modeling and Simulation",
     "Numerical Analysis",
     "Statistics and Probability",
-    "Theoretical Computer Science",
+    "Theoretical Computer Science"
   ],
   "Medicine": [
     "Anesthesiology and Pain Medicine",
@@ -226,6 +226,174 @@ export const SUBJECT_AREAS = {
     "Rheumatology",
     "Surgery",
     "Transplantation",
-    "Urology",
+    "Urology"
   ],
+  "Neuroscience": [
+    "Behavioral Neuroscience",
+    "Biological Psychiatry",
+    "Cellular and Molecular Neuroscience",
+    "Cognitive Neuroscience",
+    "Developmental Neuroscience",
+    "Endocrine and Autonomic Systems",
+    "Neurology",
+    "Neuroscience (miscellaneous)",
+    "Sensory Systems"
+  ],
+  "Nursing": [
+    "Advanced and Specialized Nursing",
+    "Assessment and Diagnosis",
+    "Care Planning",
+    "Community and Home Care",
+    "Critical Care Nursing",
+    "Emergency Nursing",
+    "Fundamentals and Skills",
+    "Gerontology",
+    "Issues, Ethics and Legal Aspects",
+    "Leadership and Management",
+    "Maternity and Midwifery",
+    "Nurse Assisting",
+    "Nursing (miscellaneous)",
+    "Nutrition and Dietetics",
+    "Oncology (nursing)",
+    "Pathophysiology",
+    "Pediatric Nursing",
+    "Pharmacology (nursing)",
+    "Psychiatric Mental Health",
+    "Public Health, Environmental and Occupational Health",
+    "Research and Theory",
+    "Review and Exam Preparation"
+  ],
+  "Pharmacology, Toxicology and Pharmaceutics": [
+    "Drug Discovery",
+    "Pharmaceutical Science",
+    "Pharmacology",
+    "Pharmacology, Toxicology and Pharmaceutics (miscellaneous)",
+    "Toxicology"
+  ],
+  "Physics and Astronomy": [
+    "Acoustics and Ultrasonics",
+    "Astronomy and Astrophysics",
+    "Atomic and Molecular Physics, and Optics",
+    "Condensed Matter Physics",
+    "Instrumentation",
+    "Nuclear and High Energy Physics",
+    "Physics and Astronomy (miscellaneous)",
+    "Radiation",
+    "Statistical and Nonlinear Physics",
+    "Surfaces and Interfaces"
+  ],
+  "Psychology": [
+    "Applied Psychology",
+    "Clinical Psychology",
+    "Developmental and Educational Psychology",
+    "Experimental and Cognitive Psychology",
+    "Neuropsychology and Physiological Psychology",
+    "Psychology (miscellaneous)",
+    "Social Psychology"
+  ],
+  "Social Sciences": [
+    "Anthropology",
+    "Archeology",
+    "Communication",
+    "Cultural Studies",
+    "Demography",
+    "Development",
+    "Education",
+    "Gender Studies",
+    "Geography, Planning and Development",
+    "Health (social science)",
+    "Human Factors and Ergonomics",
+    "Law",
+    "Library and Information Sciences",
+    "Linguistics and Language",
+    "Political Science and International Relations",
+    "Public Administration",
+    "Safety Research",
+    "Social Sciences (miscellaneous)",
+    "Social Work",
+    "Sociology and Political Science",
+    "Transportation",
+    "Urban Studies"
+  ],
+  "Veterinary": [
+    "Equine",
+    "Food Animals",
+    "Small Animals",
+    "Veterinary (miscellaneous)"
+  ],
+  "Dentistry": [
+    "Dental Assisting",
+    "Dental Hygiene",
+    "Dentistry (miscellaneous)",
+    "Oral Surgery",
+    "Orthodontics",
+    "Periodontics"
+  ],
+  "Health Professions": [
+    "Chiropractics",
+    "Complementary and Manual Therapy",
+    "Emergency Medical Services",
+    "Health Information Management",
+    "Health Professions (miscellaneous)",
+    "Medical Assisting and Transcription",
+    "Medical Laboratory Technology",
+    "Occupational Therapy",
+    "Optometry",
+    "Pharmacy",
+    "Physical Therapy, Sports Therapy and Rehabilitation",
+    "Podiatry",
+    "Radiological and Ultrasound Technology",
+    "Respiratory Care",
+    "Speech and Hearing"
+  ],
+  "Multidisciplinary": [
+    "Multidisciplinary"
+  ]
+};
+
+// Helper functions for working with subject areas
+export const getAllSubjectAreas = () => Object.keys(SUBJECT_AREAS);
+
+export const getCategoriesForSubjectArea = (subjectArea) => {
+  return SUBJECT_AREAS[subjectArea] || [];
+};
+
+export const isValidSubjectArea = (subjectArea) => {
+  return Object.prototype.hasOwnProperty.call(SUBJECT_AREAS, subjectArea);
+};
+
+export const isValidCategoryForSubject = (subjectArea, category) => {
+  if (!isValidSubjectArea(subjectArea)) return false;
+  return SUBJECT_AREAS[subjectArea].includes(category);
+};
+
+export const getRandomSubjectArea = () => {
+  const areas = getAllSubjectAreas();
+  return areas[Math.floor(Math.random() * areas.length)];
+};
+
+export const getRandomCategoryForSubject = (subjectArea) => {
+  const categories = getCategoriesForSubjectArea(subjectArea);
+  return categories[Math.floor(Math.random() * categories.length)];
+};
+
+export const getRandomSubjectAreaAndCategories = () => {
+  const subjectArea = getRandomSubjectArea();
+  const categories = getCategoriesForSubjectArea(subjectArea);
+  
+  // Select 1-3 random categories from the same subject area
+  const numCategories = Math.min(3, Math.max(1, Math.floor(Math.random() * categories.length) + 1));
+  const selectedCategories = [];
+  
+  while (selectedCategories.length < numCategories) {
+    const category = categories[Math.floor(Math.random() * categories.length)];
+    if (!selectedCategories.includes(category)) {
+      selectedCategories.push(category);
+    }
+  }
+  
+  return {
+    subjectArea,
+    subjectCategories: selectedCategories
+  };
 };

@@ -6,10 +6,11 @@ import { jwtDecode } from 'jwt-decode';
 import { DeleteConfirmationDialog } from './components/DeleteConfirmationDialog';
 import AddUserDialog from './components/AddUserDialog.jsx';
 import UserTable from './components/UserTable';
-import UserFilters from './components/UserFilter'
+import UserFilters from './components/UserFilter';
 import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
 import BulkUploadDialog from './components/BulkUploadDialog';
+import LogDialog from './components/LogDialog';
 
 import {
   collegeOptions as COLLEGE_OPTIONS,
@@ -49,6 +50,7 @@ export default function UserManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openBulkDialog, setOpenBulkDialog] = useState(false);
+  const [showLogDialog, setShowLogDialog] = useState(false);
   const [filters, setFilters] = useState({
     role: 'all',
     institute: 'all',
@@ -60,6 +62,19 @@ export default function UserManagement() {
   const [userToDelete, setUserToDelete] = useState(null);
 
   const navigate = useNavigate();
+
+  // Always set form.college/institute for campus_admin on user/context load
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'campus_admin' && openDialog) {
+      setForm(prev => ({
+        ...prev,
+        college: currentUser.college,
+        institute: currentUser.institute,
+        // department stays as is, will be selected
+      }));
+    }
+    // eslint-disable-next-line
+  }, [currentUser, openDialog]);
 
   // Validate token and fetch users on mount
   useEffect(() => {
@@ -96,37 +111,37 @@ export default function UserManagement() {
 
   const applyFilters = () => {
     let result = [...users];
-    
+
     // Apply role filter
     if (filters.role !== 'all') {
       result = result.filter(user => user.role === filters.role);
     }
-    
+
     // Apply institute filter
     if (filters.institute !== 'all') {
       result = result.filter(user => user.institute === filters.institute);
     }
-    
+
     // Apply college filter
     if (filters.college !== 'all') {
       result = result.filter(user => user.college === filters.college);
     }
-    
+
     // Apply department filter
     if (filters.department !== 'all') {
       result = result.filter(user => user.department === filters.department);
     }
-    
+
     // Apply search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      result = result.filter(user => 
-        user.fullName.toLowerCase().includes(term) || 
+      result = result.filter(user =>
+        user.fullName.toLowerCase().includes(term) ||
         (user.facultyId && user.facultyId.toLowerCase().includes(term)) ||
         (user.email && user.email.toLowerCase().includes(term))
       );
     }
-    
+
     setFilteredUsers(result);
   };
 
@@ -137,20 +152,18 @@ export default function UserManagement() {
       const token = localStorage.getItem('token');
       let url = `${API_BASE_URL}/users`;
       const params = new URLSearchParams();
-      
+
       // Add filters based on user role
       if (user.role === 'campus_admin') {
         params.append('college', user.college);
-        if (COLLEGES_WITH_INSTITUTES.includes(user.college)) {
-          params.append('institute', user.institute);
-        }
+        // For colleges with institutes, do not append institute filter
       }
-      
+
       // Append params to URL if any exist
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
-      
+
       const res = await fetch(url, {
         method: 'GET',
         headers: {
@@ -158,7 +171,7 @@ export default function UserManagement() {
           'Content-Type': 'application/json'
         }
       });
-      
+
       // Handle response
       const contentType = res.headers.get('content-type');
       let data;
@@ -168,11 +181,11 @@ export default function UserManagement() {
         const text = await res.text();
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
-      
+
       if (!Array.isArray(data)) {
         throw new Error('Invalid data format: Expected array of users');
       }
-      
+
       setUsers(data);
     } catch (err) {
       console.error('Fetch users error:', err);
@@ -197,6 +210,7 @@ export default function UserManagement() {
     return ROLE_OPTIONS.filter(role => canCreateRole(role.value));
   };
 
+  // PATCHED handleSubmit to always send correct institute/department for SRM RESEARCH campus admin
   const handleSubmit = async (payload) => {
     try {
       setIsSubmitting(true);
@@ -209,7 +223,7 @@ export default function UserManagement() {
       // Validate department based on college and institute
       const collegeData = COLLEGE_OPTIONS.find(c => c.name === payload.college);
       if (collegeData) {
-        // SKIP department validation for campus_admin
+        // SKIP department validation for campus_admin (now campus_admin can assign any department in their college)
         if (payload.role !== 'campus_admin') {
           if (collegeData.hasInstitutes) {
             const instituteData = collegeData.institutes.find(i => i.name === payload.institute);
@@ -227,22 +241,27 @@ export default function UserManagement() {
       if (currentUser?.role === 'campus_admin') {
         realPayload.college = currentUser.college;
         realPayload.institute = currentUser.institute;
-        // For SRM RESEARCH, enforce department (faculty only)
-        if (payload.role === 'faculty' && currentUser.institute === 'SRM RESEARCH') {
-          realPayload.department = currentUser.department;
+        // If SRM RESEARCH, always fix department
+        if (
+          currentUser.institute === 'SRM RESEARCH' &&
+          (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
+        ) {
+          realPayload.department = currentUser.college === 'SRMIST RAMAPURAM'
+            ? 'Ramapuram Research'
+            : 'Trichy Research';
         }
       }
 
-      const url = editMode 
+      const url = editMode
         ? `${API_BASE_URL}/users/${currentUserId}`
         : `${API_BASE_URL}/users`;
       const method = editMode ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json' 
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(realPayload),
       });
@@ -304,7 +323,7 @@ export default function UserManagement() {
           'Content-Type': 'application/json'
         }
       });
-      
+
       const contentType = res.headers.get('content-type');
       let result;
       if (contentType?.includes('application/json')) {
@@ -313,12 +332,12 @@ export default function UserManagement() {
         const text = await res.text();
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
-      
+
       if (!res.ok) {
         toast.error(result.error || result.message || 'Failed to delete user');
         return;
       }
-      
+
       setUsers(prevUsers => prevUsers.filter(user => user._id !== id));
       toast.success('User deleted successfully');
     } catch (err) {
@@ -356,11 +375,8 @@ export default function UserManagement() {
     if (targetUser._id === currentUser.userId) return false;
     if (currentUser.role === 'super_admin') return true;
     if (currentUser.role === 'campus_admin') {
-      if (currentUser.college !== targetUser.college) return false;
-      if (!COLLEGES_WITH_INSTITUTES.includes(currentUser.college)) {
-        return true;
-      }
-      return currentUser.institute === targetUser.institute;
+      // Campus admin can only modify users under their college
+      return currentUser.college === targetUser.college;
     }
     return false;
   };
@@ -376,7 +392,7 @@ export default function UserManagement() {
   };
 
   const getRoleColor = (role) => {
-    switch(role) {
+    switch (role) {
       case 'super_admin': return 'bg-purple-100 text-purple-800';
       case 'campus_admin': return 'bg-blue-100 text-blue-800';
       case 'faculty': return 'bg-yellow-100 text-yellow-800';
@@ -413,7 +429,7 @@ export default function UserManagement() {
         },
         body: formData
       });
-      
+
       const contentType = res.headers.get('content-type');
       let result;
       if (contentType?.includes('application/json')) {
@@ -422,12 +438,12 @@ export default function UserManagement() {
         const text = await res.text();
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
-      
+
       if (!res.ok) {
         toast.error(result.error || result.message || 'Bulk upload failed');
         return;
       }
-      
+
       toast.success('Bulk upload successful!');
       await fetchUsers(currentUser);
       return result;
@@ -446,7 +462,14 @@ export default function UserManagement() {
         getAvailableRoles={getAvailableRoles}
         setOpenDialog={setOpenDialog}
         setOpenBulkDialog={setOpenBulkDialog}
+        setShowLogDialog={setShowLogDialog}
         collegeOptions={COLLEGE_OPTIONS}
+      />
+
+      {/* Log Dialog for Super Admin */}
+      <LogDialog
+        open={showLogDialog}
+        onOpenChange={setShowLogDialog}
       />
 
       {/* Bulk Upload Dialog */}
