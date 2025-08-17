@@ -21,7 +21,7 @@ export const collegesWithoutInstitutes = [
   'TRP ENGINEERING COLLEGE'
 ];
 
-// Master structured data
+// Master structured data (removed 'N/A' departments as they cause validation issues)
 export const collegeOptions = [
   { 
     name: 'SRMIST RAMAPURAM',
@@ -29,19 +29,19 @@ export const collegeOptions = [
     institutes: [
       { 
         name: 'Science and Humanities',
-        departments: ['Mathematics','Physics','Chemistry','English','N/A']
+        departments: ['Mathematics', 'Physics', 'Chemistry', 'English']
       },
       { 
         name: 'Engineering and Technology',
-        departments: ['Computer Science','Information Technology','Electronics','Mechanical','Civil','N/A']
+        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
       },
       { 
         name: 'Management',
-        departments: ['Business Administration','Commerce','N/A']
+        departments: ['Business Administration', 'Commerce']
       },
       { 
         name: 'Dental',
-        departments: ['General Dentistry','Orthodontics','N/A']
+        departments: ['General Dentistry', 'Orthodontics']
       },
       { 
         name: 'SRM RESEARCH',
@@ -55,11 +55,11 @@ export const collegeOptions = [
     institutes: [
       { 
         name: 'Science and Humanities',
-        departments: ['Mathematics','Physics','Chemistry','English','N/A']
+        departments: ['Mathematics', 'Physics', 'Chemistry', 'English']
       },
       { 
         name: 'Engineering and Technology',
-        departments: ['Computer Science','Information Technology','Electronics','Mechanical','Civil','N/A']
+        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
       },
       { 
         name: 'SRM RESEARCH',
@@ -70,21 +70,12 @@ export const collegeOptions = [
   { 
     name: 'EASWARI ENGINEERING COLLEGE',
     hasInstitutes: false,
-    departments: [
-      'Computer Science','Information Technology','Electronics','Mechanical','Civil','N/A'
-    ]
+    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
   },
   { 
     name: 'TRP ENGINEERING COLLEGE',
     hasInstitutes: false,
-    departments: [
-      'Computer Science','Information Technology','Electronics','Mechanical','Civil','N/A'
-    ]
-  },
-  { 
-    name: 'N/A',
-    hasInstitutes: false,
-    departments: ['N/A']
+    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
   }
 ];
 
@@ -92,7 +83,7 @@ export const collegeOptions = [
 export const ALL_COLLEGE_NAMES = collegeOptions.map(c => c.name);
 
 export const collegeRequiresInstitute = (college) =>
-  ['SRMIST RAMAPURAM','SRM TRICHY'].includes(college);
+  ['SRMIST RAMAPURAM', 'SRM TRICHY'].includes(college);
 
 export const normalizeCollegeName = (college) => {
   if (!college || college === 'N/A') return 'N/A';
@@ -101,39 +92,37 @@ export const normalizeCollegeName = (college) => {
 };
 
 export const getCollegeData = (college) =>
-  collegeOptions.find(c => c.name === college) ||
-  collegeOptions.find(c => c.name === 'N/A');
+  collegeOptions.find(c => c.name === college) || null;
 
 /**
- * Get list of institutes for a college (returns ['N/A'] if none)
+ * Get list of institutes for a college (returns empty array if none)
  */
 export const getInstitutesForCollege = (college) => {
   const data = getCollegeData(college);
-  if (!data || !data.hasInstitutes) return ['N/A'];
-  return [...data.institutes.map(i => i.name), 'N/A'];
+  if (!data || !data.hasInstitutes) return [];
+  return data.institutes.map(i => i.name);
 };
 
 /**
- * Get departments given college & institute (handles all patterns)
+ * Get departments given college & institute (returns empty array if invalid)
  */
 export const getDepartments = (college, institute) => {
   const data = getCollegeData(college);
-  if (!data) return ['N/A'];
+  if (!data) return [];
   if (!data.hasInstitutes) return data.departments;
-  if (!institute || institute === 'N/A') return ['N/A'];
+  if (!institute) return [];
   const inst = data.institutes.find(i => i.name === institute);
-  return inst ? inst.departments : ['N/A'];
+  return inst ? inst.departments : [];
 };
 
 /**
- * Aggregate unique institute names across colleges (optionally with 'N/A')
+ * Aggregate unique institute names across colleges
  */
-export const getAllInstituteNames = (includeNA = true) => {
+export const getAllInstituteNames = () => {
   const set = new Set();
   collegeOptions.filter(c => c.hasInstitutes).forEach(c => {
     c.institutes.forEach(i => set.add(i.name));
   });
-  if (includeNA) set.add('N/A');
   return [...set];
 };
 
@@ -156,6 +145,7 @@ export const getAllDepartmentNames = () => {
  * Validate department coherence
  */
 export const isValidDepartmentSelection = (college, institute, department) => {
+  if (department === 'N/A') return false; // Explicitly disallow 'N/A' as department
   const list = getDepartments(college, institute);
   return list.includes(department);
 };
@@ -165,5 +155,14 @@ export const isValidDepartmentSelection = (college, institute, department) => {
  */
 export const isValidResearchSelection = (college, institute) => {
   if (institute !== 'SRM RESEARCH') return true;
-  return ['SRMIST RAMAPURAM','SRM TRICHY'].includes(college);
+  return ['SRMIST RAMAPURAM', 'SRM TRICHY'].includes(college);
+};
+
+export const getAllDepartmentsInCollege = (college) => {
+  const data = getCollegeData(college);
+  if (!data) return [];
+  if (!data.hasInstitutes) return data.departments;
+  const set = new Set();
+  data.institutes.forEach(inst => inst.departments.forEach(dep => set.add(dep)));
+  return [...set];
 };

@@ -1,532 +1,280 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
-import User from './models/User.js'; // Adjust path as needed
+import User from './models/User.js';
+import {
+  collegeOptions,
+  collegesWithoutInstitutes,
+  normalCollegeDomains
+} from './utils/collegeData.js';
 
 dotenv.config();
 
-const COLLEGE_CONFIG = [
-  {
-    name: 'SRMIST RAMAPURAM',
-    emailDomain: 'srmist.edu.in',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities', 
-        departments: ['Physics', 'Chemistry', 'Mathematics', 'English'] 
-      },
-      { 
-        name: 'Engineering and Technology', 
-        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil'] 
-      },
-      { 
-        name: 'Management', 
-        departments: ['Business Administration', 'Commerce'] 
-      },
-      { 
-        name: 'Dental', 
-        departments: ['General Dentistry', 'Orthodontics'] 
-      },
-      { 
-        name: 'SRM RESEARCH', 
-        departments: ['Ramapuram Research'] 
-      }
-    ]
-  },
-  {
-    name: 'SRM TRICHY',
-    emailDomain: 'srmtrichy.edu.in',
-    hasInstitutes: true,
-    institutes: [
-      { 
-        name: 'Science and Humanities', 
-        departments: ['Physics', 'Chemistry', 'Mathematics', 'English'] 
-      },
-      { 
-        name: 'Engineering and Technology', 
-        departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil'] 
-      },
-      { 
-        name: 'SRM RESEARCH', 
-        departments: ['Trichy Research'] 
-      }
-    ]
-  },
-  {
-    name: 'EASWARI ENGINEERING COLLEGE',
-    emailDomain: 'eec.srmrmp.edu.in',
-    hasInstitutes: false,
-    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
-  },
-  {
-    name: 'TRP ENGINEERING COLLEGE',
-    emailDomain: 'trp.srmtrichy.edu.in',
-    hasInstitutes: false,
-    departments: ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
-  }
-];
+// Configuration
+const COLLEGE_CONFIG = collegeOptions.filter(c => c.name !== 'N/A');
+const BATCH_SIZE = 100;
+const TARGET_FACULTY_TOTAL = 850;
 
-// Helper functions for generating sample Author IDs
-const generateScopusId = () => {
-  // Generate 10-11 digit Scopus ID
-  const length = Math.random() > 0.5 ? 10 : 11;
-  return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
+// Pre-calculate college data
+const collegeDataMap = new Map();
+for (const college of COLLEGE_CONFIG) {
+  const departments = college.hasInstitutes
+    ? college.institutes.flatMap(inst => inst.departments)
+    : college.departments;
+  collegeDataMap.set(college.name, {
+    ...college,
+    allDepartments: departments,
+    departmentCount: departments.length
+  });
+}
+
+// Helper functions
+const getEmailDomain = (collegeName) => {
+  const domain = normalCollegeDomains[collegeName];
+  if (!domain) throw new Error(`No email domain for college: ${collegeName}`);
+  return domain;
 };
 
-const generateSciId = () => {
-  // Generate SCI ID in format A-1234-5678
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const letter = letters[Math.floor(Math.random() * letters.length)];
-  const num1 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  const num2 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  return `${letter}-${num1}-${num2}`;
-};
+const generateScopusId = () => Math.floor(Math.random() * 1e11).toString().padStart(10, '0');
+const generateSciId = () => `${String.fromCharCode(65 + Math.floor(Math.random() * 26))}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+const generateWebOfScienceId = () => generateSciId();
 
-const generateWebOfScienceId = () => {
-  // Generate Web of Science ID in format A-1234-5678 (same format as SCI)
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const letter = letters[Math.floor(Math.random() * letters.length)];
-  const num1 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  const num2 = Math.floor(Math.random() * 9000) + 1000; // 4 digits
-  return `${letter}-${num1}-${num2}`;
-};
-
-// Function to randomly assign Author IDs to faculty (some will have none, some partial, some all)
-const generateAuthorIds = (facultyIndex) => {
-  const authorId = {
-    scopus: null,
-    sci: null,
-    webOfScience: null
-  };
-
-  // Distribution strategy:
-  // 30% - No Author IDs (new faculty/those who haven't set up yet)
-  // 25% - Only Scopus
-  // 20% - Only Scopus + SCI
-  // 15% - Only Scopus + Web of Science
-  // 10% - All three IDs
-  
+const generateAuthorIds = () => {
   const random = Math.random();
-  
-  if (random < 0.30) {
-    // 30% - No Author IDs (represents faculty who need to add them before uploading papers)
-    return authorId;
-  } else if (random < 0.55) {
-    // 25% - Only Scopus
-    authorId.scopus = generateScopusId();
-  } else if (random < 0.75) {
-    // 20% - Scopus + SCI
-    authorId.scopus = generateScopusId();
-    authorId.sci = generateSciId();
-  } else if (random < 0.90) {
-    // 15% - Scopus + Web of Science
-    authorId.scopus = generateScopusId();
-    authorId.webOfScience = generateWebOfScienceId();
-  } else {
-    // 10% - All three
-    authorId.scopus = generateScopusId();
+  const authorId = { scopus: null, sci: null, webOfScience: null };
+
+  if (random < 0.30) return authorId;
+  authorId.scopus = generateScopusId();
+  if (random < 0.55) return authorId;
+  if (random < 0.75) authorId.sci = generateSciId();
+  else if (random < 0.90) authorId.webOfScience = generateWebOfScienceId();
+  else {
     authorId.sci = generateSciId();
     authorId.webOfScience = generateWebOfScienceId();
   }
-
   return authorId;
+};
+
+// Batch processing with logging
+const createUsersInBatches = async (users) => {
+  const batches = [];
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    batches.push(users.slice(i, i + BATCH_SIZE));
+  }
+
+  let createdCount = 0;
+  for (const batch of batches) {
+    try {
+      const result = await User.insertMany(batch, { ordered: false });
+      createdCount += result.length;
+      console.log(`✅ Inserted batch: ${result.length} users (Total: ${createdCount})`);
+    } catch (batchError) {
+      if (batchError.writeErrors) {
+        console.error(`❌ Partial batch failure: ${batchError.writeErrors.length} errors`);
+        batchError.writeErrors.forEach(err => {
+          console.error(`  - Error ${err.index}: ${err.errmsg}`);
+        });
+      } else {
+        console.error('❌ Batch error:', batchError.message);
+      }
+    }
+  }
+  return createdCount;
 };
 
 const run = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    console.log('⏳ Connecting to MongoDB...');
+    await mongoose.connect(process.env.MONGO_URI, {
+      maxPoolSize: 50,
+      socketTimeoutMS: 30000,
+      connectTimeoutMS: 30000
+    });
     console.log('✅ Connected to MongoDB');
 
+    console.log('⏳ Clearing existing users...');
     await User.deleteMany({});
     console.log('🗑️  Existing users cleared');
 
-    // Password hashing function
-    const hashPassword = async (password) => {
-      return await bcrypt.hash(password, 12);
-    };
-
-    // Generate unique faculty IDs
+    // Generate users in memory
+    const users = [];
+    const hashPassword = async (password) => await bcrypt.hash(password, 12);
     let facultyIdx = 1;
     const generateFacultyId = () => `FAC-${String(facultyIdx++).padStart(4, '0')}`;
 
-    // Email counter per domain to ensure unique emails
-    const emailCounters = {};
+    // Email counter
+    const emailCounters = new Map();
     const getUniqueEmail = (prefix, domain) => {
       const key = `${prefix}@${domain}`;
-      emailCounters[key] = (emailCounters[key] || 0) + 1;
-      return `${prefix}${emailCounters[key]}@${domain}`;
+      const count = (emailCounters.get(key) || 0) + 1;
+      emailCounters.set(key, count);
+      return `${prefix}${count}@${domain}`;
     };
 
-    // 3 Super Admins (no Author IDs needed)
-    const users = [
-      {
-        fullName: 'Super Admin 1',
+    // 1. Create Super Admins
+    for (let i = 1; i <= 3; i++) {
+      const user = {
+        fullName: `Super Admin ${i}`,
         facultyId: 'N/A',
-        email: 'superadmin1@srmist.edu.in',
+        email: `superadmin${i}@srmist.edu.in`,
         password: await hashPassword('superadmin123'),
         role: 'super_admin',
         college: 'N/A',
         institute: 'N/A',
         department: 'N/A',
         createdBy: null,
-        authorId: {
-          scopus: null,
-          sci: null,
-          webOfScience: null
-        }
-      },
-      {
-        fullName: 'Super Admin 2',
-        facultyId: 'N/A',
-        email: 'superadmin2@srmist.edu.in',
-        password: await hashPassword('superadmin123'),
-        role: 'super_admin',
-        college: 'N/A',
-        institute: 'N/A',
-        department: 'N/A',
-        createdBy: null,
-        authorId: {
-          scopus: null,
-          sci: null,
-          webOfScience: null
-        }
-      },
-      {
-        fullName: 'Super Admin 3',
-        facultyId: 'N/A',
-        email: 'superadmin3@srmist.edu.in',
-        password: await hashPassword('superadmin123'),
-        role: 'super_admin',
-        college: 'N/A',
-        institute: 'N/A',
-        department: 'N/A',
-        createdBy: null,
-        authorId: {
-          scopus: null,
-          sci: null,
-          webOfScience: null
-        }
-      }
-    ];
+        authorId: { scopus: null, sci: null, webOfScience: null }
+      };
+      users.push(user);
+      console.log(`👤 Created Super Admin ${i}: ${user.email}`);
+    }
 
-    // Campus Admins (no Author IDs needed - they don't upload papers)
+    // 2. Create Campus Admins with proper department handling
     for (const college of COLLEGE_CONFIG) {
+      const collegeData = collegeDataMap.get(college.name);
+      const emailDomain = getEmailDomain(college.name);
+
       if (college.hasInstitutes) {
-        // For colleges with institutes: One campus admin per institute
+        // For colleges WITH institutes - create one admin per institute
         for (const institute of college.institutes) {
-          users.push({
+          const user = {
             fullName: `${institute.name} Campus Admin`,
             facultyId: generateFacultyId(),
-            email: getUniqueEmail('campusadmin', college.emailDomain),
+            email: getUniqueEmail('campusadmin', emailDomain),
             password: await hashPassword('campusadmin123'),
             role: 'campus_admin',
             college: college.name,
             institute: institute.name,
-            department: institute.departments[0],
+            department: 'N/A',
             createdBy: null,
-            authorId: {
-              scopus: null,
-              sci: null,
-              webOfScience: null
-            }
-          });
+            authorId: { scopus: null, sci: null, webOfScience: null }
+          };
+          users.push(user);
+          console.log(`👤 Created Campus Admin for ${college.name} - ${institute.name}: ${user.email}`);
         }
       } else {
-        // For colleges without institutes: One campus admin for the entire college
-        users.push({
+        // For colleges WITHOUT institutes - create one admin for the college
+        const user = {
           fullName: `${college.name} Campus Admin`,
           facultyId: generateFacultyId(),
-          email: getUniqueEmail('campusadmin', college.emailDomain),
+          email: getUniqueEmail('campusadmin', emailDomain),
           password: await hashPassword('campusadmin123'),
           role: 'campus_admin',
           college: college.name,
           institute: 'N/A',
           department: 'N/A',
           createdBy: null,
-          authorId: {
-            scopus: null,
-            sci: null,
-            webOfScience: null
-          }
-        });
+          authorId: { scopus: null, sci: null, webOfScience: null }
+        };
+        users.push(user);
+        console.log(`👤 Created Campus Admin for ${college.name}: ${user.email}`);
       }
     }
 
-    // Calculate total departments for faculty distribution
-    let totalDepartments = 0;
-    for (const college of COLLEGE_CONFIG) {
-      if (college.hasInstitutes) {
-        for (const institute of college.institutes) {
-          totalDepartments += institute.departments.length;
-        }
-      } else {
-        totalDepartments += college.departments.length;
-      }
-    }
+    // 3. Create Faculty Members with proper college/institute/department relationships
+    const totalDepartments = Array.from(collegeDataMap.values()).reduce(
+      (sum, college) => sum + college.departmentCount, 0
+    );
+    const facultyPerDept = Math.ceil(TARGET_FACULTY_TOTAL / totalDepartments);
 
-    console.log(`📊 Total departments across all colleges: ${totalDepartments}`);
-    console.log(`👥 Target: 850 faculty (170 departments × 5 faculty each)`);
-    
-    // Faculty: Calculate how many faculty per department to reach 850 total
-    const targetFacultyTotal = 850;
-    const facultyPerDepartment = Math.ceil(targetFacultyTotal / totalDepartments);
-    
-    console.log(`📈 Creating ${facultyPerDepartment} faculty per department to reach target`);
+    console.log(`📊 Creating ~${facultyPerDept} faculty per department (${totalDepartments} departments)`);
 
-    let facultyCount = 0;
-    let facultyIndex = 0; // For tracking Author ID distribution
-
-    for (const college of COLLEGE_CONFIG) {
-      if (college.hasInstitutes) {
-        // Colleges with institutes
-        for (const institute of college.institutes) {
+    for (const [collegeName, collegeData] of collegeDataMap) {
+      const emailDomain = getEmailDomain(collegeName);
+      
+      if (collegeData.hasInstitutes) {
+        // For colleges WITH institutes
+        for (const institute of collegeData.institutes) {
           for (const department of institute.departments) {
-            // Create calculated number of faculty members for each department
-            for (let i = 1; i <= facultyPerDepartment; i++) {
-              if (facultyCount < targetFacultyTotal) {
-                users.push({
-                  fullName: `${department} Faculty ${i}`,
-                  facultyId: generateFacultyId(),
-                  email: getUniqueEmail('faculty', college.emailDomain),
-                  password: await hashPassword('faculty1234'),
-                  role: 'faculty',
-                  college: college.name,
-                  institute: institute.name,
-                  department: department,
-                  createdBy: null,
-                  authorId: generateAuthorIds(facultyIndex) // Generate Author IDs for faculty
-                });
-                facultyCount++;
-                facultyIndex++;
-              }
-            }
-          }
-        }
-      } else {
-        // Colleges without institutes (direct departments)
-        for (const department of college.departments) {
-          // Create calculated number of faculty members for each department
-          for (let i = 1; i <= facultyPerDepartment; i++) {
-            if (facultyCount < targetFacultyTotal) {
-              users.push({
+            for (let i = 1; i <= facultyPerDept && users.length < 3 + COLLEGE_CONFIG.length + TARGET_FACULTY_TOTAL; i++) {
+              const user = {
                 fullName: `${department} Faculty ${i}`,
                 facultyId: generateFacultyId(),
-                email: getUniqueEmail('faculty', college.emailDomain),
+                email: getUniqueEmail('faculty', emailDomain),
                 password: await hashPassword('faculty1234'),
                 role: 'faculty',
-                college: college.name,
-                institute: 'N/A',
-                department: department,
+                college: collegeName,
+                institute: institute.name,
+                department,
                 createdBy: null,
-                authorId: generateAuthorIds(facultyIndex) // Generate Author IDs for faculty
-              });
-              facultyCount++;
-              facultyIndex++;
+                authorId: generateAuthorIds()
+              };
+              users.push(user);
+              console.log(`👤 Created Faculty ${users.length - 3 - COLLEGE_CONFIG.length}/${TARGET_FACULTY_TOTAL}: ${user.email} (${collegeName} - ${institute.name} - ${department})`);
             }
           }
         }
-      }
-    }
-
-    // Add additional faculty to reach exactly 850 if needed
-    while (facultyCount < targetFacultyTotal) {
-      // Distribute remaining faculty across departments
-      for (const college of COLLEGE_CONFIG) {
-        if (facultyCount >= targetFacultyTotal) break;
-        
-        if (college.hasInstitutes) {
-          for (const institute of college.institutes) {
-            if (facultyCount >= targetFacultyTotal) break;
-            for (const department of institute.departments) {
-              if (facultyCount >= targetFacultyTotal) break;
-              
-              const existingCount = users.filter(u => 
-                u.role === 'faculty' && 
-                u.college === college.name && 
-                u.institute === institute.name && 
-                u.department === department
-              ).length;
-              
-              users.push({
-                fullName: `${department} Faculty ${existingCount + 1}`,
-                facultyId: generateFacultyId(),
-                email: getUniqueEmail('faculty', college.emailDomain),
-                password: await hashPassword('faculty1234'),
-                role: 'faculty',
-                college: college.name,
-                institute: institute.name,
-                department: department,
-                createdBy: null,
-                authorId: generateAuthorIds(facultyIndex)
-              });
-              facultyCount++;
-              facultyIndex++;
-            }
-          }
-        } else {
-          for (const department of college.departments) {
-            if (facultyCount >= targetFacultyTotal) break;
-            
-            const existingCount = users.filter(u => 
-              u.role === 'faculty' && 
-              u.college === college.name && 
-              u.department === department
-            ).length;
-            
-            users.push({
-              fullName: `${department} Faculty ${existingCount + 1}`,
+      } else {
+        // For colleges WITHOUT institutes
+        for (const department of collegeData.departments) {
+          for (let i = 1; i <= facultyPerDept && users.length < 3 + COLLEGE_CONFIG.length + TARGET_FACULTY_TOTAL; i++) {
+            const user = {
+              fullName: `${department} Faculty ${i}`,
               facultyId: generateFacultyId(),
-              email: getUniqueEmail('faculty', college.emailDomain),
+              email: getUniqueEmail('faculty', emailDomain),
               password: await hashPassword('faculty1234'),
               role: 'faculty',
-              college: college.name,
+              college: collegeName,
               institute: 'N/A',
-              department: department,
+              department,
               createdBy: null,
-              authorId: generateAuthorIds(facultyIndex)
-            });
-            facultyCount++;
-            facultyIndex++;
+              authorId: generateAuthorIds()
+            };
+            users.push(user);
+            console.log(`👤 Created Faculty ${users.length - 3 - COLLEGE_CONFIG.length}/${TARGET_FACULTY_TOTAL}: ${user.email} (${collegeName} - ${department})`);
           }
         }
       }
     }
 
-    const createdUsers = await User.insertMany(users);
-    console.log(`✅ Successfully created ${createdUsers.length} test users`);
-
-    // Display summary statistics
-    console.log('\n📊 User Creation Summary:');
-    console.log('========================');
+    // 4. Insert users in batches
+    console.log('⏳ Inserting users in batches...');
+    const createdCount = await createUsersInBatches(users);
     
-    const summary = {
-      super_admin: createdUsers.filter(u => u.role === 'super_admin').length,
-      campus_admin: createdUsers.filter(u => u.role === 'campus_admin').length,
-      faculty: createdUsers.filter(u => u.role === 'faculty').length
-    };
-    
-    console.log(`Super Admins: ${summary.super_admin}`);
-    console.log(`Campus Admins: ${summary.campus_admin}`);
-    console.log(`Faculty: ${summary.faculty}`);
-    console.log(`Total Users: ${createdUsers.length}`);
-
-    // Author ID Distribution Statistics
-    console.log('\n🆔 Author ID Distribution for Faculty:');
-    console.log('======================================');
-    
-    const facultyUsers = createdUsers.filter(u => u.role === 'faculty');
-    let noAuthorIds = 0;
-    let onlyScopus = 0;
-    let scopusAndSci = 0;
-    let scopusAndWos = 0;
-    let allThree = 0;
-    let partial = 0;
-
-    facultyUsers.forEach(user => {
-      const hasScope = !!user.authorId.scopus;
-      const hasSci = !!user.authorId.sci;
-      const hasWos = !!user.authorId.webOfScience;
-      
-      if (!hasScope && !hasSci && !hasWos) {
-        noAuthorIds++;
-      } else if (hasScope && !hasSci && !hasWos) {
-        onlyScopus++;
-      } else if (hasScope && hasSci && !hasWos) {
-        scopusAndSci++;
-      } else if (hasScope && !hasSci && hasWos) {
-        scopusAndWos++;
-      } else if (hasScope && hasSci && hasWos) {
-        allThree++;
-      } else {
-        partial++;
-      }
-    });
-
-    console.log(`No Author IDs: ${noAuthorIds} (${((noAuthorIds/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Only Scopus: ${onlyScopus} (${((onlyScopus/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Scopus + SCI: ${scopusAndSci} (${((scopusAndSci/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Scopus + Web of Science: ${scopusAndWos} (${((scopusAndWos/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`All Three IDs: ${allThree} (${((allThree/facultyUsers.length)*100).toFixed(1)}%)`);
-    console.log(`Other Combinations: ${partial} (${((partial/facultyUsers.length)*100).toFixed(1)}%)`);
-
-    console.log('\n⚠️  Important Notes:');
-    console.log('===================');
-    console.log(`• ${noAuthorIds} faculty members have no Author IDs and will need to add at least one before uploading papers`);
-    console.log('• Faculty can update their Author IDs after login through their profile');
-    console.log('• At least one Author ID (Scopus, SCI, or Web of Science) is required to upload papers');
-
-    // Verify target numbers
-    console.log('\n🎯 Target Verification:');
-    console.log('======================');
-    console.log(`✅ Super Admins: ${summary.super_admin}/3 ${summary.super_admin === 3 ? '✓' : '✗'}`);
-    console.log(`✅ Campus Admins: ${summary.campus_admin}/10 ${summary.campus_admin === 10 ? '✓' : '✗'}`);
-    console.log(`✅ Faculty: ${summary.faculty}/850 ${summary.faculty === 850 ? '✓' : '✗'}`);
-    console.log(`✅ Total: ${createdUsers.length}/863 ${createdUsers.length === 863 ? '✓' : '✗'}`);
-
-    // Display breakdown by college
-    console.log('\n🏫 Users by College:');
-    console.log('====================');
-    
-    for (const college of COLLEGE_CONFIG) {
-      const collegeUsers = createdUsers.filter(u => u.college === college.name);
-      console.log(`\n${college.name}:`);
-      console.log(`  Total: ${collegeUsers.length} users`);
-      
-      // Show campus admins for this college
-      const campusAdmins = collegeUsers.filter(u => u.role === 'campus_admin');
-      console.log(`  Campus Admins: ${campusAdmins.length}`);
-      campusAdmins.forEach(admin => {
-        if (college.hasInstitutes) {
-          console.log(`    - ${admin.fullName} (${admin.institute})`);
-        } else {
-          console.log(`    - ${admin.fullName} (Overall College Management)`);
-        }
-      });
-      
-      // Show faculty count with Author ID status
-      const facultyUsers = collegeUsers.filter(u => u.role === 'faculty');
-      const facultyWithAuthorIds = facultyUsers.filter(u => 
-        u.authorId.scopus || u.authorId.sci || u.authorId.webOfScience
-      );
-      console.log(`  Faculty: ${facultyUsers.length} (${facultyWithAuthorIds.length} with Author IDs)`);
-    }
-
-    // Set createdBy: all users except super_admin are created by super_admin
-    const superAdmins = createdUsers.filter(u => u.role === 'super_admin');
-    const firstSuperAdmin = superAdmins[0];
+    // 5. Set createdBy references
+    const firstSuperAdmin = await User.findOne({ role: 'super_admin' });
     if (firstSuperAdmin) {
+      console.log('⏳ Updating createdBy references...');
       await User.updateMany(
         { _id: { $ne: firstSuperAdmin._id }, role: { $ne: 'super_admin' } },
         { $set: { createdBy: firstSuperAdmin._id } }
       );
-      console.log('\n🔗 Updated createdBy references (all non-super-admin users created by first super_admin)');
+      console.log('🔗 Updated createdBy references');
     }
 
-    // Sample Author IDs for testing
-    console.log('\n📋 Sample Faculty with Author IDs (for testing):');
-    console.log('================================================');
-    const sampleFaculty = facultyUsers.filter(u => 
-      u.authorId.scopus || u.authorId.sci || u.authorId.webOfScience
-    ).slice(0, 5);
+    // 6. Generate summary
+    const summary = {
+      super_admin: await User.countDocuments({ role: 'super_admin' }),
+      campus_admin: await User.countDocuments({ role: 'campus_admin' }),
+      faculty: await User.countDocuments({ role: 'faculty' })
+    };
+
+    console.log('\n📊 Final Summary:');
+    console.log('================');
+    console.log(`Super Admins: ${summary.super_admin}`);
+    console.log(`Campus Admins: ${summary.campus_admin}`);
+    console.log(`Faculty: ${summary.faculty}`);
+    console.log(`Total Users: ${createdCount}`);
+
+    // Sample faculty with author IDs
+    const sampleFaculty = await User.find({ role: 'faculty', $or: [
+      { 'authorId.scopus': { $ne: null } },
+      { 'authorId.sci': { $ne: null } },
+      { 'authorId.webOfScience': { $ne: null } }
+    ]}).limit(5);
     
-    sampleFaculty.forEach(faculty => {
-      console.log(`${faculty.email}:`);
-      console.log(`  Name: ${faculty.fullName}`);
-      console.log(`  Faculty ID: ${faculty.facultyId}`);
-      console.log(`  Scopus: ${faculty.authorId.scopus || 'Not set'}`);
-      console.log(`  SCI: ${faculty.authorId.sci || 'Not set'}`);
-      console.log(`  Web of Science: ${faculty.authorId.webOfScience || 'Not set'}`);
-      console.log('');
+    console.log('\n🔍 Sample Faculty with Author IDs:');
+    sampleFaculty.forEach(user => {
+      console.log(`📌 ${user.email}:`);
+      console.log(`   Name: ${user.fullName}`);
+      console.log(`   Scopus: ${user.authorId.scopus || 'None'}`);
+      console.log(`   SCI: ${user.authorId.sci || 'None'}`);
+      console.log(`   Web of Science: ${user.authorId.webOfScience || 'None'}`);
     });
 
   } catch (error) {
-    console.error('❌ Error creating users:', error.message);
-    if (error.name === 'ValidationError') {
-      console.error('Validation errors:');
-      Object.values(error.errors).forEach(err => {
-        console.error(`  - ${err.path}: ${err.message}`);
-      });
-    }
+    console.error('\n❌ Fatal Error:', error.message);
+    console.error('Stack Trace:', error.stack);
     process.exit(1);
   } finally {
     await mongoose.connection.close();

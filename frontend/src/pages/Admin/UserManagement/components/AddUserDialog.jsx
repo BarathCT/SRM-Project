@@ -19,8 +19,8 @@ import {
 import { User, Mail, Lock, Shield, BookOpen, BadgeCheck, Building2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { useEffect, useState } from 'react';
+import { getDepartments as getDepartmentsForCollegeAndInstitute } from '@/utils/collegeData';
 
-// Accept collegeOptions, getInstitutesForCollege, getDepartmentsForCollegeAndInstitute as props!
 export default function AddUserDialog({
   open,
   onOpenChange,
@@ -31,9 +31,9 @@ export default function AddUserDialog({
   handleSubmit,
   getAvailableRoles,
   currentUser,
-  collegeOptions, // <-- Injected from UserManagement
-  getInstitutesForCollege, // <-- Injected from UserManagement
-  getDepartmentsForCollegeAndInstitute, // <-- Injected from UserManagement
+  collegeOptions,
+  getInstitutesForCollege,
+  getDepartmentsForCollegeAndInstitute: getDepartmentsProp // not used, but destructured for compatibility
 }) {
   const { toast } = useToast();
   const [availableInstitutes, setAvailableInstitutes] = useState([]);
@@ -61,11 +61,18 @@ export default function AddUserDialog({
   };
 
   const isCurrentUserFromSRMResearch = () => {
-    return currentUser?.institute === 'SRM RESEARCH';
+    return (currentUser?.institute === 'SRM RESEARCH');
   };
 
   const selectedCollegeHasInstitutes = () => {
     return form.college && collegeHasInstitutes(form.college);
+  };
+
+  // Helper to get the correct research department
+  const getResearchDepartmentForCollege = (college) => {
+    if (college === 'SRMIST RAMAPURAM') return 'Ramapuram Research';
+    if (college === 'SRM TRICHY') return 'Trichy Research';
+    return '';
   };
 
   // Email domain validation
@@ -142,20 +149,44 @@ export default function AddUserDialog({
   // Load departments when institute changes OR when dialog opens for campus admin
   useEffect(() => {
     if (!open) return;
-    // For campus admin from SRM RESEARCH, auto-set department when dialog opens
-    if (currentUser?.role === 'campus_admin' && isCurrentUserFromSRMResearch() && !form.department) {
-      setForm(prev => ({
-        ...prev,
-        college: currentUser.college,
-        institute: currentUser.institute,
-        department: currentUser.department
-      }));
+
+    // If campus admin is from SRM RESEARCH, auto-set and lock department field
+    if (
+      currentUser?.role === 'campus_admin'
+      && currentUser?.institute === 'SRM RESEARCH'
+      && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
+    ) {
+      // Get correct research department
+      const dept = getResearchDepartmentForCollege(currentUser.college);
+      setAvailableDepartments([dept]);
+      if (form.department !== dept) {
+        setForm(prev => ({
+          ...prev,
+          department: dept
+        }));
+      }
       return;
     }
+
+    // For normal campus admin, show only their appropriate departments
+    if (currentUser?.role === 'campus_admin') {
+      let departments = [];
+      if (currentUser.institute && currentUser.institute !== 'N/A') {
+        departments = getDepartmentsForCollegeAndInstitute(currentUser.college, currentUser.institute);
+      } else {
+        departments = getDepartmentsForCollegeAndInstitute(currentUser.college, 'N/A');
+      }
+      setAvailableDepartments(departments);
+      if (form.department && !departments.includes(form.department)) {
+        setForm(prev => ({ ...prev, department: '' }));
+      }
+      return;
+    }
+
+    // For super admin: use old logic
     if (form.institute && form.institute !== 'N/A' && form.college) {
       const departments = getDepartmentsForCollegeAndInstitute(form.college, form.institute);
       setAvailableDepartments(departments);
-      // Auto-set department for SRM RESEARCH (only one department available)
       if (form.institute === 'SRM RESEARCH' && departments.length === 1) {
         setForm(prev => ({
           ...prev,
@@ -196,18 +227,18 @@ export default function AddUserDialog({
     if (!currentUser) return false;
     if (form.role === 'super_admin') return false;
     if (!form.college || form.college === 'N/A') return false;
-    // Campus admin for colleges WITHOUT institutes don't need department
-    if (form.role === 'campus_admin' && !selectedCollegeHasInstitutes()) {
-      return false;
-    }
-    // Campus admin for colleges WITH institutes still don't need department
-    if (form.role === 'campus_admin') return false;
-    if (currentUser.role === 'super_admin') return true;
     if (currentUser.role === 'campus_admin' && form.role === 'faculty') return true;
+    if (currentUser.role === 'super_admin' && form.role === 'faculty') return true;
     return false;
   };
 
+  // SRM RESEARCH campus admin: department always auto-fixed and input is disabled
+  const isResearchCampusAdmin = currentUser?.role === 'campus_admin'
+    && currentUser?.institute === 'SRM RESEARCH'
+    && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY');
+
   const isDepartmentDisabled = () => {
+    if (isResearchCampusAdmin) return true;
     return form.institute === 'SRM RESEARCH' || isCurrentUserFromSRMResearch();
   };
 
@@ -303,7 +334,6 @@ export default function AddUserDialog({
     return pwd;
   };
 
-  // --- CRITICAL CAMPUS ADMIN FIX: Use currentUser context for college/institute/department ---
   const handleSubmitWithToast = async () => {
     try {
       // Basic validation
@@ -343,14 +373,17 @@ export default function AddUserDialog({
           }
         }
       }
-      // --- CAMPUS ADMIN: always enforce college/institute/department context for newly created users ---
       let payload = { ...form };
       if (currentUser?.role === 'campus_admin') {
         payload.college = currentUser.college;
         payload.institute = currentUser.institute;
-        // If creating faculty under SRM RESEARCH, force department
-        if (form.role === 'faculty' && isCurrentUserFromSRMResearch()) {
-          payload.department = currentUser.department;
+        payload.role = 'faculty';
+        // If SRM RESEARCH campus admin, fix department value based on college
+        if (
+          currentUser.institute === 'SRM RESEARCH'
+          && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
+        ) {
+          payload.department = getResearchDepartmentForCollege(currentUser.college);
         }
       }
       if (!editMode) {
@@ -378,7 +411,7 @@ export default function AddUserDialog({
     }
   };
 
-  // Form validation
+  // Only disable if submitting or not valid (not for isDepartmentDisabled!)
   const isFormValid = () => {
     const basicValid = form.fullName?.trim() && form.email?.trim() && form.role;
     if (!basicValid) return false;
@@ -394,8 +427,9 @@ export default function AddUserDialog({
       return collegeValid && instituteValid && departmentValid;
     }
     if (form.role === 'faculty' && currentUser?.role === 'campus_admin') {
-      if (isCurrentUserFromSRMResearch()) {
-        return !!form.department;
+      if (isResearchCampusAdmin) {
+        const dept = getResearchDepartmentForCollege(currentUser.college);
+        return form.department === dept;
       }
       return form.department && form.department !== 'N/A';
     }
@@ -408,7 +442,6 @@ export default function AddUserDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-        {/* Fixed Header */}
         <DialogHeader className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-2">
             {editMode ? (
@@ -426,15 +459,10 @@ export default function AddUserDialog({
               : 'Fill in the details to create a new user'}
           </DialogDescription>
         </DialogHeader>
-
-        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-6">
-            {/* Main Form Fields Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left Column */}
               <div className="space-y-4">
-                {/* Full Name */}
                 <div className="space-y-2">
                   <Label htmlFor="fullName" className="flex items-center text-sm font-medium">
                     <User className="h-4 w-4 mr-2 text-gray-500" />
@@ -448,8 +476,6 @@ export default function AddUserDialog({
                     className="w-full"
                   />
                 </div>
-
-                {/* Faculty ID (hidden for super admin) */}
                 {form.role !== 'super_admin' && (
                   <div className="space-y-2">
                     <Label htmlFor="facultyId" className="flex items-center text-sm font-medium">
@@ -465,8 +491,6 @@ export default function AddUserDialog({
                     />
                   </div>
                 )}
-
-                {/* Email */}
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center text-sm font-medium">
                     <Mail className="h-4 w-4 mr-2 text-gray-500" />
@@ -502,11 +526,8 @@ export default function AddUserDialog({
                   )}
                 </div>
               </div>
-
-              {/* Right Column */}
               <div className="space-y-4">
-                {/* Password: show only in edit mode */}
-                {editMode && (
+                {editMode ? (
                   <div className="space-y-2">
                     <Label htmlFor="password" className="flex items-center text-sm font-medium">
                       <Lock className="h-4 w-4 mr-2 text-gray-500" />
@@ -524,33 +545,32 @@ export default function AddUserDialog({
                       Only enter a password if you want to change it
                     </p>
                   </div>
+                ) : (
+                  currentUser?.role !== 'campus_admin' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="role" className="flex items-center text-sm font-medium">
+                        <Shield className="h-4 w-4 mr-2 text-gray-500" />
+                        Role
+                      </Label>
+                      <Select
+                        value={form.role}
+                        onValueChange={handleRoleChange}
+                        disabled={editMode && currentUser?.role !== 'super_admin'}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getFilteredRoles().map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )
                 )}
-
-                {/* Role */}
-                <div className="space-y-2">
-                  <Label htmlFor="role" className="flex items-center text-sm font-medium">
-                    <Shield className="h-4 w-4 mr-2 text-gray-500" />
-                    Role
-                  </Label>
-                  <Select
-                    value={form.role}
-                    onValueChange={handleRoleChange}
-                    disabled={editMode && currentUser?.role !== 'super_admin'}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getFilteredRoles().map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* College (only for super admin creating non-super admin users) */}
                 {shouldShowCollegeField() && (
                   <div className="space-y-2">
                     <Label htmlFor="college" className="flex items-center text-sm font-medium">
@@ -578,8 +598,6 @@ export default function AddUserDialog({
                 )}
               </div>
             </div>
-
-            {/* Institute (when applicable) - Full Width */}
             {shouldShowInstituteField() && (
               <div className="space-y-2">
                 <Label htmlFor="institute" className="flex items-center text-sm font-medium">
@@ -604,8 +622,6 @@ export default function AddUserDialog({
                 </Select>
               </div>
             )}
-
-            {/* Department (when applicable) - Full Width */}
             {shouldShowDepartmentField() && (
               <div className="space-y-2">
                 <Label htmlFor="department" className="flex items-center text-sm font-medium">
@@ -620,7 +636,7 @@ export default function AddUserDialog({
                 {isDepartmentDisabled() ? (
                   <Input
                     id="department"
-                    value={form.department || currentUser?.department || availableDepartments[0] || ''}
+                    value={form.department || availableDepartments[0] || ''}
                     disabled
                     readOnly
                     className="bg-gray-100 cursor-not-allowed text-gray-600 w-full"
@@ -629,7 +645,7 @@ export default function AddUserDialog({
                   <Select
                     value={form.department}
                     onValueChange={handleDepartmentChange}
-                    disabled={shouldShowInstituteField() && !form.institute}
+                    disabled={shouldShowInstituteField() && !form.institute && currentUser?.role !== 'campus_admin'}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select department" />
@@ -645,8 +661,6 @@ export default function AddUserDialog({
                 )}
               </div>
             )}
-
-            {/* Information Cards */}
             <div className="space-y-4">
               {currentUser?.role === 'campus_admin' && form.role !== 'super_admin' && (
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
@@ -657,7 +671,12 @@ export default function AddUserDialog({
                     <li><strong>College:</strong> {currentUser.college}</li>
                     <li><strong>Institute:</strong> {currentUser.institute}</li>
                     {form.role === 'faculty' && (
-                      <li><strong>Department:</strong> {form.department || currentUser.department || 'Please select'}</li>
+                      <li>
+                        <strong>Department:</strong>{" "}
+                        {(!form.department || form.department === 'N/A')
+                          ? 'Please select'
+                          : form.department}
+                      </li>
                     )}
                   </ul>
                 </div>
@@ -680,7 +699,7 @@ export default function AddUserDialog({
                     <strong>SRM RESEARCH Institute:</strong>
                   </p>
                   <ul className="text-xs text-blue-600 space-y-1">
-                    <li>• <strong>Department:</strong> Automatically assigned to {form.department || currentUser?.department}</li>
+                    <li>• <strong>Department:</strong> Automatically assigned to {form.department || availableDepartments[0]}</li>
                     <li>• <strong>Email domains:</strong> Can use any of the four allowed domains</li>
                     <li>• <strong>Department selection:</strong> Not needed - auto-assigned based on college</li>
                   </ul>
@@ -689,7 +708,6 @@ export default function AddUserDialog({
             </div>
           </div>
         </div>
-        {/* Fixed Footer */}
         <DialogFooter className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
           <Button 
             type="button" 
