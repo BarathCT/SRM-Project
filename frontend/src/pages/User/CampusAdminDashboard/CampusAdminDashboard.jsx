@@ -730,7 +730,7 @@ const CampusAdminDashboard = () => {
         {/* Analytics Section */}
         {showAnalytics && (
           <section className="max-w-7xl mx-auto mb-8">
-            <div className="relative border border-blue-100 rounded-2xl shadow-lg bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
+            <div className="relative border border-blue-100 rounded-2xl shadow-md bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
               <header className="flex items-center justify-between px-8 py-5 border-b border-blue-100 bg-white/80 rounded-t-2xl shadow-sm">
                 <div className="flex items-center gap-3">
                   <BarChart3 className="h-7 w-7 text-blue-600" />
