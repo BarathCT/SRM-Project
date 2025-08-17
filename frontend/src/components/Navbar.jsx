@@ -338,7 +338,7 @@ export default function Navbar() {
             </Button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl shadow-lg border">
+          <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl shadow-md border">
             <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-gray-500">
               Account
             </DropdownMenuLabel>

@@ -51,12 +51,12 @@ export default function LogDialog({ open, onOpenChange }) {
           ) : (
             <table className="min-w-full text-xs border-separate border-spacing-0">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 text-gray-700">
-                  <th className="p-3 border-b border-gray-200 sticky top-0 z-10 text-left font-semibold">Time</th>
-                  <th className="p-3 border-b border-gray-200 sticky top-0 z-10 text-left font-semibold">Action</th>
-                  <th className="p-3 border-b border-gray-200 sticky top-0 z-10 text-left font-semibold">Actor</th>
-                  <th className="p-3 border-b border-gray-200 sticky top-0 z-10 text-left font-semibold">Target User</th>
-                  <th className="p-3 border-b border-gray-200 sticky top-0 z-10 text-left font-semibold">Details</th>
+                <tr>
+                  <th className="bg-gray-200 p-3 border-b border-gray-300 sticky top-0 z-10 text-left font-semibold">Time</th>
+                  <th className="bg-gray-200 p-3 border-b border-gray-300 sticky top-0 z-10 text-left font-semibold">Action</th>
+                  <th className="bg-gray-200 p-3 border-b border-gray-300 sticky top-0 z-10 text-left font-semibold">Actor</th>
+                  <th className="bg-gray-200 p-3 border-b border-gray-300 sticky top-0 z-10 text-left font-semibold">Target User</th>
+                  <th className="bg-gray-200 p-3 border-b border-gray-300 sticky top-0 z-10 text-left font-semibold">Details</th>
                 </tr>
               </thead>
               <tbody>
