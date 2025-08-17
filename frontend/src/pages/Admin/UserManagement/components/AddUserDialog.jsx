@@ -16,10 +16,12 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { User, Mail, Lock, Shield, BookOpen, BadgeCheck, Building2 } from 'lucide-react';
+import { User, Mail, Lock, Shield, BookOpen, BadgeCheck, Building2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getDepartments as getDepartmentsForCollegeAndInstitute } from '@/utils/collegeData';
+
+const API_BASE_URL = '/api/admin'; // adjust if needed
 
 export default function AddUserDialog({
   open,
@@ -38,6 +40,12 @@ export default function AddUserDialog({
   const { toast } = useToast();
   const [availableInstitutes, setAvailableInstitutes] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
+
+  // For checking email/facultyId existence
+  const [emailStatus, setEmailStatus] = useState({ checking: false, exists: false, checkedValue: '' });
+  const [facultyIdStatus, setFacultyIdStatus] = useState({ checking: false, exists: false, checkedValue: '' });
+  const emailDebounce = useRef();
+  const facultyIdDebounce = useRef();
 
   // College domain mapping
   const collegeDomains = {
@@ -68,7 +76,6 @@ export default function AddUserDialog({
     return form.college && collegeHasInstitutes(form.college);
   };
 
-  // Helper to get the correct research department
   const getResearchDepartmentForCollege = (college) => {
     if (college === 'SRMIST RAMAPURAM') return 'Ramapuram Research';
     if (college === 'SRM TRICHY') return 'Trichy Research';
@@ -150,13 +157,11 @@ export default function AddUserDialog({
   useEffect(() => {
     if (!open) return;
 
-    // If campus admin is from SRM RESEARCH, auto-set and lock department field
     if (
       currentUser?.role === 'campus_admin'
       && currentUser?.institute === 'SRM RESEARCH'
       && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
     ) {
-      // Get correct research department
       const dept = getResearchDepartmentForCollege(currentUser.college);
       setAvailableDepartments([dept]);
       if (form.department !== dept) {
@@ -168,7 +173,6 @@ export default function AddUserDialog({
       return;
     }
 
-    // For normal campus admin, show only their appropriate departments
     if (currentUser?.role === 'campus_admin') {
       let departments = [];
       if (currentUser.institute && currentUser.institute !== 'N/A') {
@@ -183,7 +187,6 @@ export default function AddUserDialog({
       return;
     }
 
-    // For super admin: use old logic
     if (form.institute && form.institute !== 'N/A' && form.college) {
       const departments = getDepartmentsForCollegeAndInstitute(form.college, form.institute);
       setAvailableDepartments(departments);
@@ -208,7 +211,68 @@ export default function AddUserDialog({
     // eslint-disable-next-line
   }, [form.institute, form.college, open, currentUser]);
 
-  // Visibility helper functions
+  // ---- LIVE DUPLICATE CHECKS ----
+
+  // Check email existence
+  useEffect(() => {
+    if (!form.email || !form.email.includes('@') || form.role === 'super_admin') {
+      setEmailStatus({ checking: false, exists: false, checkedValue: form.email });
+      return;
+    }
+    if (editMode && form.email === form._originalEmail) {
+      setEmailStatus({ checking: false, exists: false, checkedValue: form.email });
+      return;
+    }
+    setEmailStatus({ checking: true, exists: false, checkedValue: form.email });
+    if (emailDebounce.current) clearTimeout(emailDebounce.current);
+    emailDebounce.current = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/user-keys`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to check email');
+        const data = await res.json();
+        const exists = data.emails.includes(form.email.toLowerCase());
+        setEmailStatus({ checking: false, exists, checkedValue: form.email });
+      } catch {
+        setEmailStatus({ checking: false, exists: false, checkedValue: form.email });
+      }
+    }, 450);
+    // eslint-disable-next-line
+  }, [form.email, form.role, editMode]);
+
+  // Check facultyId existence
+  useEffect(() => {
+    if (!form.facultyId || form.role === 'super_admin') {
+      setFacultyIdStatus({ checking: false, exists: false, checkedValue: form.facultyId });
+      return;
+    }
+    if (editMode && form.facultyId === form._originalFacultyId) {
+      setFacultyIdStatus({ checking: false, exists: false, checkedValue: form.facultyId });
+      return;
+    }
+    setFacultyIdStatus({ checking: true, exists: false, checkedValue: form.facultyId });
+    if (facultyIdDebounce.current) clearTimeout(facultyIdDebounce.current);
+    facultyIdDebounce.current = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/user-keys`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to check facultyId');
+        const data = await res.json();
+        const exists = data.facultyIds.includes(form.facultyId.toLowerCase());
+        setFacultyIdStatus({ checking: false, exists, checkedValue: form.facultyId });
+      } catch {
+        setFacultyIdStatus({ checking: false, exists: false, checkedValue: form.facultyId });
+      }
+    }, 450);
+    // eslint-disable-next-line
+  }, [form.facultyId, form.role, editMode]);
+
+  // ----- UI LOGIC/HELPERS -----
+
   const shouldShowCollegeField = () => {
     if (!currentUser) return false;
     if (form.role === 'super_admin') return false;
@@ -232,7 +296,6 @@ export default function AddUserDialog({
     return false;
   };
 
-  // SRM RESEARCH campus admin: department always auto-fixed and input is disabled
   const isResearchCampusAdmin = currentUser?.role === 'campus_admin'
     && currentUser?.institute === 'SRM RESEARCH'
     && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY');
@@ -242,7 +305,6 @@ export default function AddUserDialog({
     return form.institute === 'SRM RESEARCH' || isCurrentUserFromSRMResearch();
   };
 
-  // Get filtered roles
   const getFilteredRoles = () => {
     const allRoles = getAvailableRoles();
     if (currentUser?.role === 'campus_admin') {
@@ -251,7 +313,6 @@ export default function AddUserDialog({
     return allRoles.filter(role => ['super_admin', 'campus_admin', 'faculty'].includes(role.value));
   };
 
-  // Handle role change
   const handleRoleChange = (value) => {
     const updates = { role: value };
     if (value === 'super_admin') {
@@ -288,7 +349,6 @@ export default function AddUserDialog({
     setForm({ ...form, ...updates });
   };
 
-  // Handle college change
   const handleCollegeChange = (value) => {
     const updates = { college: value };
     if (value === 'N/A') {
@@ -311,7 +371,6 @@ export default function AddUserDialog({
     setForm({ ...form, ...updates });
   };
 
-  // Handle institute change
   const handleInstituteChange = (value) => {
     setForm({ ...form, institute: value, department: '' });
     if (value === 'SRM RESEARCH') {
@@ -319,12 +378,10 @@ export default function AddUserDialog({
     }
   };
 
-  // Handle department change
   const handleDepartmentChange = (value) => {
     setForm({ ...form, department: value });
   };
 
-  // Generate random password
   const generatePassword = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$!';
     let pwd = '';
@@ -336,13 +393,16 @@ export default function AddUserDialog({
 
   const handleSubmitWithToast = async () => {
     try {
-      // Basic validation
       if (!form.fullName?.trim()) {
         toast.error('Full name is required');
         return;
       }
       if (!form.email?.trim()) {
         toast.error('Email is required');
+        return;
+      }
+      if (emailStatus.exists) {
+        toast.error('This email already exists in the system.');
         return;
       }
       if (!validateEmailDomain(form.email, form.college, form.institute, currentUser)) {
@@ -354,6 +414,10 @@ export default function AddUserDialog({
       }
       if (form.role !== 'super_admin' && !form.facultyId?.trim()) {
         toast.error('Faculty ID is required');
+        return;
+      }
+      if (!editMode && facultyIdStatus.exists) {
+        toast.error('This faculty ID already exists in the system.');
         return;
       }
       if (shouldShowInstituteField() && !form.institute) {
@@ -378,7 +442,6 @@ export default function AddUserDialog({
         payload.college = currentUser.college;
         payload.institute = currentUser.institute;
         payload.role = 'faculty';
-        // If SRM RESEARCH campus admin, fix department value based on college
         if (
           currentUser.institute === 'SRM RESEARCH'
           && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
@@ -411,7 +474,6 @@ export default function AddUserDialog({
     }
   };
 
-  // Only disable if submitting or not valid (not for isDepartmentDisabled!)
   const isFormValid = () => {
     const basicValid = form.fullName?.trim() && form.email?.trim() && form.role;
     if (!basicValid) return false;
@@ -424,17 +486,18 @@ export default function AddUserDialog({
       const collegeValid = form.college && form.college !== 'N/A';
       const instituteValid = !shouldShowInstituteField() || form.institute;
       const departmentValid = !shouldShowDepartmentField() || (form.department && form.department !== 'N/A');
-      return collegeValid && instituteValid && departmentValid;
+      return collegeValid && instituteValid && departmentValid && !emailStatus.exists && !facultyIdStatus.exists;
     }
     if (form.role === 'faculty' && currentUser?.role === 'campus_admin') {
       if (isResearchCampusAdmin) {
         const dept = getResearchDepartmentForCollege(currentUser.college);
-        return form.department === dept;
+        return form.department === dept && !emailStatus.exists && !facultyIdStatus.exists;
       }
-      return form.department && form.department !== 'N/A';
+      return form.department && form.department !== 'N/A' && !emailStatus.exists && !facultyIdStatus.exists;
     }
     return (!shouldShowInstituteField() || form.institute) &&
-           (!shouldShowDepartmentField() || form.department);
+           (!shouldShowDepartmentField() || form.department) &&
+           !emailStatus.exists && !facultyIdStatus.exists;
   };
 
   const emailDomainHints = getEmailDomainHint(form.college, form.institute, currentUser);
@@ -481,6 +544,12 @@ export default function AddUserDialog({
                     <Label htmlFor="facultyId" className="flex items-center text-sm font-medium">
                       <BadgeCheck className="h-4 w-4 mr-2 text-gray-500" />
                       Faculty ID
+                      {facultyIdStatus.checking && <Loader2 className="ml-2 h-4 w-4 text-blue-400 animate-spin" />}
+                      {!facultyIdStatus.checking && form.facultyId && (
+                        facultyIdStatus.exists
+                          ? <XCircle className="ml-2 h-4 w-4 text-red-600" title="Faculty ID already exists" />
+                          : <CheckCircle className="ml-2 h-4 w-4 text-green-600" title="Faculty ID available" />
+                      )}
                     </Label>
                     <Input
                       id="facultyId"
@@ -489,12 +558,21 @@ export default function AddUserDialog({
                       onChange={(e) => setForm({ ...form, facultyId: e.target.value })}
                       className="w-full"
                     />
+                    {!facultyIdStatus.checking && facultyIdStatus.exists && form.facultyId && (
+                      <p className="text-xs text-red-500 mt-1">This faculty ID is already in use. Please enter a unique ID.</p>
+                    )}
                   </div>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center text-sm font-medium">
                     <Mail className="h-4 w-4 mr-2 text-gray-500" />
                     Email
+                    {emailStatus.checking && <Loader2 className="ml-2 h-4 w-4 text-blue-400 animate-spin" />}
+                    {!emailStatus.checking && form.email && (
+                      emailStatus.exists
+                        ? <XCircle className="ml-2 h-4 w-4 text-red-600" title="Email already exists" />
+                        : <CheckCircle className="ml-2 h-4 w-4 text-green-600" title="Email available" />
+                    )}
                   </Label>
                   <Input
                     id="email"
@@ -523,6 +601,9 @@ export default function AddUserDialog({
                     <p className="text-xs text-red-500 bg-red-50 p-2 rounded">
                       Invalid email domain. Allowed: {emailDomainHints.map(d => `@${d}`).join(', ')}
                     </p>
+                  )}
+                  {!emailStatus.checking && emailStatus.exists && form.email && (
+                    <p className="text-xs text-red-500 mt-1">This email is already in use. Please enter a different email address.</p>
                   )}
                 </div>
               </div>
