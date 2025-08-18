@@ -40,6 +40,16 @@ const UserStatisticsCard = ({ roleStats, currentRole }) => {
     return role !== 'total';
   });
 
+  // Determine grid columns
+  let gridColsClass = '';
+  if (currentRole === 'super_admin') {
+    gridColsClass = 'sm:grid-cols-3';
+  } else if (currentRole === 'campus_admin') {
+    gridColsClass = 'sm:grid-cols-2';
+  } else {
+    gridColsClass = `sm:grid-cols-${filteredRoles.length}`;
+  }
+
   return (
     <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
       <div className="mb-6">
@@ -51,7 +61,7 @@ const UserStatisticsCard = ({ roleStats, currentRole }) => {
           Comprehensive breakdown of all user roles across the platform
         </p>
       </div>
-      <div className={`grid grid-cols-1 sm:grid-cols-${filteredRoles.length} gap-6`}>
+      <div className={`grid grid-cols-1 ${gridColsClass} gap-6`}>
         {filteredRoles.map(([role, count]) => {
           const config = roleConfig[role];
           if (!config) return null;

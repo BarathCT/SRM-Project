@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -16,7 +16,7 @@ import {
   Legend,
   ArcElement,
 } from "chart.js";
-import { Bar, Pie, Doughnut, Line } from "react-chartjs-2";
+import { Bar, Pie, Doughnut } from "react-chartjs-2";
 import {
   BarChart3,
   PieChart,
@@ -24,6 +24,7 @@ import {
   BookOpen,
   Award
 } from "lucide-react";
+import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 
 ChartJS.register(
   CategoryScale,
@@ -35,20 +36,20 @@ ChartJS.register(
   ArcElement
 );
 
+const colorPalette = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4',
+  '#F97316', '#EC4899', '#6366F1', '#84CC16', '#F472B6', '#F43F5E'
+];
+
+const qRatings = ['Q1', 'Q2', 'Q3', 'Q4'];
+const qColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+
+// --- Chart options ---
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: {
-      position: 'bottom',
-      labels: {
-        usePointStyle: true,
-        padding: 20,
-        font: {
-          size: 12
-        }
-      }
-    },
+    legend: { display: false },
     tooltip: {
       backgroundColor: 'rgba(0, 0, 0, 0.8)',
       titleColor: 'white',
@@ -64,59 +65,190 @@ const barChartOptions = {
   scales: {
     y: {
       beginAtZero: true,
-      grid: {
-        color: 'rgba(59, 130, 246, 0.1)'
-      },
-      ticks: {
-        color: '#6B7280'
-      }
+      grid: { color: 'rgba(59, 130, 246, 0.1)' },
+      ticks: { color: '#6B7280' }
     },
     x: {
-      grid: {
-        display: false
-      },
-      ticks: {
-        color: '#6B7280'
-      }
+      grid: { display: false },
+      ticks: { color: '#6B7280' }
     }
   }
 };
 
-const colorPalette = [
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Yellow
-  '#EF4444', // Red
-  '#8B5CF6', // Purple
-  '#06B6D4', // Cyan
-  '#F97316', // Orange
-  '#EC4899', // Pink
-];
+function getPublishedSubjectAreas(subjectDistribution) {
+  return Object.entries(subjectDistribution || {})
+    .filter(([, count]) => count > 0)
+    .map(([area]) => area);
+}
+
+// --- Custom Filter ButtonGroup for filled/outline style ---
+function FilterButtonGroup({
+  filters,
+  setFilter,
+  selected,
+  colorPalette = [],
+  showCount,
+  countMap,
+  type,
+  filledColor = "#2563eb", // blue-600
+  outlineColor = "#d1d5db", // gray-300
+  textColor = "#374151", // gray-700
+  filledTextColor = "#fff",
+  countBg = "#eff6ff"
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 justify-center mt-3 mb-2">
+      <button
+        type="button"
+        onClick={() => setFilter("all")}
+        className="text-xs px-3 py-1 rounded-full border transition"
+        style={{
+          background: selected === "all" ? filledColor : "transparent",
+          color: selected === "all" ? filledTextColor : textColor,
+          borderColor: selected === "all" ? filledColor : outlineColor,
+          fontWeight: selected === "all" ? 600 : 400,
+        }}
+      >
+        All {type}
+        {showCount && (
+          <span
+            className="ml-1 inline-block text-xs font-semibold px-2 rounded-full"
+            style={{
+              background: selected === "all" ? "rgba(255,255,255,0.2)" : countBg,
+              color: selected === "all" ? "#fff" : filledColor
+            }}
+          >
+            {Object.values(countMap || {}).reduce((sum, v) => sum + v, 0)}
+          </span>
+        )}
+      </button>
+      {filters.map((v, idx) => {
+        const isActive = selected === v;
+        const color = colorPalette[idx % colorPalette.length] || filledColor;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setFilter(prev => prev === v ? "all" : v)}
+            className="text-xs px-3 py-1 rounded-full border transition"
+            style={{
+              background: isActive ? color : "transparent",
+              color: isActive ? "#fff" : color,
+              borderColor: color,
+              fontWeight: isActive ? 600 : 400,
+            }}
+          >
+            {v}
+            {showCount && (
+              <span
+                className="ml-1 inline-block text-xs font-semibold px-2 rounded-full"
+                style={{
+                  background: isActive ? "rgba(255,255,255,0.2)" : countBg,
+                  color: isActive ? "#fff" : color
+                }}
+              >
+                {(countMap && countMap[v]) || 0}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Helper to find color index
+function getIndex(arr, value) {
+  return arr.findIndex(v => v === value);
+}
 
 export default function CampusAnalyticsCard({ stats, loading }) {
+  const [subjectAreaFilter, setSubjectAreaFilter] = useState("all");
+  const [subjectCategoryFilter, setSubjectCategoryFilter] = useState("all");
+  const [qRatingFilter, setQRatingFilter] = useState("all");
+
+  // --- Q-Rating Total ---
+  const qRatingTotal = useMemo(() => {
+    if (!stats || !stats.qDistribution) return 0;
+    if (qRatingFilter === "all") {
+      return Object.values(stats.qDistribution).reduce((sum, v) => sum + v, 0);
+    }
+    return stats.qDistribution[qRatingFilter] || 0;
+  }, [stats, qRatingFilter]);
+
+  // --- Subject Category List for selected Area ---
+  const allPublishedCategories = useMemo(() => {
+    if (
+      subjectAreaFilter !== "all" &&
+      stats.subjectCategoryDistribution &&
+      stats.subjectCategoryDistribution[subjectAreaFilter]
+    ) {
+      return Object.entries(stats.subjectCategoryDistribution[subjectAreaFilter])
+        .filter(([, count]) => count > 0)
+        .map(([cat]) => cat);
+    }
+    return [];
+  }, [stats.subjectCategoryDistribution, subjectAreaFilter]);
+
+  // --- Subject Area Total ---
+  const subjectAreaTotal = useMemo(() => {
+    if (!stats || !stats.subjectDistribution) return 0;
+    if (subjectAreaFilter === "all") {
+      return Object.values(stats.subjectDistribution).reduce((sum, v) => sum + v, 0);
+    }
+    return stats.subjectDistribution[subjectAreaFilter] || 0;
+  }, [stats, subjectAreaFilter]);
+
+  // --- Subject Category Total ---
+  const subjectCategoryTotal = useMemo(() => {
+    if (
+      subjectAreaFilter !== "all" &&
+      subjectCategoryFilter !== "all" &&
+      stats.subjectCategoryDistribution &&
+      stats.subjectCategoryDistribution[subjectAreaFilter]
+    ) {
+      return stats.subjectCategoryDistribution[subjectAreaFilter][subjectCategoryFilter] || 0;
+    }
+    if (
+      subjectAreaFilter !== "all" &&
+      stats.subjectCategoryDistribution &&
+      stats.subjectCategoryDistribution[subjectAreaFilter]
+    ) {
+      return Object.values(stats.subjectCategoryDistribution[subjectAreaFilter]).reduce((sum, v) => sum + v, 0);
+    }
+    return 0;
+  }, [stats, subjectAreaFilter, subjectCategoryFilter]);
+
+  // --- Q-Rating chart data: colors now match filter ---
+  const qRatingData = useMemo(() => {
+    if (!stats || loading) return null;
+    if (qRatingFilter === "all") {
+      return {
+        labels: qRatings,
+        datasets: [{
+          data: qRatings.map(q => stats.qDistribution?.[q] || 0),
+          backgroundColor: qColors,
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      };
+    } else {
+      const idx = getIndex(qRatings, qRatingFilter);
+      return {
+        labels: [qRatingFilter],
+        datasets: [{
+          data: [stats.qDistribution?.[qRatingFilter] || 0],
+          backgroundColor: [qColors[idx >= 0 ? idx : 0]],
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      };
+    }
+  }, [stats, qRatingFilter, loading]);
+
+  // --- Chart Data (subject area/category colors now match filter) ---
   const chartData = useMemo(() => {
     if (!stats || loading) return null;
-
-    // Q-Rating Distribution
-    const qRatingData = {
-      labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-      datasets: [{
-        data: [
-          stats.qDistribution?.Q1 || 0,
-          stats.qDistribution?.Q2 || 0,
-          stats.qDistribution?.Q3 || 0,
-          stats.qDistribution?.Q4 || 0,
-        ],
-        backgroundColor: [
-          '#3B82F6', // Q1 - Blue
-          '#10B981', // Q2 - Green
-          '#F59E0B', // Q3 - Yellow
-          '#EF4444', // Q4 - Red
-        ],
-        borderWidth: 2,
-        borderColor: '#ffffff'
-      }]
-    };
 
     // Yearly Trend
     const years = Object.keys(stats.yearlyTrend || {}).sort();
@@ -131,22 +263,56 @@ export default function CampusAnalyticsCard({ stats, loading }) {
       }]
     };
 
-    // Subject Area Distribution (top 10)
-    const subjectEntries = Object.entries(stats.subjectDistribution || {})
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 10);
-
+    // Subject Area Distribution
+    const allPublishedAreas = getPublishedSubjectAreas(stats.subjectDistribution);
+    let filteredAreas, areaColors;
+    if (subjectAreaFilter === "all") {
+      filteredAreas = allPublishedAreas;
+      areaColors = colorPalette.slice(0, filteredAreas.length);
+    } else {
+      filteredAreas = [subjectAreaFilter];
+      const idx = allPublishedAreas.findIndex(v => v === subjectAreaFilter);
+      areaColors = [colorPalette[idx >= 0 ? idx : 0]];
+    }
     const subjectAreaData = {
-      labels: subjectEntries.map(([subject]) =>
-        subject.length > 20 ? subject.substring(0, 20) + '...' : subject
-      ),
+      labels: filteredAreas,
       datasets: [{
-        data: subjectEntries.map(([, count]) => count),
-        backgroundColor: colorPalette.slice(0, subjectEntries.length),
+        data: filteredAreas.map(area => stats.subjectDistribution[area] || 0),
+        backgroundColor: areaColors,
         borderWidth: 2,
         borderColor: '#ffffff'
       }]
     };
+
+    // Subject Category Distribution for selected area (if any)
+    let subjectCategoryData = null;
+    if (subjectAreaFilter !== "all" && stats.subjectCategoryDistribution) {
+      const allCats = Object.entries(stats.subjectCategoryDistribution[subjectAreaFilter] || {})
+        .filter(([, count]) => count > 0)
+        .map(([cat]) => cat);
+
+      let filteredCats, catColors;
+      if (subjectCategoryFilter === "all") {
+        filteredCats = allCats;
+        catColors = colorPalette.slice(0, filteredCats.length);
+      } else {
+        filteredCats = [subjectCategoryFilter];
+        const idx = allCats.findIndex(v => v === subjectCategoryFilter);
+        catColors = [colorPalette[idx >= 0 ? idx : 0]];
+      }
+
+      subjectCategoryData = {
+        labels: filteredCats,
+        datasets: [{
+          data: filteredCats.map(cat =>
+            stats.subjectCategoryDistribution?.[subjectAreaFilter]?.[cat] || 0
+          ),
+          backgroundColor: catColors,
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      };
+    }
 
     // Department Stats
     const deptEntries = Object.entries(stats.departmentStats || {});
@@ -174,9 +340,11 @@ export default function CampusAnalyticsCard({ stats, loading }) {
       qRatingData,
       yearlyTrendData,
       subjectAreaData,
-      departmentData
+      subjectCategoryData,
+      departmentData,
+      allPublishedAreas,
     };
-  }, [stats, loading]);
+  }, [stats, loading, subjectAreaFilter, subjectCategoryFilter, allPublishedCategories, qRatingData]);
 
   if (loading) {
     return (
@@ -201,6 +369,79 @@ export default function CampusAnalyticsCard({ stats, loading }) {
   }
 
   if (!chartData) return null;
+
+  // --- Count maps for legends ---
+  const qRatingCountMap = stats.qDistribution || {};
+  const subjectAreaCountMap = stats.subjectDistribution || {};
+  const subjectCategoryCountMap = (subjectAreaFilter !== "all"
+    ? stats.subjectCategoryDistribution?.[subjectAreaFilter] || {}
+    : {});
+
+  // --- Q-rating filter button group (filled/outline style) ---
+  const renderQRatingLegend = () => (
+    <FilterButtonGroup
+      filters={qRatings}
+      setFilter={setQRatingFilter}
+      selected={qRatingFilter}
+      colorPalette={qColors}
+      type="Q Ratings"
+      showCount={true}
+      countMap={qRatingCountMap}
+    />
+  );
+
+  // --- Subject area legend buttons (filled/outline style) ---
+  const renderSubjectAreaLegend = () => (
+    <FilterButtonGroup
+      filters={chartData.allPublishedAreas}
+      setFilter={(area) => {
+        setSubjectAreaFilter(area);
+        setSubjectCategoryFilter("all");
+      }}
+      selected={subjectAreaFilter}
+      colorPalette={colorPalette}
+      type="Subject Areas"
+      showCount={true}
+      countMap={subjectAreaCountMap}
+    />
+  );
+
+  // --- Subject category legend buttons (filled/outline style) ---
+  const renderSubjectCategoryLegend = () => {
+    if (
+      subjectAreaFilter === "all" ||
+      !allPublishedCategories.length
+    ) return null;
+    return (
+      <FilterButtonGroup
+        filters={allPublishedCategories}
+        setFilter={setSubjectCategoryFilter}
+        selected={subjectCategoryFilter}
+        colorPalette={colorPalette}
+        type="Categories"
+        showCount={true}
+        countMap={subjectCategoryCountMap}
+      />
+    );
+  };
+
+  // --- Show subject category chart only if a subject area is selected and there are categories ---
+  const showCategoryChart =
+    subjectAreaFilter !== "all" &&
+    chartData.subjectCategoryData &&
+    chartData.subjectCategoryData.labels.length > 0;
+
+  // --- Badge card for area/category/QRating top-right ---
+  function BadgeCard({ label, count }) {
+    return (
+      <div className="absolute top-3 right-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm px-3 py-1 flex items-center gap-2 z-10">
+        <span className="text-xs font-semibold text-blue-700">{label}</span>
+        <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 rounded-full">
+          {count}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <Card className="border border-blue-100 shadow-md bg-white">
@@ -233,13 +474,18 @@ export default function CampusAnalyticsCard({ stats, loading }) {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+              <div className="relative">
+                <BadgeCard
+                  label={qRatingFilter === "all" ? "All Q Ratings" : qRatingFilter}
+                  count={qRatingTotal}
+                />
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
                   Q-Rating Distribution
                 </h4>
                 <div className="h-64">
-                  <Doughnut data={chartData.qRatingData} options={chartOptions} />
+                  <Doughnut data={qRatingData} options={chartOptions} />
                 </div>
+                {renderQRatingLegend()}
               </div>
               <div className="space-y-4">
                 <h4 className="text-sm font-semibold text-gray-700 text-center">
@@ -287,13 +533,53 @@ export default function CampusAnalyticsCard({ stats, loading }) {
           </TabsContent>
 
           <TabsContent value="subjects" className="space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
-                Top 10 Subject Areas
-              </h4>
-              <div className="h-80">
-                <Pie data={chartData.subjectAreaData} options={chartOptions} />
+            <div className="flex flex-col gap-8">
+              {/* Subject Area Card */}
+              <div className="relative">
+                <BadgeCard
+                  label={subjectAreaFilter === "all"
+                    ? "All Subject Areas"
+                    : subjectAreaFilter}
+                  count={subjectAreaTotal}
+                />
+                <Card className="border border-blue-100 shadow bg-white w-full">
+                  <CardHeader className="pb-2">
+                    <h4 className="text-sm font-semibold text-gray-700 text-center">
+                      Subject Area Distribution
+                    </h4>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-72">
+                      <Pie data={chartData.subjectAreaData} options={chartOptions} />
+                    </div>
+                    {renderSubjectAreaLegend()}
+                  </CardContent>
+                </Card>
               </div>
+              {/* Subject Category Card (only if a subject area is selected) */}
+              {showCategoryChart && (
+                <div className="relative">
+                  <BadgeCard
+                    label={subjectCategoryFilter === "all"
+                      ? "All Categories"
+                      : subjectCategoryFilter}
+                    count={subjectCategoryTotal}
+                  />
+                  <Card className="border border-blue-100 shadow bg-white w-full">
+                    <CardHeader className="pb-2">
+                      <h4 className="text-sm font-semibold text-gray-700 text-center">
+                        Subject Categories in {subjectAreaFilter}
+                      </h4>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-72">
+                        <Pie data={chartData.subjectCategoryData} options={chartOptions} />
+                      </div>
+                      {renderSubjectCategoryLegend()}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
           </TabsContent>
 
