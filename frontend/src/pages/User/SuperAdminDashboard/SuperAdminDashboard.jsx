@@ -353,8 +353,7 @@ export default function SuperAdminDashboard() {
       q1Percentage: total ? (((qDist.Q1 || 0) / total) * 100).toFixed(1) : 0,
       avgPapersPerFaculty: filteredFaculty.length ? (total / users.length).toFixed(1) : 0,
     };
-  }, [filteredPapers, users, selectedCollege, selectedInstitute]);
-
+  }, [filteredPapers, users, selectedCollege, selectedInstitute, selectedDepartment]);
   // User selection (SuperUserFinder)
   const onSelectUser = useCallback(async (user) => {
     setSelectedUserId(user ? user.facultyId : null);
@@ -476,7 +475,7 @@ export default function SuperAdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-md border border-blue-100">
+        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-lg border border-blue-100">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Loading Super Admin Dashboard</h3>
@@ -565,6 +564,47 @@ export default function SuperAdminDashboard() {
           </section>
         )}
 
+        {/* Summary cards */}
+        {!selectedUser && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatsCard
+              title="Total Publications"
+              value={stats.totalPapers}
+              subtitle={`Avg ${stats.avgPapersPerFaculty} per faculty`}
+              icon={<Building className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            />
+            <StatsCard
+              title="Total Faculty"
+              value={`${stats.totalFaculty}`}
+              subtitle=" "
+              icon={<Users className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            />
+            <StatsCard
+              title="Q1 Publications"
+              value={(stats.qDistribution || {}).Q1 || 0}
+              subtitle={`${stats.q1Percentage}% of total`}
+              icon={<Award className="h-8 w-8 text-blue-600" />}
+              loading={scopeLoading}
+            />
+          </div>
+        )}
+
+        {/* Selected user details */}
+        {selectedUser && (
+          <div className="mb-6">
+            <FacultyDetailsCard
+              faculty={selectedUser}
+              papers={selectedUserPapers}
+              onClear={() => {
+                setSelectedUserId(null);
+                setSelectedUserPapers([]);
+              }}
+            />
+          </div>
+        )}
+
         {/* Publications filter (hidden when viewing a user) */}
         {!selectedUser && (
           <PublicationsFilterCard
@@ -616,49 +656,6 @@ export default function SuperAdminDashboard() {
             onExport={handleExport}
           />
         )}
-
-        {/* Summary cards */}
-        {!selectedUser && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatsCard
-              title="Total Publications"
-              value={stats.totalPapers}
-              subtitle={`Avg ${stats.avgPapersPerFaculty} per faculty`}
-              icon={<Building className="h-8 w-8 text-blue-600" />}
-              loading={scopeLoading}
-            />
-            <StatsCard
-              title="Total Faculty"
-              value={`${stats.totalFaculty}`}
-              subtitle=" "
-              icon={<Users className="h-8 w-8 text-blue-600" />}
-              loading={scopeLoading}
-            />
-            <StatsCard
-              title="Q1 Publications"
-              value={(stats.qDistribution || {}).Q1 || 0}
-              subtitle={`${stats.q1Percentage}% of total`}
-              icon={<Award className="h-8 w-8 text-blue-600" />}
-              loading={scopeLoading}
-            />
-          </div>
-        )}
-
-
-        {/* Selected user details */}
-        {selectedUser && (
-          <div className="mb-6">
-            <FacultyDetailsCard
-              faculty={selectedUser}
-              papers={selectedUserPapers}
-              onClear={() => {
-                setSelectedUserId(null);
-                setSelectedUserPapers([]);
-              }}
-            />
-          </div>
-        )}
-
 
         {/* Publications table */}
         <div className="mb-2 flex items-center justify-between">

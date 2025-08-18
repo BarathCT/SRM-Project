@@ -9,7 +9,7 @@ import UserTable from './components/UserTable';
 import UserFilters from './components/UserFilter';
 import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
-import BulkUploadDialog from './components/BulkUploadDialog';
+import BulkUploadDialog from './components/BulkUpload/BulkUploadDialog';
 import LogDialog from './components/LogDialog';
 
 import {
@@ -489,6 +489,7 @@ export default function UserManagement() {
         roleOptions={ROLE_OPTIONS}
         loading={isLoading}
         activeUsers={users.filter(u => u.isActive).length}
+        currentUser={currentUser} // <-- Pass it!
       />
 
       {/* Filters */}

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogTrigger
+  AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import {
   Search, Filter, X, Square, Trash2, Building, Shield, FileSpreadsheet
@@ -26,6 +26,12 @@ import {
   collegesWithoutInstitutes
 } from "@/utils/collegeData";
 
+/**
+ * PublicationsFilterCard is fully DECOUPLED from the user sidebar filter.
+ * It manages and exposes only publication-related filter state.
+ * Selecting a college, institute, or department here does NOT affect the user sidebar filter,
+ * and vice versa.
+ */
 export default function PublicationsFilterCard(props) {
   const {
     filterOptions,
@@ -67,28 +73,26 @@ export default function PublicationsFilterCard(props) {
   const isCampusAdmin = userRole === "campus_admin";
   const showExtended = isSuper || showCampusFilters || isCampusAdmin;
 
-  useEffect(() => {
-    if (isCampusAdmin && currentUser) {
-      if (selectedCollege !== (currentUser.college || "all")) {
-        onCollegeChange(currentUser.college || "all");
-      }
-      if (selectedInstitute !== (currentUser.institute || "all")) {
-        onInstituteChange(currentUser.institute || "all");
-      }
-    }
-    // eslint-disable-next-line
-  }, [isCampusAdmin, currentUser]);
-
+  // Only publication filter state is used here; sidebar filter is a separate state in parent!
   const colleges = useMemo(() => ['all', ...ALL_COLLEGE_NAMES.filter(c => c !== 'N/A')], []);
   const institutes = useMemo(() => {
+    if (isCampusAdmin) {
+      if (!currentUser?.college || collegesWithoutInstitutes.includes(currentUser.college)) return [];
+      return getInstitutesForCollege(currentUser.college).filter(i => i !== 'N/A');
+    }
     if (selectedCollege === 'all') return [];
     const insts = getInstitutesForCollege(selectedCollege).filter(i => i !== 'N/A');
     return insts.length > 0 ? ['all', ...insts] : [];
-  }, [selectedCollege]);
+  }, [isCampusAdmin, currentUser?.college, selectedCollege]);
 
+  // --- UPDATED: Handle campus admin department logic ---
   const departments = useMemo(() => {
-    if (isCampusAdmin && currentUser) {
-      if (!currentUser.college || !currentUser.institute) return [];
+    if (isCampusAdmin) {
+      if (!currentUser?.college) return [];
+      if (collegesWithoutInstitutes.includes(currentUser.college)) {
+        return getDepartments(currentUser.college, null).filter(d => d !== 'N/A');
+      }
+      if (!currentUser.institute || currentUser.institute === "all") return [];
       return getDepartments(currentUser.college, currentUser.institute).filter(d => d !== 'N/A');
     }
     if (selectedCollege === 'all') return [];
@@ -97,7 +101,13 @@ export default function PublicationsFilterCard(props) {
     }
     if (selectedInstitute === 'all') return [];
     return getDepartments(selectedCollege, selectedInstitute).filter(d => d !== 'N/A');
-  }, [isCampusAdmin, currentUser, selectedCollege, selectedInstitute]);
+  }, [
+    isCampusAdmin,
+    currentUser?.college,
+    currentUser?.institute,
+    selectedCollege,
+    selectedInstitute
+  ]);
 
   const showCollegeSelect = isSuper || (!isCampusAdmin && showCampusFilters);
   const showInstituteSelect = (isSuper || (!isCampusAdmin && showCampusFilters)) && institutes.length > 0;
@@ -133,7 +143,7 @@ export default function PublicationsFilterCard(props) {
 
   const getRoleDescription = () => {
     if (isSuper) return "Filter and manage all system publications.";
-    if (isCampusAdmin) return `Filter and manage publications for ${currentUser?.institute || "your institute"}.`;
+    if (isCampusAdmin) return `Filter and manage publications for ${currentUser?.institute || currentUser?.college || "your institute"}.`;
     return "Filter and manage your publications.";
   };
 
@@ -183,16 +193,6 @@ export default function PublicationsFilterCard(props) {
                     Clear Selection
                   </Button>
                   <AlertDialog>
-                    {/* <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="bg-red-600 hover:bg-red-700 h-8 px-3 text-xs"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete ({selectedCount})
-                      </Button>
-                    </AlertDialogTrigger> */}
                     <AlertDialogContent className="bg-white">
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-gray-900">
@@ -232,7 +232,7 @@ export default function PublicationsFilterCard(props) {
         </CardHeader>
 
         <CardContent className="pt-4 bg-white">
-          {/* Search Field - Full width on mobile, half on larger screens */}
+          {/* Search Field */}
           <div className="mb-4 w-full">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -245,7 +245,7 @@ export default function PublicationsFilterCard(props) {
             </div>
           </div>
 
-          {/* Main Filters Grid - Responsive columns */}
+          {/* Main Filters Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* Year Filter */}
             <div>
@@ -264,7 +264,6 @@ export default function PublicationsFilterCard(props) {
                 </SelectContent>
               </Select>
             </div>
-
             {/* Q Rating Filter */}
             <div>
               <Label htmlFor="q-rating-filter" className="text-xs text-gray-600 mb-1 block">Q Rating</Label>
@@ -282,7 +281,6 @@ export default function PublicationsFilterCard(props) {
                 </SelectContent>
               </Select>
             </div>
-
             {/* Publication Type Filter */}
             <div>
               <Label htmlFor="pub-type-filter" className="text-xs text-gray-600 mb-1 block">Type</Label>
@@ -300,7 +298,6 @@ export default function PublicationsFilterCard(props) {
                 </SelectContent>
               </Select>
             </div>
-
             {/* Subject Area Filter */}
             <div>
               <Label htmlFor="subject-area" className="text-xs text-gray-600 mb-1 block">Subject Area</Label>
@@ -317,7 +314,6 @@ export default function PublicationsFilterCard(props) {
                     <SelectItem 
                       key={`area-${area}`} 
                       value={area}
-                      // removed any extra className for normal dropdown style
                     >
                       {area}
                     </SelectItem>
@@ -327,7 +323,7 @@ export default function PublicationsFilterCard(props) {
             </div>
           </div>
 
-          {/* Subject Category Filter - Full width on mobile, half on larger */}
+          {/* Subject Category Filter */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <Label htmlFor="subject-category" className="text-xs text-gray-600 mb-1 block">Subject Category</Label>
@@ -358,7 +354,7 @@ export default function PublicationsFilterCard(props) {
                 <div>
                   <Label htmlFor="college-filter" className="text-xs text-gray-600 mb-1 block">College</Label>
                   <Select
-                    value={selectedCollege}
+                    value={isCampusAdmin ? currentUser?.college : selectedCollege}
                     onValueChange={(value) => {
                       onCollegeChange(value);
                       onInstituteChange('all');
@@ -382,12 +378,12 @@ export default function PublicationsFilterCard(props) {
                 <div>
                   <Label htmlFor="institute-filter" className="text-xs text-gray-600 mb-1 block">Institute</Label>
                   <Select
-                    value={selectedInstitute}
+                    value={isCampusAdmin ? currentUser?.institute : selectedInstitute}
                     onValueChange={(value) => {
                       onInstituteChange(value);
                       onDepartmentChange('all');
                     }}
-                    disabled={isCampusAdmin || selectedCollege === 'all'}
+                    disabled={isCampusAdmin || (isCampusAdmin && (!currentUser?.college || collegesWithoutInstitutes.includes(currentUser.college)))}
                   >
                     <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
                       <SelectValue placeholder="All Institutes" />
@@ -410,7 +406,10 @@ export default function PublicationsFilterCard(props) {
                     value={selectedDepartment}
                     onValueChange={onDepartmentChange}
                     disabled={
-                      (!isCampusAdmin && (selectedCollege === 'all' || (showInstituteSelect && selectedInstitute === 'all')))
+                      isCampusAdmin
+                        ? !currentUser?.college ||
+                          (!collegesWithoutInstitutes.includes(currentUser.college) && (!currentUser.institute || currentUser.institute === "all"))
+                        : (!isCampusAdmin && (selectedCollege === 'all' || (showInstituteSelect && selectedInstitute === 'all')))
                     }
                   >
                     <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
