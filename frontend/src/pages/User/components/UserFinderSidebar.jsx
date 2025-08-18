@@ -454,7 +454,7 @@ export default function UserFinderSidebar({
                           )}
                         </div>
                       </div>
-                      <Badge
+                      {/* <Badge
                         variant={count > 0 ? "default" : "outline"}
                         className={cn(
                           "ml-3 shrink-0",
@@ -464,7 +464,7 @@ export default function UserFinderSidebar({
                         )}
                       >
                         {count} pub{count !== 1 ? "s" : ""}
-                      </Badge>
+                      </Badge> */}
                     </div>
                   </button>
                 );
