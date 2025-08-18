@@ -705,19 +705,32 @@ export default function UploadPage() {
   const watchSubjectAreas = form.watch("subjectAreas");
   const correspondingAuthor = watchAuthors?.find(a => a.isCorresponding);
 
-  useEffect(() => {
-    const sub = form.watch((values, { name }) => {
-      if (name === "claimedBy") {
-        if (values.claimedBy && watchAuthors?.length > 0) {
-          const foundIndex = watchAuthors.findIndex(a => a.name === values.claimedBy);
-          if (foundIndex !== -1) {
-            form.setValue("authorNo", (foundIndex + 1).toString(), { shouldValidate: true });
-          }
-        }
+useEffect(() => {
+  const sub = form.watch((values, { name }) => {
+    if (name === "claimedBy") {
+      const claimed = values.claimedBy;
+      if (!claimed) {
+        form.setValue("authorNo", "", { shouldValidate: true });
+        return;
       }
-    });
-    return () => sub.unsubscribe();
-  }, [form, watchAuthors]);
+
+      // find author index from current authors list
+      const foundIndex = watchAuthors?.findIndex(a => a.name === claimed) ?? -1;
+
+      // if the claimed author is the corresponding author, set 'C'
+      const corr = watchAuthors?.find(a => a.isCorresponding);
+      if (corr && corr.name === claimed) {
+        form.setValue("authorNo", "C", { shouldValidate: true });
+      } else if (foundIndex !== -1) {
+        form.setValue("authorNo", (foundIndex + 1).toString(), { shouldValidate: true });
+      } else {
+        form.setValue("authorNo", "", { shouldValidate: true });
+      }
+    }
+  });
+  return () => sub.unsubscribe();
+}, [form, watchAuthors]);
+
 
   const debouncedDoiCheck = useCallback(
     debounce(async (doiRaw) => {
@@ -1248,69 +1261,94 @@ export default function UploadPage() {
 />
 
                       {/* PublicationId field - readOnly, populated from userAuthorIds */}
-                      <FormField
-                        control={form.control}
-                        name="publicationId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-black">{publicationLabel}</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Select publication type to auto-fill" readOnly className="bg-blue-50" />
-                            </FormControl>
-                            <FormMessage className="text-blue-700" />
-                          </FormItem>
-                        )}
-                      />
+                      {/* Publication ID - full width */}
+<div className="w-full">
+  <FormField
+    control={form.control}
+    name="publicationId"
+    render={({ field }) => (
+      <FormItem>
+        <FormLabel className="text-black">{publicationLabel}</FormLabel>
+        <FormControl>
+          <Input
+            {...field}
+            placeholder="Select publication to auto-fill"
+            readOnly
+            className="bg-blue-50 w-full"
+          />
+        </FormControl>
+        <FormMessage className="text-blue-700" />
+      </FormItem>
+    )}
+  />
+</div>
 
-                      {/* ClaimedBy select */}
-                      <FormField
-                        control={form.control}
-                        name="claimedBy"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-black">Claimed By</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                              <FormControl>
-                                <SelectTrigger className="text-black">
-                                  <SelectValue placeholder="Select an author" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {watchAuthors?.map((author, index) => (
-                                  author.name && <SelectItem key={index} value={author.name}>{author.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage className="text-blue-700" />
-                          </FormItem>
-                        )}
-                      />
+{/* Claimed By and Author No. on the same row */}
+<div className="flex gap-4 w-full mt-2">
+  <div className="flex-1">
+    <FormField
+      control={form.control}
+      name="claimedBy"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-black">Claimed By</FormLabel>
+          <Select onValueChange={field.onChange} value={field.value ?? ""}>
+            <FormControl>
+              <SelectTrigger className="text-black">
+                <SelectValue placeholder="Select an author" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {watchAuthors?.map((author, index) =>
+                author.name ? (
+                  <SelectItem key={index} value={author.name}>
+                    {author.name}
+                  </SelectItem>
+                ) : null
+              )}
+            </SelectContent>
+          </Select>
+          <FormMessage className="text-blue-700" />
+        </FormItem>
+      )}
+    />
+  </div>
 
-                      <FormField
-                        control={form.control}
-                        name="authorNo"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-black">Author No.</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                              <FormControl>
-                                <SelectTrigger className="text-black">
-                                  <SelectValue placeholder="Select author number" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {watchAuthors?.map((author, index) => (
-                                  author.name && <SelectItem key={index} value={(index + 1).toString()}>{index + 1}</SelectItem>
-                                ))}
-                                {correspondingAuthor && correspondingAuthor.name && (
-                                  <SelectItem value="C">C (Corresponding)</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage className="text-blue-700" />
-                          </FormItem>
-                        )}
-                      />
+  <div className="w-40">
+    <FormField
+      control={form.control}
+      name="authorNo"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-black">Author No.</FormLabel>
+          <FormControl>
+            <Select value={field.value ?? ""} disabled>
+              <FormControl>
+                <SelectTrigger className="text-black">
+                  <SelectValue placeholder="Auto-selected from Claimed By" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {watchAuthors?.map((author, index) =>
+                  author.name ? (
+                    <SelectItem key={index} value={(index + 1).toString()}>
+                      {index + 1}
+                    </SelectItem>
+                  ) : null
+                )}
+                {correspondingAuthor && correspondingAuthor.name && (
+                  <SelectItem value="C">C (Corresponding)</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </FormControl>
+          <FormMessage className="text-blue-700" />
+        </FormItem>
+      )}
+    />
+  </div>
+</div>
+
                     </div>
                   </div>
 
