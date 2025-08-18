@@ -199,7 +199,7 @@ const FacultyDetailsCard = ({ faculty, papers, onClear }) => {
 
       <CardContent className="p-6 space-y-6">
         {/* Author IDs Section for Faculty */}
-        {faculty.role === 'faculty' && (
+        {faculty.role === 'faculty' || faculty.role === 'campus_admin'  && (
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <Award className="h-4 w-4 text-blue-600" />
