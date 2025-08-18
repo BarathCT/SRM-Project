@@ -25,10 +25,8 @@ export default function FilterControls({
   let departmentOptions = [];
   if (isCampusAdmin) {
     if (collegesWithoutInstitutes.includes(currentUser.college)) {
-      // College does not have institutes; show departments for this college
       departmentOptions = getDepartments(currentUser.college);
     } else if (currentUser.institute) {
-      // College has institutes; show departments for their institute
       departmentOptions = getDepartments(currentUser.college, currentUser.institute);
     }
   }
@@ -52,6 +50,14 @@ export default function FilterControls({
         { value: "faculty", label: "Faculty" }
       ];
 
+  // Explicit grid columns for one-row layout
+  let gridColsClass = '';
+  if (isCampusAdmin) {
+    gridColsClass = 'sm:grid-cols-2'; // only role and department
+  } else {
+    gridColsClass = showInstituteFilter ? 'sm:grid-cols-4' : 'sm:grid-cols-3';
+  }
+
   return (
     <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200/50 shadow-sm mb-6">
       <div className="space-y-4">
@@ -73,7 +79,8 @@ export default function FilterControls({
             Reset All
           </Button>
         </div>
-        <div className={`grid grid-cols-1 sm:grid-cols-${isCampusAdmin ? '2' : (showInstituteFilter ? '4' : '3')} gap-4`}>
+        {/* One-row filter bar on desktop */}
+        <div className={`grid grid-cols-1 ${gridColsClass} gap-4`}>
           {/* Role Filter */}
           <div className="w-full">
             <Select value={filters.role} onValueChange={v => onFilterChange('role', v)}>
@@ -87,7 +94,7 @@ export default function FilterControls({
               </SelectContent>
             </Select>
           </div>
-          {/* College Filter */}
+          {/* College Filter (not for campus admin) */}
           {!isCampusAdmin && (
             <div className="w-full">
               <Select value={filters.college} onValueChange={v => onFilterChange('college', v)}>
@@ -103,7 +110,7 @@ export default function FilterControls({
               </Select>
             </div>
           )}
-          {/* Institute Filter */}
+          {/* Institute Filter (not for campus admin) */}
           {showInstituteFilter && !isCampusAdmin && (
             <div className="w-full">
               <Select value={filters.institute} onValueChange={v => onFilterChange('institute', v)}>

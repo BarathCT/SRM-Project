@@ -318,6 +318,19 @@ export default function SuperAdminDashboard() {
     [pubFilters]
   );
 
+  const subjectCategoryDistribution = useMemo(() => {
+    // Compute: { [subjectArea]: { [category]: count } }
+    const map = {};
+    for (const paper of scopePapers) {
+      if (!paper.subjectArea || !Array.isArray(paper.subjectCategories)) continue;
+      if (!map[paper.subjectArea]) map[paper.subjectArea] = {};
+      for (const cat of paper.subjectCategories) {
+        map[paper.subjectArea][cat] = (map[paper.subjectArea][cat] || 0) + 1;
+      }
+    }
+    return map;
+  }, [scopePapers]);
+
   // Stats (using filteredPapers)
   const stats = useMemo(() => {
     const papers = filteredPapers;
@@ -366,8 +379,9 @@ export default function SuperAdminDashboard() {
       departmentStats,
       q1Percentage: total ? (((qDist.Q1 || 0) / total) * 100).toFixed(1) : 0,
       avgPapersPerFaculty: filteredFaculty.length ? (total / users.length).toFixed(1) : 0,
+      subjectCategoryDistribution, // <- add this to stats object
     };
-  }, [filteredPapers, users, pubFilters]);
+  }, [filteredPapers, users, pubFilters, subjectCategoryDistribution]);
 
   // User selection (UserFinderSidebar)
   const onSelectUser = useCallback(async (user) => {
@@ -558,7 +572,10 @@ export default function SuperAdminDashboard() {
               </header>
               <main className="p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-2xl">
                 <div className="grid grid-cols-1 gap-y-8">
-                  <CampusAnalyticsCard stats={stats} loading={scopeLoading} />
+                  <CampusAnalyticsCard
+                    stats={stats}
+                    loading={loading}
+                  />
                   <SuperAdminAnalyticsCard
                     papers={filteredPapers}
                     users={users}
