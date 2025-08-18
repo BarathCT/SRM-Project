@@ -805,7 +805,24 @@ const CampusAdminDashboard = () => {
               </header>
               <main className="p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-2xl">
                 <div className="grid grid-cols-1 gap-y-8">
-                  <CampusAnalyticsCard stats={campusStats} loading={loading} />
+                  <CampusAnalyticsCard
+                    stats={{
+                      ...campusStats,
+                      subjectCategoryDistribution: (() => {
+                        // Compute: { [subjectArea]: { [category]: count } }
+                        const map = {};
+                        for (const paper of institutePapers) {
+                          if (!paper.subjectArea || !Array.isArray(paper.subjectCategories)) continue;
+                          if (!map[paper.subjectArea]) map[paper.subjectArea] = {};
+                          for (const cat of paper.subjectCategories) {
+                            map[paper.subjectArea][cat] = (map[paper.subjectArea][cat] || 0) + 1;
+                          }
+                        }
+                        return map;
+                      })(),
+                    }}
+                    loading={loading}
+                  />
                 </div>
               </main>
             </div>

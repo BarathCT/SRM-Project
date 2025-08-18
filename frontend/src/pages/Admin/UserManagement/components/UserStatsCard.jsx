@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { 
-  Users, 
+import {
+  Users,
   Building2,
   Layers,
   BarChart3,
@@ -94,13 +94,89 @@ const chartColors = {
   faculty: '#10b981',
 };
 const extendedColors = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
   '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1',
   '#14b8a6', '#f59e0b', '#ef4444', '#06b6d4',
   '#84cc16', '#f97316', '#ec4899', '#6366f1', '#14b8a6'
 ];
 
 const NON_INSTITUTE_COLLEGES = collegesWithoutInstitutes;
+
+// --- UNIVERSAL FILTER BUTTON GROUP ---
+function FilterButtonGroup({
+  filters,
+  setFilter,
+  selected,
+  colorPalette = [],
+  showCount,
+  countMap,
+  type,
+  filledColor = "#2563eb", // blue-600
+  outlineColor = "#d1d5db", // gray-300
+  textColor = "#374151", // gray-700
+  filledTextColor = "#fff",
+  countBg = "#eff6ff"
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 justify-center mt-3 mb-2">
+      <button
+        type="button"
+        onClick={() => setFilter("all")}
+        className="text-xs px-3 py-1 rounded-full border transition"
+        style={{
+          background: selected === "all" ? filledColor : "transparent",
+          color: selected === "all" ? filledTextColor : textColor,
+          borderColor: selected === "all" ? filledColor : outlineColor,
+          fontWeight: selected === "all" ? 600 : 400,
+        }}
+      >
+        All {type}
+        {showCount && (
+          <span
+            className="ml-1 inline-block text-xs font-semibold px-2 rounded-full"
+            style={{
+              background: selected === "all" ? "rgba(255,255,255,0.2)" : countBg,
+              color: selected === "all" ? "#fff" : filledColor
+            }}
+          >
+            {Object.values(countMap || {}).reduce((sum, v) => sum + v, 0)}
+          </span>
+        )}
+      </button>
+      {filters.map((v, idx) => {
+        const isActive = selected === v;
+        const color = colorPalette[idx % colorPalette.length] || filledColor;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setFilter(v)}
+            className="text-xs px-3 py-1 rounded-full border transition"
+            style={{
+              background: isActive ? color : "transparent",
+              color: isActive ? "#fff" : color,
+              borderColor: color,
+              fontWeight: isActive ? 600 : 400,
+            }}
+          >
+            {v}
+            {showCount && (
+              <span
+                className="ml-1 inline-block text-xs font-semibold px-2 rounded-full"
+                style={{
+                  background: isActive ? "rgba(255,255,255,0.2)" : countBg,
+                  color: isActive ? "#fff" : color
+                }}
+              >
+                {(countMap && countMap[v]) || 0}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function UserStatsCard({
   users = [],
@@ -117,7 +193,6 @@ export default function UserStatsCard({
     institute: 'all',
     department: 'all'
   });
-  const [selectedSegment, setSelectedSegment] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
 
   const currentUserRole = currentUser?.role || 'super_admin';
@@ -137,6 +212,41 @@ export default function UserStatsCard({
     }
   }
 
+  // Helper: is the selected college one that has institutes?
+  const isNonInstituteCollegeSelected =
+    filters.college !== "all" && NON_INSTITUTE_COLLEGES.includes(filters.college);
+
+  // Always show all institutes for selected college, or all institutes if no college selected
+  const getActiveInstituteList = () => {
+    if (filters.college === "all") return getAllInstituteNames();
+    if (isNonInstituteCollegeSelected) return [];
+    return getInstitutesForCollege(filters.college) || [];
+  };
+  const activeInstituteList = getActiveInstituteList();
+
+  // Department legend and data logic (always show all applicable departments for the context)
+  const getActiveDepartmentList = () => {
+    if (isCampusAdmin) {
+      return campusAdminDepartments;
+    }
+    if (filters.college === "all") return getAllDepartmentNames();
+    if (isNonInstituteCollegeSelected) return getDepartments(filters.college);
+    // If institute selected, show those departments, else show all departments for that college (across all its institutes)
+    if (filters.college !== "all" && filters.institute === "all") {
+      const insts = getInstitutesForCollege(filters.college) || [];
+      let deptSet = new Set();
+      insts.forEach(inst => {
+        getDepartments(filters.college, inst)?.forEach(dep => deptSet.add(dep));
+      });
+      return Array.from(deptSet);
+    }
+    if (filters.college !== "all" && filters.institute !== "all") {
+      return getDepartments(filters.college, filters.institute);
+    }
+    return [];
+  };
+  const activeDepartmentList = getActiveDepartmentList();
+
   // TABS
   const chartTabs = isCampusAdmin
     ? [
@@ -146,14 +256,11 @@ export default function UserStatsCard({
     : [
         { value: 'overview', label: 'Overview', icon: Eye },
         { value: 'colleges', label: 'Colleges', icon: Building2 },
-        { value: 'institutes', label: 'Institutes', icon: Layers },
+        ...(isNonInstituteCollegeSelected
+          ? []
+          : [{ value: 'institutes', label: 'Institutes', icon: Layers }]),
         { value: 'departments', label: 'Departments', icon: Award }
       ];
-
-  const selectedCollegeHasInstitutes = useMemo(() => {
-    if (filters.college === 'all') return true;
-    return !NON_INSTITUTE_COLLEGES.includes(filters.college);
-  }, [filters.college]);
 
   // Filtered users
   const filteredUsers = useMemo(() => {
@@ -166,15 +273,19 @@ export default function UserStatsCard({
     });
   }, [users, filters]);
 
+  // Filter drilldown: when a parent changes, reset lower levels
   const handleFilterChange = useCallback((key, value) => {
     setFilters(prev => {
-      const newFilters = { ...prev, [key]: value };
-      if (key === 'college' && NON_INSTITUTE_COLLEGES.includes(value)) {
-        newFilters.institute = 'all';
+      const newFilters = { ...prev, [key]: prev[key] === value ? "all" : value };
+      if (key === 'college') {
+        newFilters.institute = "all";
+        newFilters.department = "all";
+      }
+      if (key === 'institute') {
+        newFilters.department = "all";
       }
       return newFilters;
     });
-    setSelectedSegment(null);
     setSelectedLocation(null);
   }, []);
 
@@ -186,15 +297,12 @@ export default function UserStatsCard({
       institute: 'all',
       department: 'all'
     });
-    setSelectedSegment(null);
     setSelectedLocation(null);
   }, []);
 
-  const handleChartClick = useCallback((item, type) => {
-    setSelectedSegment(selectedSegment === item.label ? null : item.label);
-    if (type === 'colleges') handleFilterChange('college', item.label);
-    else if (type === 'institutes') handleFilterChange('institute', item.label);
-  }, [selectedSegment, handleFilterChange]);
+  const handleRoleCardClick = useCallback((role) => {
+    setFilters(prev => ({ ...prev, role: prev.role === role ? "all" : role }));
+  }, []);
 
   const handleLocationClick = useCallback((location) => {
     setSelectedLocation(selectedLocation === location ? null : location);
@@ -207,7 +315,7 @@ export default function UserStatsCard({
   const allInstitutes = getAllInstituteNames();
   const allColleges = ALL_COLLEGE_NAMES;
 
-  // Stats calculation with scoping for campus_admin
+  // Stats calculation
   const statistics = useMemo(() => {
     const totalUsers = filteredUsers.length;
     const roleStats = {
@@ -219,7 +327,7 @@ export default function UserStatsCard({
 
     // Department
     const departmentStats = {};
-    allDepartments.forEach(dept => { departmentStats[dept] = 0; });
+    activeDepartmentList.forEach(dept => { departmentStats[dept] = 0; });
     filteredUsers
       .filter(user => user.role !== 'super_admin')
       .forEach(user => {
@@ -227,13 +335,13 @@ export default function UserStatsCard({
           departmentStats[user.department]++;
         }
       });
-    const departmentDistribution = allDepartments.map(dept => ({
+    const departmentDistribution = activeDepartmentList.map(dept => ({
       label: dept,
       value: departmentStats[dept] || 0
     }));
 
     const rolesByDepartment = {};
-    allDepartments.forEach(dept => {
+    activeDepartmentList.forEach(dept => {
       rolesByDepartment[dept] = { campus_admin: 0, faculty: 0 };
     });
     filteredUsers
@@ -244,7 +352,7 @@ export default function UserStatsCard({
         }
       });
 
-    // College/Institute only for non-campus-admin
+    // Colleges/Institutes
     let collegeDistribution = [];
     let rolesByCollege = {};
     let instituteDistribution = [];
@@ -279,7 +387,7 @@ export default function UserStatsCard({
 
       // Institutes
       const instituteStats = {};
-      allInstitutes.forEach(i => { instituteStats[i] = 0; });
+      activeInstituteList.forEach(i => { instituteStats[i] = 0; });
       filteredUsers
         .filter(user => user.role !== 'super_admin')
         .forEach(user => {
@@ -287,13 +395,13 @@ export default function UserStatsCard({
             instituteStats[user.institute]++;
           }
         });
-      instituteDistribution = allInstitutes.map(inst => ({
+      instituteDistribution = activeInstituteList.map(inst => ({
         label: inst,
         value: instituteStats[inst] || 0
       }));
 
       rolesByInstitute = {};
-      allInstitutes.forEach(inst => {
+      activeInstituteList.forEach(inst => {
         rolesByInstitute[inst] = { campus_admin: 0, faculty: 0 };
       });
       filteredUsers
@@ -315,7 +423,22 @@ export default function UserStatsCard({
       rolesByInstitute,
       rolesByDepartment,
     };
-  }, [filteredUsers, isCampusAdmin, allDepartments, allColleges, allInstitutes]);
+  }, [filteredUsers, isCampusAdmin, activeDepartmentList, allColleges, activeInstituteList]);
+
+  // Hierarchical data for CollegeHierarchyTree (for super admin, and not filtering for super_admin)
+  const collegeHierarchyData = useMemo(() => {
+    if (!users?.length) return {};
+    const tree = {};
+    users.forEach(user => {
+      if (user.role === 'super_admin') return;
+      const college = user.college || 'Unknown College';
+      const institute = user.institute || 'No Institute';
+      if (!tree[college]) tree[college] = {};
+      if (!tree[college][institute]) tree[college][institute] = {};
+      tree[college][institute][user.role] = (tree[college][institute][user.role] || 0) + 1;
+    });
+    return tree;
+  }, [users]);
 
   // Chart configs
   const chartOptions = {
@@ -323,11 +446,7 @@ export default function UserStatsCard({
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top',
-        labels: {
-          usePointStyle: true,
-          padding: 20
-        }
+        display: false // hide legend, we use clickable labels below chart
       },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -355,53 +474,20 @@ export default function UserStatsCard({
   const pieOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    onClick: (event, elements, chart) => {
-      if (elements.length > 0) {
-        const elementIndex = elements[0].index;
-        const label = chart.data.labels[elementIndex];
-        const value = chart.data.datasets[0].data[elementIndex];
-        handleChartClick({ label, value }, 'colleges');
-      }
-    },
     plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          font: {
-            size: 11
-          },
-          generateLabels: function (chart) {
-            const data = chart.data;
-            if (data.labels.length && data.datasets.length) {
-              return data.labels.map((label, i) => {
-                const value = data.datasets[0].data[i];
-                const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                const percentage = ((value / total) * 100).toFixed(1);
-                return {
-                  text: `${label}: ${value} (${percentage}%)`,
-                  fillStyle: data.datasets[0].backgroundColor[i],
-                  strokeStyle: data.datasets[0].backgroundColor[i],
-                  pointStyle: 'circle'
-                };
-              });
-            }
-            return [];
-          }
-        }
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         titleColor: 'white',
         bodyColor: 'white'
       }
-    }
+    },
+    onClick: () => {}
   };
 
   // Chart Data Creators
   const createRolesByDepartmentChart = (data) => {
-    const departments = allDepartments;
+    const departments = activeDepartmentList;
     const roles = ['campus_admin', 'faculty'];
     return {
       labels: departments,
@@ -440,6 +526,41 @@ export default function UserStatsCard({
     }]
   });
 
+  // COUNT MAPS for all chart filter groups
+  const collegeCountMap = useMemo(() => {
+    const map = {};
+    ALL_COLLEGE_NAMES.forEach(college => {
+      map[college] = users.filter(u =>
+        (filters.role === 'all' || u.role === filters.role) &&
+        u.college === college
+      ).length;
+    });
+    return map;
+  }, [users, filters.role]);
+  const instituteCountMap = useMemo(() => {
+    const map = {};
+    activeInstituteList.forEach(institute => {
+      map[institute] = users.filter(u =>
+        (filters.role === 'all' || u.role === filters.role) &&
+        (filters.college === 'all' || u.college === filters.college) &&
+        u.institute === institute
+      ).length;
+    });
+    return map;
+  }, [users, filters.role, filters.college, activeInstituteList]);
+  const departmentCountMap = useMemo(() => {
+    const map = {};
+    activeDepartmentList.forEach(department => {
+      map[department] = users.filter(u =>
+        (filters.role === 'all' || u.role === filters.role) &&
+        (filters.college === 'all' || u.college === filters.college) &&
+        (filters.institute === 'all' || u.institute === filters.institute) &&
+        u.department === department
+      ).length;
+    });
+    return map;
+  }, [users, filters.role, filters.college, filters.institute, activeDepartmentList]);
+
   if (loading) {
     return (
       <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
@@ -449,6 +570,22 @@ export default function UserStatsCard({
       </div>
     );
   }
+
+  // Super Admin Notice: show only if role filter is super_admin and user is super_admin
+  if (
+    currentUserRole === 'super_admin' &&
+    filters.role === 'super_admin'
+  ) {
+    return (
+      <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
+        <SuperAdminNotice superAdminCount={statistics.roleStats.super_admin} />
+      </div>
+    );
+  }
+
+  // College Hierarchical Tree: show only for super admin and not filtering for super_admin
+  const showCollegeHierarchicalTree =
+    currentUserRole === 'super_admin' && filters.role !== 'super_admin';
 
   const collegeSummaries = statistics.rolesByCollege
     ? allColleges.map(college => (
@@ -495,16 +632,26 @@ export default function UserStatsCard({
               onFilterChange={handleFilterChange}
               onReset={resetFilters}
               stats={{ filtered: statistics.totalUsers, total: users.length }}
-              showInstituteFilter={!isCampusAdmin && selectedCollegeHasInstitutes}
+              showInstituteFilter={!isCampusAdmin && !isNonInstituteCollegeSelected}
               currentUser={currentUser}
             />
-            <UserStatisticsCard 
-              roleStats={statistics.roleStats} 
+            <UserStatisticsCard
+              roleStats={statistics.roleStats}
               currentRole={currentUserRole}
+              setFilters={handleRoleCardClick}
             />
           </div>
         </CardHeader>
         <CardContent className="p-6 bg-white">
+          {showCollegeHierarchicalTree && (
+            <div className="mb-8">
+              <CollegeHierarchyTree
+                data={collegeHierarchyData}
+                title="College & Institute User Hierarchy"
+                type="Institute"
+              />
+            </div>
+          )}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className={`grid w-full grid-cols-${chartTabs.length} mb-6 bg-gray-50 p-1 rounded-xl`}>
               {chartTabs.map(tab => (
@@ -526,7 +673,17 @@ export default function UserStatsCard({
                       icon={Award}
                       iconColor="text-gray-600"
                       badgeText="Your Departments"
-                    />
+                    >
+                      <FilterButtonGroup
+                        filters={activeDepartmentList}
+                        setFilter={(v) => handleFilterChange('department', v)}
+                        selected={filters.department}
+                        colorPalette={extendedColors}
+                        showCount
+                        countMap={departmentCountMap}
+                        type="Departments"
+                      />
+                    </AnalyticsChart>
                     <AnalyticsChart
                       type="bar"
                       data={createRolesByDepartmentChart(statistics.rolesByDepartment)}
@@ -539,28 +696,131 @@ export default function UserStatsCard({
                       iconColor="text-blue-600"
                       badgeText="Your Departments"
                       badgeColor="bg-purple-50 text-purple-700 border-purple-200"
-                    />
+                    >
+                      <FilterButtonGroup
+                        filters={activeDepartmentList}
+                        setFilter={(v) => handleFilterChange('department', v)}
+                        selected={filters.department}
+                        colorPalette={extendedColors}
+                        showCount
+                        countMap={departmentCountMap}
+                        type="Departments"
+                      />
+                    </AnalyticsChart>
                   </>
                 ) : (
                   <>
                     <AnalyticsChart
                       type="pie"
-                      data={createPieData(statistics.collegeDistribution)}
+                      data={createPieData(
+                        ALL_COLLEGE_NAMES.map(college => ({
+                          label: college,
+                          value: users.filter(u =>
+                            (filters.role === 'all' || u.role === filters.role) &&
+                            u.college === college
+                          ).length
+                        }))
+                      )}
                       options={pieOptions}
                       title="College Distribution"
                       icon={BarChart3}
                       iconColor="text-blue-600"
                       badgeText=""
-                    />
+                    >
+                      <FilterButtonGroup
+                        filters={ALL_COLLEGE_NAMES}
+                        setFilter={(v) => handleFilterChange('college', v)}
+                        selected={filters.college}
+                        colorPalette={extendedColors}
+                        showCount
+                        countMap={collegeCountMap}
+                        type="Colleges"
+                      />
+                    </AnalyticsChart>
+                    {(!isNonInstituteCollegeSelected && activeInstituteList.length > 0) && (
+                      <AnalyticsChart
+                        type="pie"
+                        data={createPieData(
+                          activeInstituteList.map(inst => ({
+                            label: inst,
+                            value: users.filter(
+                              u =>
+                                (filters.college === "all" || u.college === filters.college) &&
+                                u.institute === inst &&
+                                u.role !== 'super_admin'
+                            ).length
+                          }))
+                        )}
+                        options={pieOptions}
+                        title={
+                          filters.college === "all"
+                            ? "Institute Distribution"
+                            : `Institutes in ${filters.college}`
+                        }
+                        icon={Layers}
+                        iconColor="text-green-600"
+                        badgeText=""
+                      >
+                        <FilterButtonGroup
+                          filters={activeInstituteList}
+                          setFilter={(v) => handleFilterChange('institute', v)}
+                          selected={filters.institute}
+                          colorPalette={extendedColors}
+                          showCount
+                          countMap={instituteCountMap}
+                          type="Institutes"
+                        />
+                      </AnalyticsChart>
+                    )}
                     <AnalyticsChart
                       type="pie"
                       data={createPieData(statistics.departmentDistribution)}
                       options={pieOptions}
-                      title="Department Distribution"
+                      title={
+                        filters.college === "all"
+                          ? "Department Distribution"
+                          : isNonInstituteCollegeSelected
+                          ? `Departments in ${filters.college}`
+                          : filters.institute === "all"
+                          ? `Departments in ${filters.college}`
+                          : `Departments in ${filters.institute}, ${filters.college}`
+                      }
                       icon={Award}
-                      iconColor="text-gray-600"
+                      iconColor="text-emerald-600"
                       badgeText=""
-                    />
+                    >
+                      <FilterButtonGroup
+                        filters={activeDepartmentList}
+                        setFilter={(v) => handleFilterChange('department', v)}
+                        selected={filters.department}
+                        colorPalette={extendedColors}
+                        showCount
+                        countMap={departmentCountMap}
+                        type="Departments"
+                      />
+                    </AnalyticsChart>
+                    <AnalyticsChart
+                      type="bar"
+                      data={createRolesByDepartmentChart(statistics.rolesByDepartment)}
+                      options={{
+                        ...chartOptions,
+                        indexAxis: 'y',
+                      }}
+                      title="Role Distribution by Department"
+                      icon={BarChart3}
+                      iconColor="text-blue-600"
+                      badgeText=""
+                    >
+                      <FilterButtonGroup
+                        filters={activeDepartmentList}
+                        setFilter={(v) => handleFilterChange('department', v)}
+                        selected={filters.department}
+                        colorPalette={extendedColors}
+                        showCount
+                        countMap={departmentCountMap}
+                        type="Departments"
+                      />
+                    </AnalyticsChart>
                   </>
                 )}
               </div>
@@ -576,7 +836,17 @@ export default function UserStatsCard({
                     icon={Target}
                     iconColor="text-blue-600"
                     badgeText=""
-                  />
+                  >
+                    <FilterButtonGroup
+                      filters={ALL_COLLEGE_NAMES}
+                      setFilter={(v) => handleFilterChange('college', v)}
+                      selected={filters.college}
+                      colorPalette={extendedColors}
+                      showCount
+                      countMap={collegeCountMap}
+                      type="Colleges"
+                    />
+                  </AnalyticsChart>
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
                     <h5 className="font-semibold text-gray-800 mb-4">Interactive College Summary</h5>
                     <CollegeSummaryGrid summaries={collegeSummaries} />
@@ -584,20 +854,30 @@ export default function UserStatsCard({
                 </div>
               </TabsContent>
             )}
-            {!isCampusAdmin && (
+            {!isCampusAdmin && !isNonInstituteCollegeSelected && (
               <TabsContent value="institutes" className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <AnalyticsChart
                       type="bar"
-                      data={createRolesByLocationChart(statistics.rolesByInstitute, allInstitutes)}
+                      data={createRolesByLocationChart(statistics.rolesByInstitute, activeInstituteList)}
                       options={chartOptions}
                       title="Institute Distribution"
                       icon={BarChart3}
                       iconColor="text-green-600"
                       badgeText=""
                       badgeColor="bg-green-50 text-green-700 border-green-200"
-                    />
+                    >
+                      <FilterButtonGroup
+                        filters={activeInstituteList}
+                        setFilter={(v) => handleFilterChange('institute', v)}
+                        selected={filters.institute}
+                        colorPalette={extendedColors}
+                        showCount
+                        countMap={instituteCountMap}
+                        type="Institutes"
+                      />
+                    </AnalyticsChart>
                     <AnalyticsChart
                       type="doughnut"
                       data={createPieData(statistics.instituteDistribution)}
@@ -607,9 +887,18 @@ export default function UserStatsCard({
                       iconColor="text-purple-600"
                       badgeText=""
                       badgeColor="bg-purple-50 text-purple-700 border-purple-200"
-                    />
+                    >
+                      <FilterButtonGroup
+                        filters={activeInstituteList}
+                        setFilter={(v) => handleFilterChange('institute', v)}
+                        selected={filters.institute}
+                        colorPalette={extendedColors}
+                        showCount
+                        countMap={instituteCountMap}
+                        type="Institutes"
+                      />
+                    </AnalyticsChart>
                   </div>
-                  {/* CollegeHierarchyTree could go here */}
                 </div>
               </TabsContent>
             )}
@@ -627,7 +916,17 @@ export default function UserStatsCard({
                   iconColor="text-purple-600"
                   badgeText="Department-wise User Count"
                   badgeColor="bg-purple-50 text-purple-700 border-purple-200"
-                />
+                >
+                  <FilterButtonGroup
+                    filters={activeDepartmentList}
+                    setFilter={(v) => handleFilterChange('department', v)}
+                    selected={filters.department}
+                    colorPalette={extendedColors}
+                    showCount
+                    countMap={departmentCountMap}
+                    type="Departments"
+                  />
+                </AnalyticsChart>
                 <AnalyticsChart
                   type="doughnut"
                   data={createPieData(statistics.departmentDistribution)}
@@ -637,7 +936,17 @@ export default function UserStatsCard({
                   iconColor="text-orange-600"
                   badgeText="Department-wise User Analytics"
                   badgeColor="bg-purple-50 text-purple-700 border-purple-200"
-                />
+                >
+                  <FilterButtonGroup
+                    filters={activeDepartmentList}
+                    setFilter={(v) => handleFilterChange('department', v)}
+                    selected={filters.department}
+                    colorPalette={extendedColors}
+                    showCount
+                    countMap={departmentCountMap}
+                    type="Departments"
+                  />
+                </AnalyticsChart>
               </div>
             </TabsContent>
           </Tabs>
