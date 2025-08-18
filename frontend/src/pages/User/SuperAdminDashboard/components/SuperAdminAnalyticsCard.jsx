@@ -1,115 +1,97 @@
-import React, { useMemo } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { useMemo, useState } from "react";
+import AnalyticsChart from "../../../Admin/UserManagement/components/UserStats/charts/AnalyticsChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Building2, Building, Layers, TrendingUp } from "lucide-react";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from "chart.js";
-import { Bar, Pie, Doughnut, Line } from "react-chartjs-2";
-import {
-  BarChart3,
-  Building,
-  Building2,
-  Award,
-  Layers,
-  TrendingUp,
-} from "lucide-react";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
-
-const baseOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "bottom",
-      labels: {
-        usePointStyle: true,
-        padding: 18,
-        font: { size: 12 },
-      },
-    },
-    tooltip: {
-      backgroundColor: "rgba(0,0,0,0.85)",
-      titleColor: "#fff",
-      bodyColor: "#fff",
-      borderColor: "rgba(59,130,246,0.4)",
-      borderWidth: 1,
-    },
-  },
-};
-
-const barOptions = {
-  ...baseOptions,
-  scales: {
-    y: {
-      beginAtZero: true,
-      grid: { color: "rgba(59,130,246,0.08)" },
-      ticks: { color: "#6B7280" },
-    },
-    x: {
-      grid: { display: false },
-      ticks: { color: "#6B7280" },
-    },
-  },
-};
-
-const stackedBarOptions = {
-  ...barOptions,
-  scales: {
-    ...barOptions.scales,
-    x: { ...barOptions.scales.x, stacked: true },
-    y: { ...barOptions.scales.y, stacked: true },
-  },
-};
+  ALL_COLLEGE_NAMES,
+  getAllInstituteNames,
+  getAllDepartmentNames,
+} from "@/utils/collegeData";
 
 const colorPalette = [
-  "#3B82F6", // blue
-  "#10B981", // green
-  "#F59E0B", // amber
-  "#EF4444", // red
-  "#8B5CF6", // violet
-  "#06B6D4", // cyan
-  "#F97316", // orange
-  "#EC4899", // pink
-  "#22C55E", // emerald
-  "#0EA5E9", // sky
-  "#A855F7", // purple
-  "#84CC16", // lime
-  "#EAB308", // yellow
+  "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4",
+  "#F97316", "#EC4899", "#22C55E", "#0EA5E9", "#A855F7", "#84CC16", "#EAB308"
 ];
+
+const qKeys = ["Q1", "Q2", "Q3", "Q4"];
+const qColors = ["#3B82F6", "#10B981", "#F59E0B", "#6B7280"];
+
+function FilterButtonGroup({
+  filters,
+  setFilter,
+  selected,
+  colorPalette = [],
+  showCount,
+  countMap,
+  type
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 justify-center mt-3">
+      <button
+        type="button"
+        onClick={() => setFilter("all")}
+        className={`text-xs px-3 py-1 rounded-full border transition`}
+        style={{
+          background: selected === "all" ? "#111827" : "transparent",
+          color: selected === "all" ? "#fff" : "#374151",
+          borderColor: selected === "all" ? "#111827" : "#d1d5db",
+          fontWeight: selected === "all" ? 600 : 400,
+        }}
+      >
+        All {type}
+        {showCount && (
+          <span className="ml-1 inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 rounded-full">
+            {Object.values(countMap || {}).reduce((sum, v) => sum + v, 0)}
+          </span>
+        )}
+      </button>
+      {filters.map((v, idx) => {
+        const isActive = selected === v;
+        const color = colorPalette[idx % colorPalette.length] || "#222";
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setFilter(prev => prev === v ? "all" : v)}
+            className={`text-xs px-3 py-1 rounded-full border transition`}
+            style={{
+              background: isActive ? color : "transparent",
+              color: isActive ? "#fff" : color,
+              borderColor: color,
+              fontWeight: isActive ? 600 : 400,
+            }}
+          >
+            {v}
+            {showCount && (
+              <span
+                className={`ml-1 inline-block text-xs font-semibold px-2 rounded-full`}
+                style={{
+                  background: isActive ? "rgba(255,255,255,0.2)" : "#eff6ff",
+                  color: isActive ? "#fff" : color
+                }}
+              >
+                {(countMap && countMap[v]) || 0}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function SuperAdminAnalyticsCard({
   papers = [],
   users = [],
-  selectedCollege = "all",
-  selectedInstitute = "all",
   loading = false,
 }) {
-  // Build a quick lookup for faculty metadata
+  // SEPARATE FILTERS for each chart in the "college" tab
+  const [collegeBarFilter, setCollegeBarFilter] = useState("all");
+  const [qRatingBarFilter, setQRatingBarFilter] = useState("all");
+  // Shared filter for the other tabs
+  const [collegeFilter, setCollegeFilter] = useState("all");
+
+  // Map papers to faculty info
   const facultyMap = useMemo(() => {
     const m = new Map();
     for (const u of users) {
@@ -118,288 +100,338 @@ export default function SuperAdminAnalyticsCard({
     return m;
   }, [users]);
 
-  const comparisons = useMemo(() => {
-    const collegeTotals = {};
-    const collegeQ = {}; // { college: { Q1, Q2, Q3, Q4 } }
-    const instituteTotals = {}; // key: `${college}||${institute}`
-    const deptTotals = {}; // department across current selection
-    const yearlyByCollege = {}; // { college: { [year]: count } }
-
+  // College Bar Chart
+  const collegeLabels = ALL_COLLEGE_NAMES;
+  const collegeCounts = useMemo(() => {
+    const map = {};
     for (const p of papers) {
       const f = facultyMap.get(p.facultyId);
-      const college = f?.college || "N/A";
-      const institute = f?.institute || "N/A";
-      const dept = f?.department || "N/A";
-      const year = Number(p.year) || 0;
-
-      // College totals
-      collegeTotals[college] = (collegeTotals[college] || 0) + 1;
-
-      // College Q distribution
-      if (!collegeQ[college]) {
-        collegeQ[college] = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+      const college = f?.college || p.college || "N/A";
+      // If filtering, only count that college
+      if (collegeBarFilter === "all" || college === collegeBarFilter) {
+        map[college] = (map[college] || 0) + 1;
       }
-      if (p.qRating && collegeQ[college][p.qRating] !== undefined) {
-        collegeQ[college][p.qRating] += 1;
-      }
-
-      // Institute totals
-      const instKey = `${college}||${institute}`;
-      instituteTotals[instKey] = (instituteTotals[instKey] || 0) + 1;
-
-      // Department totals
-      deptTotals[dept] = (deptTotals[dept] || 0) + 1;
-
-      // Yearly by college
-      if (!yearlyByCollege[college]) yearlyByCollege[college] = {};
-      yearlyByCollege[college][year] = (yearlyByCollege[college][year] || 0) + 1;
     }
+    return map;
+  }, [papers, facultyMap, collegeBarFilter]);
 
-    // Derive sorted labels
-    const collegeLabels = Object.keys(collegeTotals).sort(
-      (a, b) => collegeTotals[b] - collegeTotals[a]
-    );
-
-    // Institutes filtered by current selectedCollege (or top 10 overall)
-    const instituteEntries = Object.entries(instituteTotals).map(([key, count]) => {
-      const [c, i] = key.split("||");
-      return { college: c, institute: i, count };
-    });
-
-    let instituteData;
-    if (selectedCollege !== "all") {
-      const ofCollege = instituteEntries
-        .filter((x) => x.college === selectedCollege)
-        .sort((a, b) => b.count - a.count);
-      instituteData = {
-        labels: ofCollege.map((x) => x.institute),
-        counts: ofCollege.map((x) => x.count),
-      };
-    } else {
-      const top10 = instituteEntries
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-      instituteData = {
-        labels: top10.map((x) =>
-          x.college === "N/A" ? x.institute : `${x.college}: ${x.institute}`
-        ),
-        counts: top10.map((x) => x.count),
-      };
-    }
-
-    // Department Top 15 (current scope)
-    const deptTop = Object.entries(deptTotals)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 15);
-
-    // Multi-series yearly (top 5 colleges)
-    const top5Colleges = collegeLabels.slice(0, 5);
-    const allYears = Array.from(
-      new Set(
-        top5Colleges.flatMap((c) => Object.keys(yearlyByCollege[c] || {}))
-      )
-    )
-      .map(Number)
-      .filter(Boolean)
-      .sort((a, b) => a - b);
-
-    return {
-      collegeTotals,
-      collegeLabels,
-      collegeQ,
-      instituteData,
-      deptTop,
-      yearlyByCollege,
-      top5Colleges,
-      allYears,
-    };
-  }, [papers, facultyMap, selectedCollege]);
-
-  if (loading) {
-    return (
-      <Card className="border border-blue-100 shadow-md bg-white">
-        <CardHeader className="bg-white-50 border-b border-blue-100">
-          <CardTitle className="flex items-center gap-2 text-gray-900">
-            <BarChart3 className="h-5 w-5 text-blue-600" />
-            Comparative Analytics
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-64 bg-blue-100 rounded" />
-            <div className="h-64 bg-blue-100 rounded" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const { collegeLabels, collegeTotals, collegeQ, instituteData, deptTop, top5Colleges, allYears } =
-    comparisons;
-
-  // Datasets
-  const collegeTotalsBar = {
+  const collegeData = useMemo(() => ({
     labels: collegeLabels,
     datasets: [
       {
-        label: "Publications",
-        data: collegeLabels.map((c) => collegeTotals[c] || 0),
-        backgroundColor: collegeLabels.map(
-          (_, idx) => colorPalette[idx % colorPalette.length]
-        ),
+        label: "",
+        data: collegeLabels.map(c => collegeCounts[c] || 0),
+        backgroundColor: collegeLabels.map((_, idx) => colorPalette[idx % colorPalette.length]),
         borderWidth: 1.5,
-        borderColor: "#ffffff",
-      },
-    ],
-  };
+        borderColor: "#fff"
+      }
+    ]
+  }), [collegeLabels, collegeCounts]);
 
-  const qKeys = ["Q1", "Q2", "Q3", "Q4"];
-  const qColors = ["#3B82F6", "#10B981", "#F59E0B", "#6B7280"];
-  const qByCollegeStacked = {
+  // Q-Rating Stacked Bar Chart (College Tab)
+  const qRatingCounts = useMemo(() => {
+    const map = {};
+    for (const p of papers) {
+      if (qRatingBarFilter === "all" || p.qRating === qRatingBarFilter) {
+        if (p.qRating) map[p.qRating] = (map[p.qRating] || 0) + 1;
+      }
+    }
+    return map;
+  }, [papers, qRatingBarFilter]);
+
+  const qByCollegeStacked = useMemo(() => ({
     labels: collegeLabels,
     datasets: qKeys.map((q, i) => ({
-      label: q,
-      data: collegeLabels.map((c) => (collegeQ[c]?.[q] || 0)),
+      label: "",
+      data: collegeLabels.map((c) =>
+        papers.filter(p => {
+          const f = facultyMap.get(p.facultyId);
+          const college = f?.college || p.college || "N/A";
+          // Filter by q-rating if set
+          const matchQ = qRatingBarFilter === "all" ? p.qRating === q : p.qRating === q && p.qRating === qRatingBarFilter;
+          return college === c && matchQ;
+        }).length
+      ),
       backgroundColor: qColors[i],
       borderWidth: 1,
       borderColor: "#fff",
     })),
-  };
+  }), [collegeLabels, papers, facultyMap, qRatingBarFilter]);
 
-  const institutesBar = {
-    labels: instituteData.labels,
+  // FILTERED PAPERS for other tabs
+  const filteredPapers = useMemo(() => {
+    return papers.filter(p => {
+      const f = facultyMap.get(p.facultyId);
+      const college = f?.college || p.college || "N/A";
+      return collegeFilter === "all" || college === collegeFilter;
+    });
+  }, [papers, facultyMap, collegeFilter]);
+
+  // Institutes
+  const instituteLabels = getAllInstituteNames();
+  const instituteCounts = useMemo(() => {
+    const map = {};
+    for (const p of filteredPapers) {
+      const f = facultyMap.get(p.facultyId);
+      const inst = f?.institute || p.institute || "N/A";
+      map[inst] = (map[inst] || 0) + 1;
+    }
+    return map;
+  }, [filteredPapers, facultyMap]);
+  const instituteData = useMemo(() => ({
+    labels: instituteLabels,
     datasets: [
       {
-        label: "Publications",
-        data: instituteData.counts,
-        backgroundColor: instituteData.labels.map(
-          (_, idx) => colorPalette[idx % colorPalette.length]
-        ),
+        label: "",
+        data: instituteLabels.map(inst => instituteCounts[inst] || 0),
+        backgroundColor: instituteLabels.map((_, idx) => colorPalette[idx % colorPalette.length]),
         borderWidth: 1.5,
-        borderColor: "#fff",
-      },
-    ],
-  };
+        borderColor: "#fff"
+      }
+    ]
+  }), [instituteLabels, instituteCounts]);
 
-  const deptBar = {
-    labels: deptTop.map(([d]) => d),
+  // Departments
+  const departmentLabels = getAllDepartmentNames();
+  const departmentCounts = useMemo(() => {
+    const map = {};
+    for (const p of filteredPapers) {
+      const f = facultyMap.get(p.facultyId);
+      const dept = f?.department || p.department || "N/A";
+      map[dept] = (map[dept] || 0) + 1;
+    }
+    return map;
+  }, [filteredPapers, facultyMap]);
+  const departmentData = useMemo(() => ({
+    labels: departmentLabels,
     datasets: [
       {
-        label: "Publications",
-        data: deptTop.map(([, c]) => c),
-        backgroundColor: "#3B82F6",
+        label: "",
+        data: departmentLabels.map(dep => departmentCounts[dep] || 0),
+        backgroundColor: departmentLabels.map((_, idx) => colorPalette[idx % colorPalette.length]),
+      }
+    ]
+  }), [departmentLabels, departmentCounts]);
+
+  // Yearly Trends
+  const yearlyTrend = useMemo(() => {
+    const yearSet = new Set();
+    const byCollege = {};
+    filteredPapers.forEach(p => {
+      const f = facultyMap.get(p.facultyId);
+      const college = f?.college || p.college || "N/A";
+      const year = Number(p.year) || 0;
+      yearSet.add(year);
+      if (!byCollege[college]) byCollege[college] = {};
+      byCollege[college][year] = (byCollege[college][year] || 0) + 1;
+    });
+    const years = Array.from(yearSet).filter(Boolean).sort((a, b) => a - b);
+    const topColleges = collegeLabels.slice(0, 5);
+    return {
+      labels: years,
+      datasets: topColleges.map((c, idx) => ({
+        label: "",
+        data: years.map(y => byCollege[c]?.[y] || 0),
+        borderColor: colorPalette[idx % colorPalette.length],
+        backgroundColor: colorPalette[idx % colorPalette.length] + "33",
+        borderWidth: 2,
+        tension: 0.25,
+        pointRadius: 2,
+      })),
+    };
+  }, [filteredPapers, facultyMap, collegeLabels]);
+
+  // Chart options (no inbuilt label)
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "rgba(0,0,0,0.85)",
+        titleColor: "#fff",
+        bodyColor: "#fff",
+        borderColor: "rgba(59,130,246,0.4)",
+        borderWidth: 1,
       },
-    ],
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: "rgba(59,130,246,0.08)" }, ticks: { color: "#6B7280" } },
+      x: { grid: { display: false }, ticks: { color: "#6B7280" } },
+    },
+  };
+  const stackedBarOptions = {
+    ...barOptions,
+    scales: {
+      ...barOptions.scales,
+      x: { ...barOptions.scales.x, stacked: true },
+      y: { ...barOptions.scales.y, stacked: true },
+    },
+  };
+  const horizBarOptions = {
+    ...barOptions,
+    indexAxis: "y",
+    scales: {
+      x: { ...barOptions.scales.x, beginAtZero: true },
+      y: { ...barOptions.scales.y },
+    },
   };
 
-  const multiLineYearly = {
-    labels: allYears,
-    datasets: top5Colleges.map((c, idx) => ({
-      label: c,
-      data: allYears.map((y) => comparisons.yearlyByCollege[c]?.[y] || 0),
-      borderColor: colorPalette[idx % colorPalette.length],
-      backgroundColor: colorPalette[idx % colorPalette.length] + "33",
-      borderWidth: 2,
-      tension: 0.25,
-      pointRadius: 2,
-    })),
-  };
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl p-8 border border-blue-100 shadow-md">
+        <div className="animate-pulse space-y-4">
+          <div className="h-64 bg-blue-100 rounded" />
+          <div className="h-64 bg-blue-100 rounded" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Card className="border border-blue-100 shadow-md bg-white">
-      <CardHeader className="bg-white-50 border-b border-blue-100">
-        <CardTitle className="flex items-center gap-2 text-gray-900">
-          <BarChart3 className="h-5 w-5 text-blue-600" />
-          Comparative Analytics
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6">
-        <Tabs defaultValue="colleges" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-50">
-            <TabsTrigger value="colleges" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Colleges
-            </TabsTrigger>
-            <TabsTrigger value="institutes" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              Institutes
-            </TabsTrigger>
-            <TabsTrigger value="departments" className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              Departments
-            </TabsTrigger>
-            <TabsTrigger value="trends" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Trends
-            </TabsTrigger>
-          </TabsList>
+    <Tabs defaultValue="college" className="w-full">
+      <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-50">
+        <TabsTrigger value="college" className="flex items-center gap-2">
+          <Building2 className="h-4 w-4" />
+          College
+        </TabsTrigger>
+        <TabsTrigger value="institute" className="flex items-center gap-2">
+          <Building className="h-4 w-4" />
+          Institute
+        </TabsTrigger>
+        <TabsTrigger value="department" className="flex items-center gap-2">
+          <Layers className="h-4 w-4" />
+          Department
+        </TabsTrigger>
+        <TabsTrigger value="trends" className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" />
+          Trends
+        </TabsTrigger>
+      </TabsList>
 
-          {/* Colleges */}
-          <TabsContent value="colleges" className="space-y-6">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <div className="h-80">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
-                  Publications by College
-                </h4>
-                <Bar data={collegeTotalsBar} options={barOptions} />
-              </div>
-              <div className="h-80">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
-                  Q-Rating Breakdown by College (Stacked)
-                </h4>
-                <Bar data={qByCollegeStacked} options={stackedBarOptions} />
-              </div>
-            </div>
-          </TabsContent>
+      {/* College Tab */}
+      <TabsContent value="college">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Publications by College */}
+          <AnalyticsChart
+            type="bar"
+            data={collegeData}
+            options={barOptions}
+            title=""
+            icon={Building2}
+            badgeText={collegeBarFilter === "all"
+              ? Object.values(collegeCounts).reduce((sum, v) => sum + v, 0)
+              : collegeCounts[collegeBarFilter] || 0}
+          >
+            <FilterButtonGroup
+              filters={collegeLabels}
+              setFilter={setCollegeBarFilter}
+              selected={collegeBarFilter}
+              type="Colleges"
+              showCount={true}
+              countMap={collegeCounts}
+              colorPalette={colorPalette}
+            />
+          </AnalyticsChart>
 
-          {/* Institutes */}
-          <TabsContent value="institutes" className="space-y-6">
-            <div className="h-96">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
-                {selectedCollege !== "all"
-                  ? `Institutes in ${selectedCollege}`
-                  : "Top Institutes (All Colleges)"}
-              </h4>
-              <Bar data={institutesBar} options={barOptions} />
-            </div>
-          </TabsContent>
+          {/* Q-Rating Breakdown by College */}
+          <AnalyticsChart
+            type="bar"
+            data={qByCollegeStacked}
+            options={stackedBarOptions}
+            title=""
+            icon={Building2}
+            badgeText={qRatingBarFilter === "all"
+              ? Object.values(qRatingCounts).reduce((sum, v) => sum + v, 0)
+              : qRatingCounts[qRatingBarFilter] || 0}
+          >
+            <FilterButtonGroup
+              filters={qKeys}
+              setFilter={setQRatingBarFilter}
+              selected={qRatingBarFilter}
+              type="Q Ratings"
+              showCount={false}
+              countMap={qRatingCounts}
+              colorPalette={qColors}
+            />
+          </AnalyticsChart>
+        </div>
+      </TabsContent>
 
-          {/* Departments */}
-          <TabsContent value="departments" className="space-y-6">
-            <div className="h-96">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
-                {selectedInstitute !== "all" && selectedCollege !== "all"
-                  ? `Departments in ${selectedInstitute}, ${selectedCollege}`
-                  : selectedCollege !== "all"
-                  ? `Departments in ${selectedCollege}`
-                  : "Top Departments (Current Selection)"}
-              </h4>
-              {/* Horizontal bar by flipping axes with indexAxis */}
-              <Bar
-                data={deptBar}
-                options={{
-                  ...barOptions,
-                  indexAxis: "y",
-                  scales: {
-                    x: { ...barOptions.scales.x, beginAtZero: true },
-                    y: { ...barOptions.scales.y },
-                  },
-                }}
-              />
-            </div>
-          </TabsContent>
+      {/* Institute */}
+      <TabsContent value="institute">
+        <AnalyticsChart
+          type="bar"
+          data={instituteData}
+          options={barOptions}
+          title=""
+          icon={Building}
+          badgeText={collegeFilter === "all"
+            ? Object.values(instituteCounts).reduce((sum, v) => sum + v, 0)
+            : null
+          }
+        >
+          <FilterButtonGroup
+            filters={collegeLabels}
+            setFilter={setCollegeFilter}
+            selected={collegeFilter}
+            type="Colleges"
+            showCount={true}
+            countMap={collegeCounts}
+            colorPalette={colorPalette}
+          />
+        </AnalyticsChart>
+      </TabsContent>
 
-          {/* Trends */}
-          <TabsContent value="trends" className="space-y-6">
-            <div className="h-96">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
-                Yearly Trend by College (Top 5)
-              </h4>
-              <Line data={multiLineYearly} options={baseOptions} />
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+      {/* Department */}
+      <TabsContent value="department">
+        <AnalyticsChart
+          type="bar"
+          data={departmentData}
+          options={horizBarOptions}
+          title=""
+          icon={Layers}
+          badgeText={collegeFilter === "all"
+            ? Object.values(departmentCounts).reduce((sum, v) => sum + v, 0)
+            : null
+          }
+        >
+          <FilterButtonGroup
+            filters={collegeLabels}
+            setFilter={setCollegeFilter}
+            selected={collegeFilter}
+            type="Colleges"
+            showCount={true}
+            countMap={collegeCounts}
+            colorPalette={colorPalette}
+          />
+        </AnalyticsChart>
+      </TabsContent>
+
+      {/* Trends */}
+      <TabsContent value="trends">
+        <AnalyticsChart
+          type="bar"
+          data={yearlyTrend}
+          options={barOptions}
+          title=""
+          icon={TrendingUp}
+          badgeText={collegeFilter === "all"
+            ? filteredPapers.length
+            : null
+          }
+        >
+          <FilterButtonGroup
+            filters={collegeLabels}
+            setFilter={setCollegeFilter}
+            selected={collegeFilter}
+            type="Colleges"
+            showCount={true}
+            countMap={collegeCounts}
+            colorPalette={colorPalette}
+          />
+        </AnalyticsChart>
+      </TabsContent>
+    </Tabs>
   );
 }
