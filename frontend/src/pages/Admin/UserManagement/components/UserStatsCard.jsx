@@ -1,47 +1,38 @@
 import { useState, useMemo, useCallback } from 'react';
 import { 
   Users, 
-  UserCog, 
-  Shield, 
-  GraduationCap,
-  Building,
   Building2,
   Layers,
   BarChart3,
-  PieChart as PieChartIcon,
-  Eye,
-  MapPin,
-  Target,
   Award,
-  School,
-  TreePine,
-  Network,
-  ChevronRight,
-  ChevronDown,
-  Filter,
-  X,
-  RefreshCw,
-  Download,
-  Calendar,
-  Clock,
-  User,
-  UserCheck,
-  AlertCircle,
-  Info
+  Eye,
+  Target,
+  PieChart as PieChartIcon,
+  Network
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+
+import FilterControls from './UserStats/FilterControls';
+import UserStatisticsCard from './UserStats/UserStatisticsCard';
+import SuperAdminNotice from './UserStats/SuperAdminNotice';
+import AnalyticsChart from './UserStats/charts/AnalyticsChart';
+import CollegeSummaryGrid from './UserStats/charts/CollegeSummaryGrid';
+import CollegeHierarchyTree from './UserStats/tree/CollegeHierarchicalTree';
+import SummaryCard from './UserStats/SummaryCard';
+import StatSkeleton from './UserStats/StatSkeleton';
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  collegeOptions as COLLEGE_OPTIONS,
+  collegesWithoutInstitutes,
+  getDepartments,
+  getInstitutesForCollege,
+  getAllInstituteNames,
+  getAllDepartmentNames,
+  ALL_COLLEGE_NAMES
+} from '@/utils/collegeData';
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -56,9 +47,7 @@ import {
   LineElement,
   Filler,
 } from 'chart.js';
-import { Bar, Pie, Radar, Doughnut, Line } from 'react-chartjs-2';
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -73,41 +62,37 @@ ChartJS.register(
   Filler
 );
 
-// Enhanced role configuration
 const roleConfig = {
-  super_admin: { 
-    bg: 'bg-gradient-to-br from-purple-50 to-purple-100', 
-    text: 'text-purple-800', 
+  super_admin: {
+    bg: 'bg-gradient-to-br from-purple-50 to-purple-100',
+    text: 'text-purple-800',
     border: 'border-purple-200',
-    icon: Shield,
+    icon: Users,
     label: 'Super Admin',
-    color: '#8b5cf6'
+    color: '#8b5cf6',
   },
-  campus_admin: { 
-    bg: 'bg-gradient-to-br from-blue-50 to-blue-100', 
-    text: 'text-blue-800', 
+  campus_admin: {
+    bg: 'bg-gradient-to-br from-blue-50 to-blue-100',
+    text: 'text-blue-800',
     border: 'border-blue-200',
-    icon: Building,
+    icon: Building2,
     label: 'Campus Admin',
-    color: '#3b82f6'
+    color: '#3b82f6',
   },
-  faculty: { 
-    bg: 'bg-gradient-to-br from-emerald-50 to-emerald-100', 
-    text: 'text-emerald-800', 
+  faculty: {
+    bg: 'bg-gradient-to-br from-emerald-50 to-emerald-100',
+    text: 'text-emerald-800',
     border: 'border-emerald-200',
-    icon: GraduationCap,
+    icon: Layers,
     label: 'Faculty',
-    color: '#10b981'
-  }
+    color: '#10b981',
+  },
 };
 
-// Chart colors - MODIFIED to exclude super_admin
 const chartColors = {
   campus_admin: '#3b82f6',
-  faculty: '#10b981'
+  faculty: '#10b981',
 };
-
-// Extended color palette for charts
 const extendedColors = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
   '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1',
@@ -115,406 +100,14 @@ const extendedColors = [
   '#84cc16', '#f97316', '#ec4899', '#6366f1', '#14b8a6'
 ];
 
-// Colleges that don't have institutes
-const NON_INSTITUTE_COLLEGES = [
-  'EASWARI ENGINEERING COLLEGE',
-  'TRP ENGINEERING COLLEGE'
-];
+const NON_INSTITUTE_COLLEGES = collegesWithoutInstitutes;
 
-// Enhanced filter component - MODIFIED with better color scheme
-const FilterControls = ({ filters, onFilterChange, onReset, stats, showInstituteFilter = true }) => {
-  return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200/50 shadow-sm mb-6">
-      <div className="space-y-4">
-        {/* Filter Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <Filter className="w-5 h-5 text-blue-600" />
-            <span className="font-medium text-gray-800">Advanced Filters</span>
-            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-              {stats.filtered} / {stats.total} users
-            </Badge>
-          </div>
-          
-          <Button
-            variant="outline"
-            onClick={onReset}
-            size="sm"
-            className="w-full sm:w-auto border-blue-200 text-blue-700 hover:bg-blue-50"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Reset All
-          </Button>
-        </div>
-        
-        {/* Filter Controls Grid */}
-        <div className={`grid grid-cols-1 sm:grid-cols-3 ${showInstituteFilter ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
-          {/* Role Filter */}
-          <div className="w-full">
-            <Select value={filters.role} onValueChange={(value) => onFilterChange('role', value)}>
-              <SelectTrigger className="w-full bg-white/90 border-gray-200">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="campus_admin">Campus Admin</SelectItem>
-                <SelectItem value="faculty">Faculty</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* College Filter */}
-          <div className="w-full">
-            <Select value={filters.college} onValueChange={(value) => onFilterChange('college', value)}>
-              <SelectTrigger className="w-full bg-white/90 border-gray-200">
-                <SelectValue placeholder="All Colleges" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Colleges</SelectItem>
-                <SelectItem value="SRMIST RAMAPURAM">SRMIST RAMAPURAM</SelectItem>
-                <SelectItem value="SRM TRICHY">SRM TRICHY</SelectItem>
-                <SelectItem value="EASWARI ENGINEERING COLLEGE">EASWARI ENGINEERING COLLEGE</SelectItem>
-                <SelectItem value="TRP ENGINEERING COLLEGE">TRP ENGINEERING COLLEGE</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Institute Filter - CONDITIONALLY RENDERED */}
-          {showInstituteFilter && (
-            <div className="w-full">
-              <Select value={filters.institute} onValueChange={(value) => onFilterChange('institute', value)}>
-                <SelectTrigger className="w-full bg-white/90 border-gray-200">
-                  <SelectValue placeholder="All Institutes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Institutes</SelectItem>
-                  <SelectItem value="Science and Humanities">Science and Humanities</SelectItem>
-                  <SelectItem value="Engineering and Technology">Engineering and Technology</SelectItem>
-                  <SelectItem value="Management">Management</SelectItem>
-                  <SelectItem value="Dental">Dental</SelectItem>
-                  <SelectItem value="SRM RESEARCH">SRM RESEARCH</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Department Filter */}
-          <div className="w-full">
-            <Select value={filters.department} onValueChange={(value) => onFilterChange('department', value)}>
-              <SelectTrigger className="w-full bg-white/90 border-gray-200">
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="Computer Science">Computer Science</SelectItem>
-                <SelectItem value="Information Technology">Information Technology</SelectItem>
-                <SelectItem value="Electronics">Electronics</SelectItem>
-                <SelectItem value="Mechanical">Mechanical</SelectItem>
-                <SelectItem value="Civil">Civil</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Loading skeleton component - MODIFIED with white and light blue colors
-const StatSkeleton = () => (
-  <div className="animate-pulse">
-    {/* Header skeleton with light blue background */}
-    <div className="bg-gradient-to-r from-white to-blue-50 border-b border-blue-100 p-6 space-y-6">
-      <div className="flex items-center space-x-4">
-        <div className="w-12 h-12 bg-blue-200/50 rounded-xl"></div>
-        <div className="flex-1 space-y-2">
-          <div className="h-6 bg-blue-200/50 rounded w-3/4"></div>
-          <div className="h-4 bg-blue-200/50 rounded w-1/2"></div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-32 bg-blue-100/40 rounded-2xl"></div>
-        ))}
-      </div>
-    </div>
-    {/* Content skeleton */}
-    <div className="p-6 space-y-4 bg-white/95">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {[1, 2].map((i) => (
-          <div key={i} className="h-96 bg-gray-100/70 rounded-2xl"></div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-// Enhanced metric card
-const MetricCard = ({ icon: Icon, title, value, subtitle, color }) => (
-  <div className={`relative overflow-hidden rounded-2xl border-2 p-4 transition-all duration-300 hover:shadow-md hover:scale-105 bg-white/90 ${color.border}`}>
-    <div className="flex items-start justify-between">
-      <div className="space-y-2">
-        <div className="flex items-center space-x-2">
-          <Icon className={`w-5 h-5 ${color.text}`} />
-          <span className="text-sm font-medium text-gray-700">{title}</span>
-        </div>
-        <div className="space-y-1">
-          <div className="text-2xl font-bold text-gray-900">{value}</div>
-          {subtitle && (
-            <div className="text-xs text-gray-600">{subtitle}</div>
-          )}
-        </div>
-      </div>
-    </div>
-    <div className="absolute -bottom-2 -right-2 w-16 h-16 opacity-10">
-      <Icon className="w-full h-full" />
-    </div>
-  </div>
-);
-
-// User Statistics Card Component - MODIFIED with white background
-const UserStatisticsCard = ({ roleStats }) => (
-  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-    <div className="mb-6">
-      <h5 className="font-semibold text-gray-800 mb-2 flex items-center">
-        <UserCheck className="w-5 h-5 mr-2 text-blue-600" />
-        User Statistics Overview
-      </h5>
-      <p className="text-sm text-gray-600">
-        Comprehensive breakdown of all user roles across the platform
-      </p>
-    </div>
-    
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-      {Object.entries(roleStats).map(([role, count]) => {
-        const config = roleConfig[role];
-        if (!config) return null;
-        
-        return (
-          <div 
-            key={role} 
-            className={`relative p-6 rounded-xl border-2 transition-all duration-300 hover:shadow-md hover:scale-105 bg-white/90 ${config.border} overflow-hidden`}
-          >
-            <div className="flex flex-col items-center text-center space-y-3 relative z-10">
-              <div className={`p-3 rounded-full ${config.bg} ${config.border} border-2`}>
-                <config.icon className={`w-6 h-6 ${config.text}`} />
-              </div>
-              
-              <div className="space-y-1">
-                <h6 className="text-sm font-medium text-gray-700">{config.label}</h6>
-                <div className="text-3xl font-bold text-gray-900">{count}</div>
-                <div className="text-xs text-gray-600">
-                  {roleStats.total > 0 ? ((count / roleStats.total) * 100).toFixed(1) : 0}% of total
-                </div>
-              </div>
-            </div>
-            
-            {/* Background decoration */}
-            <div className="absolute -bottom-2 -right-3 w-17 h-17 opacity-10">
-              <config.icon className="w-full h-full" />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-    
-    {/* Summary section */}
-    <div className="mt-6 pt-4 border-t border-gray-200">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-gray-600">Total Active Users:</span>
-        <span className="font-semibold text-gray-900">{roleStats.total}</span>
-      </div>
-    </div>
-  </div>
-);
-
-// NEW: Super Admin Notice Component
-const SuperAdminNotice = ({ superAdminCount }) => (
-  <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-2xl p-8 text-center">
-    <div className="flex flex-col items-center space-y-4">
-      <div className="p-4 bg-purple-200/50 rounded-full">
-        <Shield className="w-8 h-8 text-purple-600" />
-      </div>
-      
-      <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-purple-800">
-          Super Admin View
-        </h3>
-        <p className="text-purple-700 max-w-md">
-          Super Administrators are not associated with specific colleges, institutes, or departments. 
-          They have system-wide access and privileges.
-        </p>
-      </div>
-      
-      <div className="flex items-center space-x-2 mt-4">
-        <Info className="w-5 h-5 text-purple-600" />
-        <span className="text-sm text-purple-700">
-          Currently showing <strong>{superAdminCount}</strong> Super Admin{superAdminCount !== 1 ? 's' : ''}
-        </span>
-      </div>
-    </div>
-  </div>
-);
-
-// Enhanced and optimized chart with counts
-const InteractiveChartWithCounts = ({ 
-  chartComponent, 
-  data, 
-  title, 
-  type, 
-  onChartClick,
-  selectedSegment,
-  showCounts = false
-}) => {
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-
-  return (
-    <div className="space-y-6">
-      <div className="h-80 relative">
-        {chartComponent}
-        {hoveredIndex !== null && (
-          <div className="absolute top-2 right-2 bg-black/80 text-white px-2 py-1 rounded text-xs z-10">
-            {data[hoveredIndex]?.label}: {data[hoveredIndex]?.value}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Hierarchical tree component - MODIFIED with better colors
-const HierarchicalTree = ({ data, title, type }) => {
-  const [expandedItems, setExpandedItems] = useState(new Set());
-
-  const toggleExpansion = useCallback((key) => {
-    setExpandedItems(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(key)) {
-        newExpanded.delete(key);
-      } else {
-        newExpanded.add(key);
-      }
-      return newExpanded;
-    });
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <h5 className="font-semibold text-gray-800 flex items-center">
-        <TreePine className="w-4 h-4 mr-2 text-green-600" />
-        {title}
-      </h5>
-      <div className="space-y-2 max-h-96 overflow-y-auto">
-        {Object.entries(data).map(([college, institutes]) => (
-          <Collapsible key={college}>
-            <CollapsibleTrigger 
-              className="flex items-center justify-between w-full p-3 bg-white/90 border border-blue-100 rounded-lg hover:bg-blue-50/50 transition-colors"
-              onClick={() => toggleExpansion(college)}
-            >
-              <div className="flex items-center space-x-3">
-                <Building2 className="w-4 h-4 text-blue-600" />
-                <span className="font-medium text-gray-800">{college}</span>
-                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                  {Object.keys(institutes).length} {type}s
-                </Badge>
-              </div>
-              {expandedItems.has(college) ? 
-                <ChevronDown className="w-4 h-4 text-gray-500" /> : 
-                <ChevronRight className="w-4 h-4 text-gray-500" />
-              }
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 ml-6 space-y-2">
-              {Object.entries(institutes).map(([item, roles]) => (
-                <div key={item} className="p-3 bg-white/95 rounded-lg border border-gray-100 border-l-4 border-l-green-400">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Layers className="w-3 h-3 text-green-600" />
-                      <span className="font-medium text-sm text-gray-800">{item}</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                      {Object.values(roles).filter((count, index) => 
-                        Object.keys(roles)[index] !== 'super_admin'
-                      ).reduce((sum, count) => sum + count, 0)} users
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(roles).map(([role, count]) => {
-                      if (count === 0 || role === 'super_admin') return null;
-                      const config = roleConfig[role];
-                      return (
-                        <div key={role} className="flex items-center justify-between p-2 bg-white/90 rounded border border-gray-100">
-                          <div className="flex items-center space-x-1">
-                            {config && <config.icon className={`w-3 h-3 ${config.text}`} />}
-                            <span className="text-xs">{config?.label}</span>
-                          </div>
-                          <span className="text-xs font-mono">{count}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Summary card component - MODIFIED with better colors
-const SummaryCard = ({ location, roles, onClick, isSelected }) => {
-  const roleEntries = Object.entries(roles).filter(([role, count]) => 
-    count > 0 && role !== 'super_admin'
-  );
-  const totalUsers = Object.entries(roles)
-    .filter(([role]) => role !== 'super_admin')
-    .reduce((sum, [, count]) => sum + count, 0);
-  
-  return (
-    <div 
-      className={`p-4 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md ${
-        isSelected ? 'bg-blue-50 border-2 border-blue-300 shadow-sm' : 'bg-white/90 border border-gray-200'
-      }`}
-      onClick={() => onClick && onClick(location)}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <h6 className="font-medium text-gray-800 truncate" title={location}>
-          {location}
-        </h6>
-        <Badge variant={isSelected ? "default" : "outline"} className={`text-xs ${
-          isSelected ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-700 border-gray-200'
-        }`}>
-          {totalUsers}
-        </Badge>
-      </div>
-      <div className="space-y-2">
-        {roleEntries.map(([role, count]) => {
-          const config = roleConfig[role];
-          if (!config) return null;
-          
-          return (
-            <div key={role} className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <config.icon className={`w-3 h-3 ${config.text}`} />
-                <span className="text-sm">{config.label}</span>
-              </div>
-              <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200">{count}</Badge>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-// Main component - MODIFIED with super admin handling
-export default function UserStatsCard({ 
-  users = [], 
+export default function UserStatsCard({
+  users = [],
   roleOptions = [],
   loading = false,
-  className = ""
+  className = "",
+  currentUser
 }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [filters, setFilters] = useState({
@@ -527,44 +120,64 @@ export default function UserStatsCard({
   const [selectedSegment, setSelectedSegment] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
 
-  // Check if super admin is selected - NEW
-  const isSuperAdminSelected = filters.role === 'super_admin';
+  const currentUserRole = currentUser?.role || 'super_admin';
+  const isCampusAdmin = currentUserRole === 'campus_admin';
 
-  // Check if selected college has institutes
+  // For campus admin: only show department analytics for their scope.
+  let campusAdminDepartments = [];
+  if (isCampusAdmin) {
+    if (
+      currentUser.college &&
+      currentUser.institute &&
+      getDepartments(currentUser.college, currentUser.institute).length > 0
+    ) {
+      campusAdminDepartments = getDepartments(currentUser.college, currentUser.institute);
+    } else if (currentUser.college) {
+      campusAdminDepartments = getDepartments(currentUser.college);
+    }
+  }
+
+  // TABS
+  const chartTabs = isCampusAdmin
+    ? [
+        { value: 'overview', label: 'Overview', icon: Eye },
+        { value: 'departments', label: 'Departments', icon: Award }
+      ]
+    : [
+        { value: 'overview', label: 'Overview', icon: Eye },
+        { value: 'colleges', label: 'Colleges', icon: Building2 },
+        { value: 'institutes', label: 'Institutes', icon: Layers },
+        { value: 'departments', label: 'Departments', icon: Award }
+      ];
+
   const selectedCollegeHasInstitutes = useMemo(() => {
     if (filters.college === 'all') return true;
     return !NON_INSTITUTE_COLLEGES.includes(filters.college);
   }, [filters.college]);
 
-  // Filter users based on current filters
+  // Filtered users
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
       const matchesRole = filters.role === 'all' || user.role === filters.role;
       const matchesCollege = filters.college === 'all' || user.college === filters.college;
       const matchesInstitute = filters.institute === 'all' || user.institute === filters.institute;
       const matchesDepartment = filters.department === 'all' || user.department === filters.department;
-      
       return matchesRole && matchesCollege && matchesInstitute && matchesDepartment;
     });
   }, [users, filters]);
 
-  // Handle filter changes
   const handleFilterChange = useCallback((key, value) => {
     setFilters(prev => {
       const newFilters = { ...prev, [key]: value };
-      
-      // If college is changed to non-institute college, reset institute filter
       if (key === 'college' && NON_INSTITUTE_COLLEGES.includes(value)) {
         newFilters.institute = 'all';
       }
-      
       return newFilters;
     });
     setSelectedSegment(null);
     setSelectedLocation(null);
   }, []);
 
-  // Reset filters
   const resetFilters = useCallback(() => {
     setFilters({
       search: '',
@@ -577,28 +190,26 @@ export default function UserStatsCard({
     setSelectedLocation(null);
   }, []);
 
-  // Handle chart segment clicks
   const handleChartClick = useCallback((item, type) => {
     setSelectedSegment(selectedSegment === item.label ? null : item.label);
-    
-    // Apply filter based on chart click
-    if (type === 'colleges') {
-      handleFilterChange('college', item.label);
-    } else if (type === 'institutes') {
-      handleFilterChange('institute', item.label);
-    }
+    if (type === 'colleges') handleFilterChange('college', item.label);
+    else if (type === 'institutes') handleFilterChange('institute', item.label);
   }, [selectedSegment, handleFilterChange]);
 
-  // Handle location clicks
   const handleLocationClick = useCallback((location) => {
     setSelectedLocation(selectedLocation === location ? null : location);
   }, [selectedLocation]);
 
-  // Comprehensive statistics calculation
+  // Canonical names for axes
+  const allDepartments = isCampusAdmin
+    ? campusAdminDepartments
+    : getAllDepartmentNames();
+  const allInstitutes = getAllInstituteNames();
+  const allColleges = ALL_COLLEGE_NAMES;
+
+  // Stats calculation with scoping for campus_admin
   const statistics = useMemo(() => {
     const totalUsers = filteredUsers.length;
-    
-    // Role distribution
     const roleStats = {
       super_admin: filteredUsers.filter(u => u.role === 'super_admin').length,
       campus_admin: filteredUsers.filter(u => u.role === 'campus_admin').length,
@@ -606,113 +217,93 @@ export default function UserStatsCard({
       total: totalUsers
     };
 
-    // College distribution - EXCLUDE SUPER_ADMIN
-    const collegeStats = filteredUsers
-      .filter(user => user.role !== 'super_admin')
-      .reduce((acc, user) => {
-        if (user.college && user.college !== 'N/A') {
-          acc[user.college] = (acc[user.college] || 0) + 1;
-        }
-        return acc;
-      }, {});
-
-    const collegeDistribution = Object.entries(collegeStats)
-      .map(([college, count]) => ({ label: college, value: count }))
-      .sort((a, b) => b.value - a.value);
-
-    // Institute distribution - EXCLUDE SUPER_ADMIN
-    const instituteStats = filteredUsers
-      .filter(user => user.role !== 'super_admin')
-      .reduce((acc, user) => {
-        if (user.institute && user.institute !== 'N/A' && user.college && !NON_INSTITUTE_COLLEGES.includes(user.college)) {
-          acc[user.institute] = (acc[user.institute] || 0) + 1;
-        }
-        return acc;
-      }, {});
-
-    const instituteDistribution = Object.entries(instituteStats)
-      .map(([institute, count]) => ({ label: institute, value: count }))
-      .sort((a, b) => b.value - a.value);
-
-    // Department distribution - EXCLUDE SUPER_ADMIN
-    const departmentStats = filteredUsers
-      .filter(user => user.role !== 'super_admin')
-      .reduce((acc, user) => {
-        if (user.department && user.department !== 'N/A' && user.department.trim() !== '') {
-          const dept = user.department.trim();
-          acc[dept] = (acc[dept] || 0) + 1;
-        }
-        return acc;
-      }, {});
-
-    const departmentDistribution = Object.entries(departmentStats)
-      .map(([department, count]) => ({ label: department, value: count }))
-      .sort((a, b) => b.value - a.value);
-
-    // Cross-analysis: Roles by College - EXCLUDE SUPER_ADMIN FROM CHARTS
-    const rolesByCollege = {};
+    // Department
+    const departmentStats = {};
+    allDepartments.forEach(dept => { departmentStats[dept] = 0; });
     filteredUsers
       .filter(user => user.role !== 'super_admin')
       .forEach(user => {
-        if (user.college && user.college !== 'N/A' && user.role) {
-          if (!rolesByCollege[user.college]) {
-            rolesByCollege[user.college] = { campus_admin: 0, faculty: 0 };
-          }
-          rolesByCollege[user.college][user.role] = (rolesByCollege[user.college][user.role] || 0) + 1;
+        if (user.department && departmentStats.hasOwnProperty(user.department)) {
+          departmentStats[user.department]++;
         }
       });
+    const departmentDistribution = allDepartments.map(dept => ({
+      label: dept,
+      value: departmentStats[dept] || 0
+    }));
 
-    // Enhanced Institute Analysis - EXCLUDE SUPER_ADMIN
-    const institutesByCollege = {};
-    const rolesByInstitute = {};
-    filteredUsers
-      .filter(user => user.role !== 'super_admin')
-      .forEach(user => {
-        if (user.college && user.institute && user.college !== 'N/A' && user.institute !== 'N/A' && user.role && !NON_INSTITUTE_COLLEGES.includes(user.college)) {
-          // College -> Institute hierarchy
-          if (!institutesByCollege[user.college]) {
-            institutesByCollege[user.college] = {};
-          }
-          if (!institutesByCollege[user.college][user.institute]) {
-            institutesByCollege[user.college][user.institute] = { campus_admin: 0, faculty: 0 };
-          }
-          institutesByCollege[user.college][user.institute][user.role] = 
-            (institutesByCollege[user.college][user.institute][user.role] || 0) + 1;
-
-          // Overall institute roles
-          if (!rolesByInstitute[user.institute]) {
-            rolesByInstitute[user.institute] = { campus_admin: 0, faculty: 0 };
-          }
-          rolesByInstitute[user.institute][user.role] = (rolesByInstitute[user.institute][user.role] || 0) + 1;
-        }
-      });
-
-    // Enhanced Department Analysis - EXCLUDE SUPER_ADMIN
-    const departmentsByCollege = {};
     const rolesByDepartment = {};
+    allDepartments.forEach(dept => {
+      rolesByDepartment[dept] = { campus_admin: 0, faculty: 0 };
+    });
     filteredUsers
       .filter(user => user.role !== 'super_admin')
       .forEach(user => {
-        if (user.college && user.department && user.college !== 'N/A' && user.department !== 'N/A' && user.department.trim() !== '' && user.role) {
-          const dept = user.department.trim();
-          
-          // College -> Department hierarchy
-          if (!departmentsByCollege[user.college]) {
-            departmentsByCollege[user.college] = {};
-          }
-          if (!departmentsByCollege[user.college][dept]) {
-            departmentsByCollege[user.college][dept] = { campus_admin: 0, faculty: 0 };
-          }
-          departmentsByCollege[user.college][dept][user.role] = 
-            (departmentsByCollege[user.college][dept][user.role] || 0) + 1;
-
-          // Overall department roles
-          if (!rolesByDepartment[dept]) {
-            rolesByDepartment[dept] = { campus_admin: 0, faculty: 0 };
-          }
-          rolesByDepartment[dept][user.role] = (rolesByDepartment[dept][user.role] || 0) + 1;
+        if (user.department && rolesByDepartment.hasOwnProperty(user.department) && user.role) {
+          rolesByDepartment[user.department][user.role] = (rolesByDepartment[user.department][user.role] || 0) + 1;
         }
       });
+
+    // College/Institute only for non-campus-admin
+    let collegeDistribution = [];
+    let rolesByCollege = {};
+    let instituteDistribution = [];
+    let rolesByInstitute = {};
+    if (!isCampusAdmin) {
+      // Colleges
+      const collegeStats = {};
+      allColleges.forEach(c => { collegeStats[c] = 0; });
+      filteredUsers
+        .filter(user => user.role !== 'super_admin')
+        .forEach(user => {
+          if (user.college && collegeStats.hasOwnProperty(user.college)) {
+            collegeStats[user.college]++;
+          }
+        });
+      collegeDistribution = allColleges.map(college => ({
+        label: college,
+        value: collegeStats[college] || 0
+      }));
+
+      rolesByCollege = {};
+      allColleges.forEach(college => {
+        rolesByCollege[college] = { campus_admin: 0, faculty: 0 };
+      });
+      filteredUsers
+        .filter(user => user.role !== 'super_admin')
+        .forEach(user => {
+          if (user.college && rolesByCollege.hasOwnProperty(user.college) && user.role) {
+            rolesByCollege[user.college][user.role] = (rolesByCollege[user.college][user.role] || 0) + 1;
+          }
+        });
+
+      // Institutes
+      const instituteStats = {};
+      allInstitutes.forEach(i => { instituteStats[i] = 0; });
+      filteredUsers
+        .filter(user => user.role !== 'super_admin')
+        .forEach(user => {
+          if (user.institute && instituteStats.hasOwnProperty(user.institute)) {
+            instituteStats[user.institute]++;
+          }
+        });
+      instituteDistribution = allInstitutes.map(inst => ({
+        label: inst,
+        value: instituteStats[inst] || 0
+      }));
+
+      rolesByInstitute = {};
+      allInstitutes.forEach(inst => {
+        rolesByInstitute[inst] = { campus_admin: 0, faculty: 0 };
+      });
+      filteredUsers
+        .filter(user => user.role !== 'super_admin')
+        .forEach(user => {
+          if (user.institute && rolesByInstitute.hasOwnProperty(user.institute) && user.role) {
+            rolesByInstitute[user.institute][user.role] = (rolesByInstitute[user.institute][user.role] || 0) + 1;
+          }
+        });
+    }
 
     return {
       totalUsers,
@@ -723,21 +314,13 @@ export default function UserStatsCard({
       rolesByCollege,
       rolesByInstitute,
       rolesByDepartment,
-      institutesByCollege,
-      departmentsByCollege
     };
-  }, [filteredUsers]);
+  }, [filteredUsers, isCampusAdmin, allDepartments, allColleges, allInstitutes]);
 
-  // Chart configurations
+  // Chart configs
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    onClick: (event, elements) => {
-      if (elements.length > 0) {
-        const element = elements[0];
-        // Handle chart click interactions
-      }
-    },
     plugins: {
       legend: {
         position: 'top',
@@ -789,7 +372,7 @@ export default function UserStatsCard({
           font: {
             size: 11
           },
-          generateLabels: function(chart) {
+          generateLabels: function (chart) {
             const data = chart.data;
             if (data.labels.length && data.datasets.length) {
               return data.labels.map((label, i) => {
@@ -816,16 +399,30 @@ export default function UserStatsCard({
     }
   };
 
-  // Create chart data
-  const createRolesByLocationChart = (data) => {
-    const locations = Object.keys(data);
+  // Chart Data Creators
+  const createRolesByDepartmentChart = (data) => {
+    const departments = allDepartments;
     const roles = ['campus_admin', 'faculty'];
-    
+    return {
+      labels: departments,
+      datasets: roles.map(role => ({
+        label: roleConfig[role]?.label || role,
+        data: departments.map(department => data[department][role] || 0),
+        backgroundColor: chartColors[role],
+        borderColor: chartColors[role],
+        borderWidth: 1
+      }))
+    };
+  };
+
+  const createRolesByLocationChart = (data, allLocations) => {
+    const locations = allLocations;
+    const roles = ['campus_admin', 'faculty'];
     return {
       labels: locations,
       datasets: roles.map(role => ({
         label: roleConfig[role]?.label || role,
-        data: locations.map(location => data[location][role] || 0),
+        data: locations.map(location => data[location]?.[role] || 0),
         backgroundColor: chartColors[role],
         borderColor: chartColors[role],
         borderWidth: 1
@@ -853,13 +450,24 @@ export default function UserStatsCard({
     );
   }
 
+  const collegeSummaries = statistics.rolesByCollege
+    ? allColleges.map(college => (
+        <SummaryCard
+          key={college}
+          location={college}
+          roles={statistics.rolesByCollege[college] || { campus_admin: 0, faculty: 0 }}
+          onClick={handleLocationClick}
+          isSelected={selectedLocation === college}
+        />
+      ))
+    : [];
+
   return (
     <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
       <Card className="border border-gray-200 bg-white shadow-xs overflow-hidden">
-        {/* Enhanced Header - MODIFIED with white and light blue theme */}
+        {/* Header */}
         <CardHeader className="pb-4 pt-5 bg-gradient-to-r from-white to-blue-50/80 border-b border-blue-100">
           <div className="flex flex-col space-y-6">
-            {/* Top Row - Title */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className="relative">
@@ -876,309 +484,163 @@ export default function UserStatsCard({
                   </CardDescription>
                 </div>
               </div>
-
               <div className="flex flex-col items-end">
                 <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 text-base font-semibold shadow-sm">
                   {statistics.totalUsers} Total Users
                 </Badge>
               </div>
             </div>
-
-            {/* Enhanced Filter Controls */}
-            <FilterControls 
+            <FilterControls
               filters={filters}
               onFilterChange={handleFilterChange}
               onReset={resetFilters}
               stats={{ filtered: statistics.totalUsers, total: users.length }}
-              showInstituteFilter={selectedCollegeHasInstitutes}
+              showInstituteFilter={!isCampusAdmin && selectedCollegeHasInstitutes}
+              currentUser={currentUser}
             />
-
-            {/* Quick Metrics - MODIFIED to hide for super admin */}
-            {!isSuperAdminSelected && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricCard
-                  icon={Building2}
-                  title="Colleges"
-                  value={statistics.collegeDistribution.length}
-                  subtitle="Active institutions"
-                  color={roleConfig.campus_admin}
-                />
-                <MetricCard
-                  icon={Layers}
-                  title="Institutes"
-                  value={statistics.instituteDistribution.length}
-                  subtitle="Academic institutes"
-                  color={roleConfig.faculty}
-                />
-                <MetricCard
-                  icon={Award}
-                  title="Departments"
-                  value={statistics.departmentDistribution.length}
-                  subtitle="Academic units"
-                  color={roleConfig.super_admin}
-                />
-                <MetricCard
-                  icon={Users}
-                  title="Total Users"
-                  value={statistics.totalUsers}
-                  subtitle="All system users"
-                  color={{ bg: 'bg-gradient-to-br from-gray-50 to-gray-100', text: 'text-gray-800', border: 'border-gray-200' }}
-                />
-              </div>
-            )}
-
-            {/* User Statistics Section */}
-            <UserStatisticsCard roleStats={statistics.roleStats} />
+            <UserStatisticsCard 
+              roleStats={statistics.roleStats} 
+              currentRole={currentUserRole}
+            />
           </div>
         </CardHeader>
-        
         <CardContent className="p-6 bg-white">
-          {/* CONDITIONAL RENDERING - Show Super Admin Notice or Regular Content */}
-          {isSuperAdminSelected ? (
-            <SuperAdminNotice superAdminCount={statistics.roleStats.super_admin} />
-          ) : (
-            /* Enhanced Tabs - ONLY SHOWN WHEN NOT SUPER ADMIN */
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${selectedCollegeHasInstitutes ? 'grid-cols-4' : 'grid-cols-3'} mb-6 bg-gray-50 p-1 rounded-xl`}>
-                <TabsTrigger value="overview" className="flex items-center space-x-2 rounded-lg">
-                  <Eye className="w-4 h-4" />
-                  <span className="hidden sm:inline">Overview</span>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className={`grid w-full grid-cols-${chartTabs.length} mb-6 bg-gray-50 p-1 rounded-xl`}>
+              {chartTabs.map(tab => (
+                <TabsTrigger key={tab.value} value={tab.value} className="flex items-center space-x-2 rounded-lg">
+                  <tab.icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
                 </TabsTrigger>
-                <TabsTrigger value="colleges" className="flex items-center space-x-2 rounded-lg">
-                  <Building2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Colleges</span>
-                </TabsTrigger>
-                {selectedCollegeHasInstitutes && (
-                  <TabsTrigger value="institutes" className="flex items-center space-x-2 rounded-lg">
-                    <Layers className="w-4 h-4" />
-                    <span className="hidden sm:inline">Institutes</span>
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value="departments" className="flex items-center space-x-2 rounded-lg">
-                  <Award className="w-4 h-4" />
-                  <span className="hidden sm:inline">Departments</span>
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Interactive College Distribution */}
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-                      <Building2 className="w-4 h-4 mr-2 text-gray-600" />
-                      College Distribution
-                      <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        Excludes Super Admin
-                      </Badge>
-                    </h5>
-                    <InteractiveChartWithCounts
-                      chartComponent={
-                        <Doughnut 
-                          data={createPieData(statistics.collegeDistribution)}
-                          options={{
-                            ...pieOptions,
-                            onClick: (event, elements, chart) => {
-                              if (elements.length > 0) {
-                                const elementIndex = elements[0].index;
-                                const label = chart.data.labels[elementIndex];
-                                const value = chart.data.datasets[0].data[elementIndex];
-                                handleChartClick({ label, value }, 'colleges');
-                              }
-                            }
-                          }}
-                        />
-                      }
-                      data={statistics.collegeDistribution}
-                      title="College Distribution"
-                      type="colleges"
-                      onChartClick={handleChartClick}
-                      selectedSegment={selectedSegment}
-                      showCounts={false}
-                    />
-                  </div>
-
-                  {/* Interactive Department Distribution */}
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-                      <Award className="w-4 h-4 mr-2 text-gray-600" />
-                      Department Distribution
-                      <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        Excludes Super Admin
-                      </Badge>
-                    </h5>
-                    <InteractiveChartWithCounts
-                      chartComponent={
-                        <Pie 
-                          data={createPieData(statistics.departmentDistribution)}
-                          options={pieOptions}
-                        />
-                      }
-                      data={statistics.departmentDistribution}
+              ))}
+            </TabsList>
+            <TabsContent value="overview" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {isCampusAdmin ? (
+                  <>
+                    <AnalyticsChart
+                      type="pie"
+                      data={createPieData(statistics.departmentDistribution)}
+                      options={pieOptions}
                       title="Department Distribution"
-                      type="departments"
-                      onChartClick={handleChartClick}
-                      selectedSegment={selectedSegment}
-                      showCounts={false}
+                      icon={Award}
+                      iconColor="text-gray-600"
+                      badgeText="Your Departments"
                     />
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Enhanced Colleges Tab */}
+                    <AnalyticsChart
+                      type="bar"
+                      data={createRolesByDepartmentChart(statistics.rolesByDepartment)}
+                      options={{
+                        ...chartOptions,
+                        indexAxis: 'y',
+                      }}
+                      title="Role Distribution by Department"
+                      icon={BarChart3}
+                      iconColor="text-blue-600"
+                      badgeText="Your Departments"
+                      badgeColor="bg-purple-50 text-purple-700 border-purple-200"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <AnalyticsChart
+                      type="pie"
+                      data={createPieData(statistics.collegeDistribution)}
+                      options={pieOptions}
+                      title="College Distribution"
+                      icon={BarChart3}
+                      iconColor="text-blue-600"
+                      badgeText=""
+                    />
+                    <AnalyticsChart
+                      type="pie"
+                      data={createPieData(statistics.departmentDistribution)}
+                      options={pieOptions}
+                      title="Department Distribution"
+                      icon={Award}
+                      iconColor="text-gray-600"
+                      badgeText=""
+                    />
+                  </>
+                )}
+              </div>
+            </TabsContent>
+            {!isCampusAdmin && (
               <TabsContent value="colleges" className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
-                  {/* Interactive Bar Chart */}
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-                      <Target className="w-4 h-4 mr-2 text-blue-600" />
-                      Interactive Role Distribution by College
-                      <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        {Object.keys(statistics.rolesByCollege).length} colleges (Excludes Super Admin)
-                      </Badge>
-                    </h5>
-                    <div className="h-96">
-                      <Bar 
-                        data={createRolesByLocationChart(statistics.rolesByCollege)}
-                        options={chartOptions}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Interactive College Summary */}
+                  <AnalyticsChart
+                    type="bar"
+                    data={createRolesByLocationChart(statistics.rolesByCollege, allColleges)}
+                    options={chartOptions}
+                    title="Interactive Role Distribution by College"
+                    icon={Target}
+                    iconColor="text-blue-600"
+                    badgeText=""
+                  />
                   <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
                     <h5 className="font-semibold text-gray-800 mb-4">Interactive College Summary</h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(statistics.rolesByCollege).map(([college, roles]) => (
-                        <SummaryCard 
-                          key={college} 
-                          location={college} 
-                          roles={roles}
-                          onClick={handleLocationClick}
-                          isSelected={selectedLocation === college}
-                        />
-                      ))}
-                    </div>
+                    <CollegeSummaryGrid summaries={collegeSummaries} />
                   </div>
                 </div>
               </TabsContent>
-
-              {/* Enhanced Institutes Tab */}
-              {selectedCollegeHasInstitutes && (
-                <TabsContent value="institutes" className="space-y-6">
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                        <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-                          <BarChart3 className="w-4 h-4 mr-2 text-green-600" />
-                          Institute Distribution
-                          <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
-                            Excludes Super Admin
-                          </Badge>
-                        </h5>
-                        <div className="h-80">
-                          <Bar 
-                            data={createRolesByLocationChart(statistics.rolesByInstitute)}
-                            options={chartOptions}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                        <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-                          <Network className="w-4 h-4 mr-2 text-purple-600" />
-                          Institute Performance
-                          <Badge variant="outline" className="ml-2 text-xs bg-purple-50 text-purple-700 border-purple-200">
-                            Excludes Super Admin
-                          </Badge>
-                        </h5>
-                        <InteractiveChartWithCounts
-                          chartComponent={
-                            <Doughnut 
-                              data={createPieData(statistics.instituteDistribution)}
-                              options={pieOptions}
-                            />
-                          }
-                          data={statistics.instituteDistribution}
-                          title="Institute Distribution"
-                          type="institutes"
-                          onChartClick={handleChartClick}
-                          selectedSegment={selectedSegment}
-                          showCounts={false}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                      <HierarchicalTree 
-                        data={statistics.institutesByCollege} 
-                        title="College → Institute Hierarchy" 
-                        type="institute"
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-              )}
-
-              {/* Enhanced Departments Tab */}
-              <TabsContent value="departments" className="space-y-6">
+            )}
+            {!isCampusAdmin && (
+              <TabsContent value="institutes" className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                      <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-                        <BarChart3 className="w-4 h-4 mr-2 text-purple-600" />
-                        Department Distribution
-                        <Badge variant="outline" className="ml-2 text-xs bg-purple-50 text-purple-700 border-purple-200">
-                          Excludes Super Admin
-                        </Badge>
-                      </h5>
-                      <div className="h-80">
-                        <Bar 
-                          data={createRolesByLocationChart(statistics.rolesByDepartment)}
-                          options={{
-                            ...chartOptions,
-                            indexAxis: 'y',
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                      <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-                        <PieChartIcon className="w-4 h-4 mr-2 text-orange-600" />
-                        Department Analytics
-                        <Badge variant="outline" className="ml-2 text-xs bg-purple-50 text-purple-700 border-purple-200">
-                          Excludes Super Admin
-                        </Badge>
-                      </h5>
-                      <InteractiveChartWithCounts
-                        chartComponent={
-                          <Doughnut 
-                            data={createPieData(statistics.departmentDistribution)}
-                            options={pieOptions}
-                          />
-                        }
-                        data={statistics.departmentDistribution}
-                        title="Department Size"
-                        type="departments"
-                        onChartClick={handleChartClick}
-                        selectedSegment={selectedSegment}
-                        showCounts={false}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <HierarchicalTree 
-                      data={statistics.departmentsByCollege} 
-                      title="College → Department Hierarchy" 
-                      type="department"
+                    <AnalyticsChart
+                      type="bar"
+                      data={createRolesByLocationChart(statistics.rolesByInstitute, allInstitutes)}
+                      options={chartOptions}
+                      title="Institute Distribution"
+                      icon={BarChart3}
+                      iconColor="text-green-600"
+                      badgeText=""
+                      badgeColor="bg-green-50 text-green-700 border-green-200"
+                    />
+                    <AnalyticsChart
+                      type="doughnut"
+                      data={createPieData(statistics.instituteDistribution)}
+                      options={pieOptions}
+                      title="Institute Performance"
+                      icon={Network}
+                      iconColor="text-purple-600"
+                      badgeText=""
+                      badgeColor="bg-purple-50 text-purple-700 border-purple-200"
                     />
                   </div>
+                  {/* CollegeHierarchyTree could go here */}
                 </div>
               </TabsContent>
-            </Tabs>
-          )}
+            )}
+            <TabsContent value="departments" className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <AnalyticsChart
+                  type="bar"
+                  data={createRolesByDepartmentChart(statistics.rolesByDepartment)}
+                  options={{
+                    ...chartOptions,
+                    indexAxis: 'y',
+                  }}
+                  title="Department Distribution"
+                  icon={BarChart3}
+                  iconColor="text-purple-600"
+                  badgeText="Department-wise User Count"
+                  badgeColor="bg-purple-50 text-purple-700 border-purple-200"
+                />
+                <AnalyticsChart
+                  type="doughnut"
+                  data={createPieData(statistics.departmentDistribution)}
+                  options={pieOptions}
+                  title="Department Analytics"
+                  icon={PieChartIcon}
+                  iconColor="text-orange-600"
+                  badgeText="Department-wise User Analytics"
+                  badgeColor="bg-purple-50 text-purple-700 border-purple-200"
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
