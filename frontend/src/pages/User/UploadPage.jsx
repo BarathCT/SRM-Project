@@ -1094,7 +1094,17 @@ useEffect(() => {
                           <FormItem>
                             <FormLabel className="text-black">Volume</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g., 123" {...field} />
+                             <Input
+          type="text"
+          placeholder="e.g., 5186"
+          {...field}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (/^[0-9]*$/.test(value)) {
+              field.onChange(value);
+            }
+          }}
+        />
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
@@ -1108,7 +1118,17 @@ useEffect(() => {
                           <FormItem>
                             <FormLabel className="text-black">Issue</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g., 4" {...field} />
+                             <Input
+          type="text"
+          placeholder="e.g., 15"
+          {...field}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (/^[0-9]*$/.test(value)) {
+              field.onChange(value);
+            }
+          }}
+        />
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
@@ -1122,7 +1142,18 @@ useEffect(() => {
                           <FormItem>
                             <FormLabel className="text-black">Page No.</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g., 10-15" {...field} />
+                             <Input
+          type="text"
+          placeholder="e.g., 7008-7022"
+          {...field}
+          onChange={(e) => {
+            const value = e.target.value;
+            // allow only digits and one dash
+            if (/^[0-9]*-?[0-9]*$/.test(value)) {
+              field.onChange(value);
+            }
+          }}
+        />
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
@@ -1325,7 +1356,7 @@ useEffect(() => {
             <Select value={field.value ?? ""} disabled>
               <FormControl>
                 <SelectTrigger className="text-black">
-                  <SelectValue placeholder="Auto-selected from Claimed By" />
+                  <SelectValue placeholder="" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
