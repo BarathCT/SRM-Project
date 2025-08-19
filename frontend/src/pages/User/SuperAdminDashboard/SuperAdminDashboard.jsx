@@ -128,9 +128,7 @@ export default function SuperAdminDashboard() {
           params: { role: "all" },
         });
         setUsers(res.data || []);
-        toast.academic("Loaded users for all colleges", { duration: 2200 });
       } catch {
-        toast.error("Failed to load users", { duration: 3000 });
       } finally {
         setLoading(false);
       }
@@ -399,7 +397,7 @@ export default function SuperAdminDashboard() {
       });
       const papers = (res.data || []).filter((p) => p.facultyId === user.facultyId);
       setSelectedUserPapers(papers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      toast.academic(`Loaded ${papers.length} publications for ${user.fullName}`, { duration: 2200 });
+      // toast.academic(`Loaded ${papers.length} publications for ${user.fullName}`, { duration: 2200 });
     } catch {
       toast.error("Failed to load user publications", { duration: 2800 });
     } finally {
@@ -526,6 +524,7 @@ export default function SuperAdminDashboard() {
           onShowAnalytics={() => setShowAnalytics(true)}
           facultyFinderOpen={finderOpen}
           onFacultyFinderOpenChange={setFinderOpen}
+          role="super-admin"
         />
 
         {/* Finder Drawer/Panel */}

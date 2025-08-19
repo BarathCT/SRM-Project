@@ -762,6 +762,7 @@ const CampusAdminDashboard = () => {
           onShowAnalytics={() => setShowAnalytics(true)}
           facultyFinderOpen={facultyFinderOpen}
           onFacultyFinderOpenChange={setFacultyFinderOpen}
+          role="campus-admin"
         />
 
         {/* Faculty Finder Sidebar Drawer */}

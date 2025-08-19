@@ -76,7 +76,7 @@ const FacultyDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPapers(response.data || []);
-      toast.academic(`Loaded ${response.data?.length || 0} publications`, { duration: 2500 });
+      // toast.academic(`Loaded ${response.data?.length || 0} publications`, { duration: 2500 });
     } catch (e) {
       toast.error("Failed to fetch publications. Please try again.", { duration: 4000 });
     } finally {
@@ -372,6 +372,7 @@ const FacultyDashboard = () => {
         showRefresh
         refreshing={loading}
         onRefresh={fetchPapers}
+        role="faculty"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
