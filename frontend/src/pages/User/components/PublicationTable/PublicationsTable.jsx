@@ -590,7 +590,14 @@ export default function PublicationsTable({
                                         <span className="font-semibold">
                                           DOI:
                                         </span>{" "}
-                                        {paper.doi}
+                                         <a
+                                href={`https://doi.org/${paper.doi}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-s text-grey-600 font-mono break-all hover:underline"
+                              >
+                                {paper.doi}
+                              </a>
                                       </p>
                                       <p>
                                         <span className="font-semibold">
