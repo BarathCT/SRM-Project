@@ -25,6 +25,7 @@ import {
  * - onShowAnalytics?: () => void
  * - facultyFinderOpen?: boolean
  * - onFacultyFinderOpenChange?: (open: boolean) => void
+ * - role?: "super-admin" | "campus-admin" | "faculty"
  * 
  * Any extra props are ignored.
  */
@@ -44,7 +45,13 @@ export default function DashboardHeader({
   onShowAnalytics,
   facultyFinderOpen = false,
   onFacultyFinderOpenChange,
+  // Role for permission-based rendering
+  role = "faculty",
 }) {
+  // Only show analytics and faculty finder for campus/super admin
+  const canShowAdminActions =
+    role === "super-admin" || role === "campus-admin";
+
   return (
     <div className={cn("mb-8 border-blue-100 pb-6 bg-gradient-to-r from-white-50/50 to-white", className)}>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -113,26 +120,31 @@ export default function DashboardHeader({
             </div>
           )}
 
-          {/* Analytics Button */}
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-400 text-blue-700 rounded-lg shadow-sm hover:bg-blue-50 transition"
-            onClick={() => onShowAnalytics?.()}
-            title="Show Analytics"
-            type="button"
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span className="font-medium text-sm">Analytics</span>
-          </button>
-          {/* Finder Button */}
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-400 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 transition"
-            onClick={() => onFacultyFinderOpenChange?.(true)}
-            title="Find Faculty/Admin"
-            type="button"
-          >
-            <Search className="h-4 w-4" />
-            <span className="font-medium text-sm">Find Faculty/Admin</span>
-          </button>
+          {/* Analytics and Finder Buttons: Only for campus/super admin */}
+          {canShowAdminActions && (
+            <>
+              {/* Analytics Button */}
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-400 text-blue-700 rounded-lg shadow-sm hover:bg-blue-50 transition"
+                onClick={() => onShowAnalytics?.()}
+                title="Show Analytics"
+                type="button"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="font-medium text-sm">Analytics</span>
+              </button>
+              {/* Finder Button */}
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-400 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 transition"
+                onClick={() => onFacultyFinderOpenChange?.(true)}
+                title="Find Faculty/Admin"
+                type="button"
+              >
+                <Search className="h-4 w-4" />
+                <span className="font-medium text-sm">Find Faculty/Admin</span>
+              </button>
+            </>
+          )}
           {/* Any extra actions */}
           {actions}
         </div>
