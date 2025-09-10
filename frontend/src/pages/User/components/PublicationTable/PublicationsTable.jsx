@@ -659,6 +659,7 @@ export default function PublicationsTable({
                                         Author Information
                                       </CardTitle>
                                     </CardHeader>
+                                    
                                     <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
                                       <p>
                                         <span className="font-semibold">
