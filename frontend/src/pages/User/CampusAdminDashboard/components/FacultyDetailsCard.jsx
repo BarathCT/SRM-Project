@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { X } from "lucide-react";
 import { 
   GraduationCap, 
   Award, 
@@ -186,14 +187,22 @@ const FacultyDetailsCard = ({ faculty, papers, onClear }) => {
             </div>
           </div>
 
-          {onClear && (
-            <button
-              onClick={onClear}
-              className="text-sm text-blue-700 hover:text-blue-900 hover:underline font-medium"
-            >
-              Clear selection
-            </button>
-          )}
+{onClear && (
+  <button
+    onClick={onClear}
+    aria-label="Close"
+    className="
+      rounded-full p-2
+      text-gray-500
+      hover:text-gray-700
+      hover:bg-gray-100
+      transition
+    "
+  >
+    <X className="h-6 w-6 text-gray-500" />
+  </button>
+)}
+
         </div>
       </CardHeader>
 
