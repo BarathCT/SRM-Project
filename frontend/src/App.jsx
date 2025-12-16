@@ -2,7 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login/Login';
 import Navbar from './components/Navbar';
 import UserManagement from './pages/Admin/UserManagement/UserManagement';
-import UploadPage from './pages/User/UploadPage';
+import UploadSelector from "./pages/User/Upload/index";
+import UploadResearchPage from "./pages/User/Upload/UploadResearchPage";
+import UploadConferencePage from "./pages/User/Upload/UploadConferencePage";
+import UploadBookChapterPage from "./pages/User/Upload/UploadBookChapterPage";
 
 import SuperAdminDashboard from './pages/User/SuperAdminDashboard/SuperAdminDashboard';
 import CampusAdminDashboard from './pages/User/CampusAdminDashboard/CampusAdminDashboard';
@@ -30,14 +33,20 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
             <Route path="/campus-admin" element={<CampusAdminDashboard />} />
             <Route path="/campus-admin/users" element={<UserManagement />} />
-            <Route path="/campus-admin/upload" element={<UploadPage />} />
-          </Route>
+ <Route path="/campus-admin/upload" element={<UploadSelector />} />
+  <Route path="/campus-admin/upload/research" element={<UploadResearchPage />} />
+  <Route path="/campus-admin/upload/conference" element={<UploadConferencePage />} />
+  <Route path="/campus-admin/upload/book-chapter" element={<UploadBookChapterPage />} />
+            </Route>
 
 
           {/* Faculty routes */}
           <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
             <Route path="/faculty" element={<FacultyDashboard />} />
-            <Route path="/faculty/upload" element={<UploadPage />} />
+              <Route path="/faculty/upload" element={<UploadSelector />} />
+              <Route path="/faculty/upload/research" element={<UploadResearchPage />} />
+              <Route path="/faculty/upload/conference" element={<UploadConferencePage />} />
+              <Route path="/faculty/upload/book-chapter" element={<UploadBookChapterPage />} />
           </Route>
 
           {/* Common routes accessible to all authenticated users */}
