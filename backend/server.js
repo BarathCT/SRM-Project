@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
 import paperRoutes from './routes/papers.js';
 import conferencePaperRoutes from "./routes/conferencePapers.js";
+import bookChapterRoutes from "./routes/bookChapters.js";
 
 
 dotenv.config();
@@ -46,6 +47,7 @@ app.use('/api/admin', bulkRoutes); // NEW: mounts POST /api/admin/bulk-upload-us
 app.use('/api/settings', settingsRoutes);
 app.use('/api/papers', paperRoutes);
 app.use("/api/conference-papers", conferencePaperRoutes);
+app.use("/api/book-chapters", bookChapterRoutes);
 
 
 // 404 handler for unknown routes
