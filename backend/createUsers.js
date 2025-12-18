@@ -204,6 +204,8 @@ const run = async () => {
             }
           }
         }
+
+        
       } else {
         // For colleges WITHOUT institutes
         for (const department of collegeData.departments) {
