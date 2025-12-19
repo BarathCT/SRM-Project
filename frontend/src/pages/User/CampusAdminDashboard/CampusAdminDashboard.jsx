@@ -11,13 +11,19 @@ import {
   BookOpen,
   BarChart3,
   X,
+  FileText,
+  Presentation,
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
 import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
 import PublicationsTable from "../components/PublicationTable/PublicationsTable";
+import BookChaptersTable from "../components/PublicationTable/BookChaptersTable";
+import ConferencePapersTable from "../components/PublicationTable/ConferencePapersTable";
 import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
+import EditBookChapterDialog from "../components/PublicationTable/EditBookChapterDialog";
+import EditConferencePaperDialog from "../components/PublicationTable/EditConferencePaperDialog";
 import StatsCard from "../components/StatsCard";
 import CampusAnalyticsCard from "./components/CampusAnalyticsCard";
 import FacultyDetailsCard from "./components/FacultyDetailsCard";
@@ -34,8 +40,13 @@ function useDebouncedValue(value, delay = 250) {
   return debounced;
 }
 
-const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience", "pubmed"];
+const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
+const PUB_TABS = [
+  { id: "papers", label: "Research Papers", icon: FileText },
+  { id: "bookChapters", label: "Book Chapters", icon: BookOpen },
+  { id: "conferencePapers", label: "Conference Papers", icon: Presentation },
+];
 
 const CampusAdminDashboard = () => {
   const [institutePapers, setInstitutePapers] = useState([]);
@@ -44,6 +55,29 @@ const CampusAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState("institute");
+
+  // Publication type tab (Research Papers vs Book Chapters vs Conference Papers)
+  const [activePublicationType, setActivePublicationType] = useState("papers");
+
+  // Book Chapters state
+  const [instituteBookChapters, setInstituteBookChapters] = useState([]);
+  const [myBookChapters, setMyBookChapters] = useState([]);
+  const [selectedChapters, setSelectedChapters] = useState(new Set());
+  const [selectAllChapters, setSelectAllChapters] = useState(false);
+  const [expandedChapter, setExpandedChapter] = useState(null);
+  const [deletingChapterId, setDeletingChapterId] = useState(null);
+  const [editChapterOpen, setEditChapterOpen] = useState(false);
+  const [editingChapter, setEditingChapter] = useState(null);
+
+  // Conference Papers state
+  const [instituteConference, setInstituteConference] = useState([]);
+  const [myConference, setMyConference] = useState([]);
+  const [selectedConference, setSelectedConference] = useState(new Set());
+  const [selectAllConference, setSelectAllConference] = useState(false);
+  const [expandedConference, setExpandedConference] = useState(null);
+  const [deletingConferenceId, setDeletingConferenceId] = useState(null);
+  const [editConferenceOpen, setEditConferenceOpen] = useState(false);
+  const [editingConference, setEditingConference] = useState(null);
 
   // Analytics section state
   const [showAnalytics, setShowAnalytics] = useState(false);
@@ -139,7 +173,15 @@ const CampusAdminDashboard = () => {
       }
       const payload = JSON.parse(atob(token.split(".")[1]));
       setCurrentUser(payload);
-      await Promise.all([fetchInstitutePapers(payload), fetchMyPapers(), fetchUsers(payload)]);
+      await Promise.all([
+        fetchInstitutePapers(payload),
+        fetchMyPapers(),
+        fetchUsers(payload),
+        fetchInstituteBookChapters(payload),
+        fetchMyBookChapters(),
+        fetchInstituteConference(payload),
+        fetchMyConference()
+      ]);
     } catch (error) {
       console.error("Dashboard initialization error:", error);
       toast.error("Failed to load dashboard", { duration: 4000 });
@@ -158,7 +200,6 @@ const CampusAdminDashboard = () => {
       setInstitutePapers(response.data || []);
     } catch (error) {
       console.error("Fetch institute papers error:", error);
-      toast.error("Failed to fetch institute publications");
       setInstitutePapers([]);
     }
   };
@@ -172,8 +213,57 @@ const CampusAdminDashboard = () => {
       setMyPapers(response.data || []);
     } catch (error) {
       console.error("Fetch my papers error:", error);
-      toast.error("Failed to fetch your publications");
       setMyPapers([]);
+    }
+  };
+
+  const fetchInstituteBookChapters = async (user) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:5000/api/book-chapters/institute", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { college: user.college, institute: user.institute },
+      });
+      setInstituteBookChapters(response.data || []);
+    } catch {
+      setInstituteBookChapters([]);
+    }
+  };
+
+  const fetchMyBookChapters = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:5000/api/book-chapters/my", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMyBookChapters(response.data || []);
+    } catch {
+      setMyBookChapters([]);
+    }
+  };
+
+  const fetchInstituteConference = async (user) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:5000/api/conference-papers/institute", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { college: user.college, institute: user.institute },
+      });
+      setInstituteConference(response.data || []);
+    } catch {
+      setInstituteConference([]);
+    }
+  };
+
+  const fetchMyConference = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:5000/api/conference-papers/my", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMyConference(response.data || []);
+    } catch {
+      setMyConference([]);
     }
   };
 
@@ -187,7 +277,6 @@ const CampusAdminDashboard = () => {
       setUsers(response.data || []);
     } catch (error) {
       console.error("Fetch users error:", error);
-      toast.error("Failed to fetch faculty data");
       setUsers([]);
     }
   };
@@ -625,8 +714,8 @@ const CampusAdminDashboard = () => {
         ? institutePapers.filter((p) => instituteSelectedPapers.has(p._id))
         : filteredInstitutePapers
       : mySelectedPapers.size
-      ? myPapers.filter((p) => mySelectedPapers.has(p._id))
-      : filteredMyPapers;
+        ? myPapers.filter((p) => mySelectedPapers.has(p._id))
+        : filteredMyPapers;
 
     if (!data.length) return toast.warning("No publications to export");
 
@@ -868,248 +957,372 @@ const CampusAdminDashboard = () => {
           )
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          {/* Institute Publications */}
-          <TabsContent value="institute" className="space-y-6">
-            {/* Main area */}
-            <div className="space-y-6">
-              {selectedFaculty ? (
-                <>
-                  <FacultyDetailsCard
-                    faculty={selectedFaculty}
-                    papers={selectedFacultyAllPapers}
-                    onClear={() => onSelectFaculty(null)}
-                  />
-
-                  <PublicationsFilterCard
-                    filterOptions={{
-                      years: instituteFilterOptions.years,
-                      qRatings: instituteFilterOptions.qRatings,
-                      publicationTypes: instituteFilterOptions.publicationTypes,
-                      subjectAreas: instituteFilterOptions.subjectAreas,
-                      authors: [],
-                      departments: [],
-                    }}
-                    searchTerm={instituteFilters.searchTerm}
-                    selectedYear={instituteFilters.selectedYear}
-                    selectedQRating={instituteFilters.selectedQRating}
-                    selectedPublicationType={instituteFilters.selectedPublicationType}
-                    selectedSubjectArea={instituteFilters.selectedSubjectArea}
-                    selectedSubjectCategory={instituteFilters.selectedSubjectCategory}
-                    selectedAuthor={"all"}
-                    selectedDepartment={"all"}
-                    onSearchTermChange={v => setInstituteFilters(f => ({ ...f, searchTerm: v }))}
-                    onYearChange={v => setInstituteFilters(f => ({ ...f, selectedYear: v }))}
-                    onQRatingChange={v => setInstituteFilters(f => ({ ...f, selectedQRating: v }))}
-                    onPublicationTypeChange={v => setInstituteFilters(f => ({ ...f, selectedPublicationType: v }))}
-                    onSubjectAreaChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectArea: v }))}
-                    onSubjectCategoryChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectCategory: v }))}
-                    onAuthorChange={() => {}}
-                    onDepartmentChange={() => {}}
-                    hasActiveFilters={hasInstituteActiveFilters}
-                    onClearFilters={clearInstituteFilters}
-                    selectedCount={instituteSelectedPapers.size}
-                    onClearSelection={clearInstituteSelection}
-                    onBulkDelete={bulkDeleteInstitute}
-                    exportDialogOpen={exportDialogOpen}
-                    onExportDialogOpenChange={setExportDialogOpen}
-                    exportFields={exportFields}
-                    onExportFieldsChange={setExportFields}
-                    onExport={exportSelectedData}
-                    showCampusFilters={false}
-                  />
-
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm text-gray-700">
-                      Showing{" "}
-                      <span className="font-semibold text-gray-900">{filteredInstitutePapers.length}</span>{" "}
-                      of <span className="font-semibold text-gray-900">{selectedFacultyAllPapers.length}</span>{" "}
-                      publications for{" "}
-                      <span className="font-medium text-blue-700">{selectedFaculty.fullName}</span>
-                      {instituteSelectedPapers.size > 0 && (
-                        <span className="text-blue-600">
-                          {" "}
-                          • <span className="font-semibold">{instituteSelectedPapers.size}</span> selected
-                        </span>
-                      )}
-                    </p>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">{currentUser?.institute}</span> •{" "}
-                      <span className="font-medium">{currentUser?.college}</span>
-                    </div>
-                  </div>
-
-                  <PublicationsTable
-                    papers={filteredInstitutePapers}
-                    selectedPapers={instituteSelectedPapers}
-                    selectAll={instituteSelectAll}
-                    onToggleSelectAll={handleInstituteSelectAll}
-                    onToggleSelect={handleInstituteSelect}
-                    expandedIndex={expanded}
-                    onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
-                    onEdit={startEdit}
-                    onDelete={deletePaper}
-                    deletingId={deletingId}
-                    hasActiveFilters={hasInstituteActiveFilters}
-                    onClearFilters={clearInstituteFilters}
-                    showAuthorInfo={true}
-                    users={users}
-                    currentUser={currentUser}
-                    canEditPaper={canEditPaper}
-                    canDeletePaper={canDeletePaper}
-                  />
-                </>
-              ) : (
-                <>
-                  <PublicationsFilterCard
-                    filterOptions={instituteFilterOptions}
-                    searchTerm={instituteFilters.searchTerm}
-                    selectedYear={instituteFilters.selectedYear}
-                    selectedQRating={instituteFilters.selectedQRating}
-                    selectedPublicationType={instituteFilters.selectedPublicationType}
-                    selectedSubjectArea={instituteFilters.selectedSubjectArea}
-                    selectedSubjectCategory={instituteFilters.selectedSubjectCategory}
-                    selectedAuthor={instituteFilters.selectedAuthor}
-                    selectedDepartment={instituteFilters.selectedDepartment}
-                    onSearchTermChange={v => setInstituteFilters(f => ({ ...f, searchTerm: v }))}
-                    onYearChange={v => setInstituteFilters(f => ({ ...f, selectedYear: v }))}
-                    onQRatingChange={v => setInstituteFilters(f => ({ ...f, selectedQRating: v }))}
-                    onPublicationTypeChange={v => setInstituteFilters(f => ({ ...f, selectedPublicationType: v }))}
-                    onSubjectAreaChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectArea: v }))}
-                    onSubjectCategoryChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectCategory: v }))}
-                    onAuthorChange={v => setInstituteFilters(f => ({ ...f, selectedAuthor: v }))}
-                    onDepartmentChange={v => setInstituteFilters(f => ({ ...f, selectedDepartment: v }))}
-                    hasActiveFilters={hasInstituteActiveFilters}
-                    onClearFilters={clearInstituteFilters}
-                    selectedCount={instituteSelectedPapers.size}
-                    onClearSelection={clearInstituteSelection}
-                    onBulkDelete={bulkDeleteInstitute}
-                    exportDialogOpen={exportDialogOpen}
-                    onExportDialogOpenChange={setExportDialogOpen}
-                    exportFields={exportFields}
-                    onExportFieldsChange={setExportFields}
-                    onExport={exportSelectedData}
-                    showCampusFilters={true}
-                    isSuperAdmin={false}
-                    userRole="campus_admin"
-                    currentUser={currentUser}
-                  />
-
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm text-gray-700 flex items-center gap-2">
-                      <Building className="h-4 w-4 text-blue-600" />
-                      Showing{" "}
-                      <span className="font-semibold text-gray-900">{filteredInstitutePapers.length}</span> of{" "}
-                      <span className="font-semibold text-gray-900">{institutePapers.length}</span> institute
-                      publications
-                      {instituteSelectedPapers.size > 0 && (
-                        <span className="text-blue-600">
-                          {" "}
-                          • <span className="font-semibold">{instituteSelectedPapers.size}</span> selected
-                        </span>
-                      )}
-                    </p>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">{currentUser?.institute}</span> •{" "}
-                      <span className="font-medium">{currentUser?.college}</span>
-                    </div>
-                  </div>
-
-                  <PublicationsTable
-                    papers={filteredInstitutePapers}
-                    selectedPapers={instituteSelectedPapers}
-                    selectAll={instituteSelectAll}
-                    onToggleSelectAll={handleInstituteSelectAll}
-                    onToggleSelect={handleInstituteSelect}
-                    expandedIndex={expanded}
-                    onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
-                    onEdit={startEdit}
-                    onDelete={deletePaper}
-                    deletingId={deletingId}
-                    hasActiveFilters={hasInstituteActiveFilters}
-                    onClearFilters={clearInstituteFilters}
-                    showAuthorInfo={true}
-                    users={users}
-                    currentUser={currentUser}
-                    canEditPaper={canEditPaper}
-                    canDeletePaper={canDeletePaper}
-                  />
-                </>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* My Publications */}
-          <TabsContent value="my" className="space-y-6">
-            <PublicationsFilterCard
-              filterOptions={myFilterOptions}
-              searchTerm={myFilters.searchTerm}
-              selectedYear={myFilters.selectedYear}
-              selectedQRating={myFilters.selectedQRating}
-              selectedPublicationType={myFilters.selectedPublicationType}
-              selectedSubjectArea={myFilters.selectedSubjectArea}
-              selectedSubjectCategory={myFilters.selectedSubjectCategory}
-              onSearchTermChange={v => setMyFilters(f => ({ ...f, searchTerm: v }))}
-              onYearChange={v => setMyFilters(f => ({ ...f, selectedYear: v }))}
-              onQRatingChange={v => setMyFilters(f => ({ ...f, selectedQRating: v }))}
-              onPublicationTypeChange={v => setMyFilters(f => ({ ...f, selectedPublicationType: v }))}
-              onSubjectAreaChange={v => setMyFilters(f => ({ ...f, selectedSubjectArea: v }))}
-              onSubjectCategoryChange={v => setMyFilters(f => ({ ...f, selectedSubjectCategory: v }))}
-              hasActiveFilters={hasMyActiveFilters}
-              onClearFilters={clearMyFilters}
-              selectedCount={mySelectedPapers.size}
-              onClearSelection={clearMySelection}
-              onBulkDelete={bulkDeleteMy}
-              exportDialogOpen={exportDialogOpen}
-              onExportDialogOpenChange={setExportDialogOpen}
-              exportFields={exportFields}
-              onExportFieldsChange={setExportFields}
-              onExport={exportSelectedData}
-              showCampusFilters={false}
-              isSuperAdmin={false}
-              userRole="campus_admin"
-              currentUser={currentUser}
-            />
-
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm text-gray-700 flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-blue-600" />
-                Showing <span className="font-semibold text-gray-900">{filteredMyPapers.length}</span> of{" "}
-                <span className="font-semibold text-gray-900">{myPapers.length}</span> your publications
-                {mySelectedPapers.size > 0 && (
-                  <span className="text-blue-600">
-                    {" "}
-                    • <span className="font-semibold">{mySelectedPapers.size}</span> selected
+        {/* Publication Type Tab Navigation */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="flex gap-4">
+            {PUB_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const count = activeTab === "institute"
+                ? (tab.id === "papers" ? institutePapers.length :
+                  tab.id === "bookChapters" ? instituteBookChapters.length :
+                    instituteConference.length)
+                : (tab.id === "papers" ? myPapers.length :
+                  tab.id === "bookChapters" ? myBookChapters.length :
+                    myConference.length);
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActivePublicationType(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${activePublicationType === tab.id
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${activePublicationType === tab.id ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                    }`}>
+                    {count}
                   </span>
-                )}
-              </p>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">{currentUser?.fullName}</span>
-              </div>
-            </div>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
-            <PublicationsTable
-              papers={filteredMyPapers}
-              selectedPapers={mySelectedPapers}
-              selectAll={mySelectAll}
-              onToggleSelectAll={handleMySelectAll}
-              onToggleSelect={handleMySelect}
-              expandedIndex={expanded}
-              onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
-              onEdit={startEdit}
-              onDelete={deletePaper}
-              deletingId={deletingId}
-              hasActiveFilters={hasMyActiveFilters}
-              onClearFilters={clearMyFilters}
-              showAuthorInfo={false}
-              users={users}
-              currentUser={currentUser}
-              canEditPaper={canEditPaper}
-              canDeletePaper={canDeletePaper}
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Show Book Chapters or Conference Papers when their tab is active */}
+        {activePublicationType === "bookChapters" && (
+          <BookChaptersTable
+            chapters={activeTab === "institute" ? instituteBookChapters : myBookChapters}
+            selectedChapters={selectedChapters}
+            selectAll={selectAllChapters}
+            onToggleSelectAll={() => {
+              const chapters = activeTab === "institute" ? instituteBookChapters : myBookChapters;
+              if (selectAllChapters) {
+                setSelectedChapters(new Set());
+                setSelectAllChapters(false);
+              } else {
+                setSelectedChapters(new Set(chapters.map((c) => c._id)));
+                setSelectAllChapters(true);
+              }
+            }}
+            onToggleSelect={(id) => {
+              const next = new Set(selectedChapters);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              setSelectedChapters(next);
+            }}
+            expandedIndex={expandedChapter}
+            onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
+            onEdit={(chapter) => { setEditingChapter(chapter); setEditChapterOpen(true); }}
+            onDelete={async (id) => {
+              setDeletingChapterId(id);
+              try {
+                const token = localStorage.getItem("token");
+                await axios.delete(`http://localhost:5000/api/book-chapters/${id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                setInstituteBookChapters((prev) => prev.filter((c) => c._id !== id));
+                setMyBookChapters((prev) => prev.filter((c) => c._id !== id));
+                toast.success("Book chapter deleted", { duration: 2000 });
+              } catch { toast.error("Delete failed"); }
+              finally { setDeletingChapterId(null); }
+            }}
+            deletingId={deletingChapterId}
+            hasActiveFilters={false}
+            onClearFilters={() => { }}
+          />
+        )}
+
+        {activePublicationType === "conferencePapers" && (
+          <ConferencePapersTable
+            papers={activeTab === "institute" ? instituteConference : myConference}
+            selectedPapers={selectedConference}
+            selectAll={selectAllConference}
+            onToggleSelectAll={() => {
+              const papers = activeTab === "institute" ? instituteConference : myConference;
+              if (selectAllConference) {
+                setSelectedConference(new Set());
+                setSelectAllConference(false);
+              } else {
+                setSelectedConference(new Set(papers.map((p) => p._id)));
+                setSelectAllConference(true);
+              }
+            }}
+            onToggleSelect={(id) => {
+              const next = new Set(selectedConference);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              setSelectedConference(next);
+            }}
+            expandedIndex={expandedConference}
+            onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
+            onEdit={(paper) => { setEditingConference(paper); setEditConferenceOpen(true); }}
+            onDelete={async (id) => {
+              setDeletingConferenceId(id);
+              try {
+                const token = localStorage.getItem("token");
+                await axios.delete(`http://localhost:5000/api/conference-papers/${id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                setInstituteConference((prev) => prev.filter((p) => p._id !== id));
+                setMyConference((prev) => prev.filter((p) => p._id !== id));
+                toast.success("Conference paper deleted", { duration: 2000 });
+              } catch { toast.error("Delete failed"); }
+              finally { setDeletingConferenceId(null); }
+            }}
+            deletingId={deletingConferenceId}
+            hasActiveFilters={false}
+            onClearFilters={() => { }}
+          />
+        )}
+
+        {activePublicationType === "papers" && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            {/* Institute Publications */}
+            <TabsContent value="institute" className="space-y-6">
+              {/* Main area */}
+              <div className="space-y-6">
+                {selectedFaculty ? (
+                  <>
+                    <FacultyDetailsCard
+                      faculty={selectedFaculty}
+                      papers={selectedFacultyAllPapers}
+                      onClear={() => onSelectFaculty(null)}
+                    />
+
+                    <PublicationsFilterCard
+                      filterOptions={{
+                        years: instituteFilterOptions.years,
+                        qRatings: instituteFilterOptions.qRatings,
+                        publicationTypes: instituteFilterOptions.publicationTypes,
+                        subjectAreas: instituteFilterOptions.subjectAreas,
+                        authors: [],
+                        departments: [],
+                      }}
+                      searchTerm={instituteFilters.searchTerm}
+                      selectedYear={instituteFilters.selectedYear}
+                      selectedQRating={instituteFilters.selectedQRating}
+                      selectedPublicationType={instituteFilters.selectedPublicationType}
+                      selectedSubjectArea={instituteFilters.selectedSubjectArea}
+                      selectedSubjectCategory={instituteFilters.selectedSubjectCategory}
+                      selectedAuthor={"all"}
+                      selectedDepartment={"all"}
+                      onSearchTermChange={v => setInstituteFilters(f => ({ ...f, searchTerm: v }))}
+                      onYearChange={v => setInstituteFilters(f => ({ ...f, selectedYear: v }))}
+                      onQRatingChange={v => setInstituteFilters(f => ({ ...f, selectedQRating: v }))}
+                      onPublicationTypeChange={v => setInstituteFilters(f => ({ ...f, selectedPublicationType: v }))}
+                      onSubjectAreaChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectArea: v }))}
+                      onSubjectCategoryChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectCategory: v }))}
+                      onAuthorChange={() => { }}
+                      onDepartmentChange={() => { }}
+                      hasActiveFilters={hasInstituteActiveFilters}
+                      onClearFilters={clearInstituteFilters}
+                      selectedCount={instituteSelectedPapers.size}
+                      onClearSelection={clearInstituteSelection}
+                      onBulkDelete={bulkDeleteInstitute}
+                      exportDialogOpen={exportDialogOpen}
+                      onExportDialogOpenChange={setExportDialogOpen}
+                      exportFields={exportFields}
+                      onExportFieldsChange={setExportFields}
+                      onExport={exportSelectedData}
+                      showCampusFilters={false}
+                    />
+
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm text-gray-700">
+                        Showing{" "}
+                        <span className="font-semibold text-gray-900">{filteredInstitutePapers.length}</span>{" "}
+                        of <span className="font-semibold text-gray-900">{selectedFacultyAllPapers.length}</span>{" "}
+                        publications for{" "}
+                        <span className="font-medium text-blue-700">{selectedFaculty.fullName}</span>
+                        {instituteSelectedPapers.size > 0 && (
+                          <span className="text-blue-600">
+                            {" "}
+                            • <span className="font-semibold">{instituteSelectedPapers.size}</span> selected
+                          </span>
+                        )}
+                      </p>
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">{currentUser?.institute}</span> •{" "}
+                        <span className="font-medium">{currentUser?.college}</span>
+                      </div>
+                    </div>
+
+                    <PublicationsTable
+                      papers={filteredInstitutePapers}
+                      selectedPapers={instituteSelectedPapers}
+                      selectAll={instituteSelectAll}
+                      onToggleSelectAll={handleInstituteSelectAll}
+                      onToggleSelect={handleInstituteSelect}
+                      expandedIndex={expanded}
+                      onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
+                      onEdit={startEdit}
+                      onDelete={deletePaper}
+                      deletingId={deletingId}
+                      hasActiveFilters={hasInstituteActiveFilters}
+                      onClearFilters={clearInstituteFilters}
+                      showAuthorInfo={true}
+                      users={users}
+                      currentUser={currentUser}
+                      canEditPaper={canEditPaper}
+                      canDeletePaper={canDeletePaper}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <PublicationsFilterCard
+                      filterOptions={instituteFilterOptions}
+                      searchTerm={instituteFilters.searchTerm}
+                      selectedYear={instituteFilters.selectedYear}
+                      selectedQRating={instituteFilters.selectedQRating}
+                      selectedPublicationType={instituteFilters.selectedPublicationType}
+                      selectedSubjectArea={instituteFilters.selectedSubjectArea}
+                      selectedSubjectCategory={instituteFilters.selectedSubjectCategory}
+                      selectedAuthor={instituteFilters.selectedAuthor}
+                      selectedDepartment={instituteFilters.selectedDepartment}
+                      onSearchTermChange={v => setInstituteFilters(f => ({ ...f, searchTerm: v }))}
+                      onYearChange={v => setInstituteFilters(f => ({ ...f, selectedYear: v }))}
+                      onQRatingChange={v => setInstituteFilters(f => ({ ...f, selectedQRating: v }))}
+                      onPublicationTypeChange={v => setInstituteFilters(f => ({ ...f, selectedPublicationType: v }))}
+                      onSubjectAreaChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectArea: v }))}
+                      onSubjectCategoryChange={v => setInstituteFilters(f => ({ ...f, selectedSubjectCategory: v }))}
+                      onAuthorChange={v => setInstituteFilters(f => ({ ...f, selectedAuthor: v }))}
+                      onDepartmentChange={v => setInstituteFilters(f => ({ ...f, selectedDepartment: v }))}
+                      hasActiveFilters={hasInstituteActiveFilters}
+                      onClearFilters={clearInstituteFilters}
+                      selectedCount={instituteSelectedPapers.size}
+                      onClearSelection={clearInstituteSelection}
+                      onBulkDelete={bulkDeleteInstitute}
+                      exportDialogOpen={exportDialogOpen}
+                      onExportDialogOpenChange={setExportDialogOpen}
+                      exportFields={exportFields}
+                      onExportFieldsChange={setExportFields}
+                      onExport={exportSelectedData}
+                      showCampusFilters={true}
+                      isSuperAdmin={false}
+                      userRole="campus_admin"
+                      currentUser={currentUser}
+                    />
+
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm text-gray-700 flex items-center gap-2">
+                        <Building className="h-4 w-4 text-blue-600" />
+                        Showing{" "}
+                        <span className="font-semibold text-gray-900">{filteredInstitutePapers.length}</span> of{" "}
+                        <span className="font-semibold text-gray-900">{institutePapers.length}</span> institute
+                        publications
+                        {instituteSelectedPapers.size > 0 && (
+                          <span className="text-blue-600">
+                            {" "}
+                            • <span className="font-semibold">{instituteSelectedPapers.size}</span> selected
+                          </span>
+                        )}
+                      </p>
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">{currentUser?.institute}</span> •{" "}
+                        <span className="font-medium">{currentUser?.college}</span>
+                      </div>
+                    </div>
+
+                    <PublicationsTable
+                      papers={filteredInstitutePapers}
+                      selectedPapers={instituteSelectedPapers}
+                      selectAll={instituteSelectAll}
+                      onToggleSelectAll={handleInstituteSelectAll}
+                      onToggleSelect={handleInstituteSelect}
+                      expandedIndex={expanded}
+                      onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
+                      onEdit={startEdit}
+                      onDelete={deletePaper}
+                      deletingId={deletingId}
+                      hasActiveFilters={hasInstituteActiveFilters}
+                      onClearFilters={clearInstituteFilters}
+                      showAuthorInfo={true}
+                      users={users}
+                      currentUser={currentUser}
+                      canEditPaper={canEditPaper}
+                      canDeletePaper={canDeletePaper}
+                    />
+                  </>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* My Publications */}
+            <TabsContent value="my" className="space-y-6">
+              <PublicationsFilterCard
+                filterOptions={myFilterOptions}
+                searchTerm={myFilters.searchTerm}
+                selectedYear={myFilters.selectedYear}
+                selectedQRating={myFilters.selectedQRating}
+                selectedPublicationType={myFilters.selectedPublicationType}
+                selectedSubjectArea={myFilters.selectedSubjectArea}
+                selectedSubjectCategory={myFilters.selectedSubjectCategory}
+                onSearchTermChange={v => setMyFilters(f => ({ ...f, searchTerm: v }))}
+                onYearChange={v => setMyFilters(f => ({ ...f, selectedYear: v }))}
+                onQRatingChange={v => setMyFilters(f => ({ ...f, selectedQRating: v }))}
+                onPublicationTypeChange={v => setMyFilters(f => ({ ...f, selectedPublicationType: v }))}
+                onSubjectAreaChange={v => setMyFilters(f => ({ ...f, selectedSubjectArea: v }))}
+                onSubjectCategoryChange={v => setMyFilters(f => ({ ...f, selectedSubjectCategory: v }))}
+                hasActiveFilters={hasMyActiveFilters}
+                onClearFilters={clearMyFilters}
+                selectedCount={mySelectedPapers.size}
+                onClearSelection={clearMySelection}
+                onBulkDelete={bulkDeleteMy}
+                exportDialogOpen={exportDialogOpen}
+                onExportDialogOpenChange={setExportDialogOpen}
+                exportFields={exportFields}
+                onExportFieldsChange={setExportFields}
+                onExport={exportSelectedData}
+                showCampusFilters={false}
+                isSuperAdmin={false}
+                userRole="campus_admin"
+                currentUser={currentUser}
+              />
+
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm text-gray-700 flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-blue-600" />
+                  Showing <span className="font-semibold text-gray-900">{filteredMyPapers.length}</span> of{" "}
+                  <span className="font-semibold text-gray-900">{myPapers.length}</span> your publications
+                  {mySelectedPapers.size > 0 && (
+                    <span className="text-blue-600">
+                      {" "}
+                      • <span className="font-semibold">{mySelectedPapers.size}</span> selected
+                    </span>
+                  )}
+                </p>
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">{currentUser?.fullName}</span>
+                </div>
+              </div>
+
+              <PublicationsTable
+                papers={filteredMyPapers}
+                selectedPapers={mySelectedPapers}
+                selectAll={mySelectAll}
+                onToggleSelectAll={handleMySelectAll}
+                onToggleSelect={handleMySelect}
+                expandedIndex={expanded}
+                onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
+                onEdit={startEdit}
+                onDelete={deletePaper}
+                deletingId={deletingId}
+                hasActiveFilters={hasMyActiveFilters}
+                onClearFilters={clearMyFilters}
+                showAuthorInfo={false}
+                users={users}
+                currentUser={currentUser}
+                canEditPaper={canEditPaper}
+                canDeletePaper={canDeletePaper}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
+
+      {/* Edit Dialogs */}
 
       <EditPublicationDialog
         open={editDialogOpen}
@@ -1122,6 +1335,50 @@ const CampusAdminDashboard = () => {
         subjectAreas={SUBJECT_AREAS}
         publicationTypes={PUBLICATION_TYPES}
         qRatings={Q_RATINGS}
+      />
+
+      <EditBookChapterDialog
+        open={editChapterOpen}
+        onOpenChange={setEditChapterOpen}
+        chapter={editingChapter}
+        onSave={async (data) => {
+          try {
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:5000/api/book-chapters/${data._id}`, data, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setInstituteBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
+            setMyBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
+            setEditChapterOpen(false);
+            setEditingChapter(null);
+            toast.success("Book chapter updated", { duration: 2200 });
+          } catch (e) {
+            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+          }
+        }}
+        isSubmitting={false}
+      />
+
+      <EditConferencePaperDialog
+        open={editConferenceOpen}
+        onOpenChange={setEditConferenceOpen}
+        paper={editingConference}
+        onSave={async (data) => {
+          try {
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:5000/api/conference-papers/${data._id}`, data, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setInstituteConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
+            setMyConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
+            setEditConferenceOpen(false);
+            setEditingConference(null);
+            toast.success("Conference paper updated", { duration: 2200 });
+          } catch (e) {
+            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+          }
+        }}
+        isSubmitting={false}
       />
     </div>
   );

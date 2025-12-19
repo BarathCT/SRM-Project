@@ -9,15 +9,21 @@ import {
   BookOpen,
   X,
   BarChart3,
+  FileText,
+  Presentation,
 } from "lucide-react";
 
 import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
 import PublicationsTable from "../components/PublicationTable/PublicationsTable";
+import BookChaptersTable from "../components/PublicationTable/BookChaptersTable";
+import ConferencePapersTable from "../components/PublicationTable/ConferencePapersTable";
 import StatsCard from "../components/StatsCard";
 import CampusAnalyticsCard from "../CampusAdminDashboard/components/CampusAnalyticsCard";
 import FacultyDetailsCard from "../CampusAdminDashboard/components/FacultyDetailsCard";
 import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
+import EditBookChapterDialog from "../components/PublicationTable/EditBookChapterDialog";
+import EditConferencePaperDialog from "../components/PublicationTable/EditConferencePaperDialog";
 import UserFinderSidebar from "../components/UserFinderSidebar";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 import SuperAdminAnalyticsCard from "./components/SuperAdminAnalyticsCard";
@@ -32,9 +38,17 @@ import {
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
+const PUB_TABS = [
+  { id: "papers", label: "Research Papers", icon: FileText },
+  { id: "bookChapters", label: "Book Chapters", icon: BookOpen },
+  { id: "conferencePapers", label: "Conference Papers", icon: Presentation },
+];
 
 export default function SuperAdminDashboard() {
   const { toast } = useToast();
+
+  // Publication type tab
+  const [activePublicationType, setActivePublicationType] = useState("papers");
 
   // Core state
   const [users, setUsers] = useState([]);
@@ -65,6 +79,26 @@ export default function SuperAdminDashboard() {
   // Papers loaded for current *publication* scope
   const [scopePapers, setScopePapers] = useState([]);
   const [scopeLoading, setScopeLoading] = useState(false);
+
+  // Book Chapters state
+  const [scopeBookChapters, setScopeBookChapters] = useState([]);
+  const [scopeChaptersLoading, setScopeChaptersLoading] = useState(false);
+  const [selectedChapters, setSelectedChapters] = useState(new Set());
+  const [selectAllChapters, setSelectAllChapters] = useState(false);
+  const [expandedChapter, setExpandedChapter] = useState(null);
+  const [deletingChapterId, setDeletingChapterId] = useState(null);
+  const [editChapterOpen, setEditChapterOpen] = useState(false);
+  const [editingChapter, setEditingChapter] = useState(null);
+
+  // Conference Papers state
+  const [scopeConference, setScopeConference] = useState([]);
+  const [scopeConferenceLoading, setScopeConferenceLoading] = useState(false);
+  const [selectedConference, setSelectedConference] = useState(new Set());
+  const [selectAllConference, setSelectAllConference] = useState(false);
+  const [expandedConference, setExpandedConference] = useState(null);
+  const [deletingConferenceId, setDeletingConferenceId] = useState(null);
+  const [editConferenceOpen, setEditConferenceOpen] = useState(false);
+  const [editingConference, setEditingConference] = useState(null);
 
   // Publications table UI
   const [expanded, setExpanded] = useState(null);
@@ -193,6 +227,116 @@ export default function SuperAdminDashboard() {
     };
     fetchScopePapers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, pubFilters.selectedCollege, pubFilters.selectedInstitute]);
+
+  // Load scope book chapters
+  useEffect(() => {
+    if (!users.length) return;
+    const fetchScopeChapters = async () => {
+      setScopeChaptersLoading(true);
+      setScopeBookChapters([]);
+      setExpandedChapter(null);
+      setSelectedChapters(new Set());
+      setSelectAllChapters(false);
+      try {
+        const token = localStorage.getItem("token");
+        let pairs = [];
+        if (pubFilters.selectedCollege === "all") {
+          pairs = Array.from(new Set(users.map((u) => `${u.college}||${u.institute}`)))
+            .filter(Boolean)
+            .map((s) => {
+              const [college, institute] = s.split("||");
+              return { college, institute };
+            });
+        } else if (pubFilters.selectedInstitute === "all") {
+          pairs = Array.from(
+            new Set(
+              users
+                .filter((u) => u.college === pubFilters.selectedCollege)
+                .map((u) => `${u.college}||${u.institute}`)
+            )
+          )
+            .filter(Boolean)
+            .map((s) => {
+              const [college, institute] = s.split("||");
+              return { college, institute };
+            });
+        } else {
+          pairs = [{ college: pubFilters.selectedCollege, institute: pubFilters.selectedInstitute }];
+        }
+        const all = [];
+        await Promise.all(
+          pairs.map(async ({ college, institute }) => {
+            const res = await axios.get("http://localhost:5000/api/book-chapters/institute", {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { college, institute },
+            });
+            all.push(...(res.data || []));
+          })
+        );
+        setScopeBookChapters(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      } catch {
+        // Silently fail - book chapters may not exist
+      } finally {
+        setScopeChaptersLoading(false);
+      }
+    };
+    fetchScopeChapters();
+  }, [users, pubFilters.selectedCollege, pubFilters.selectedInstitute]);
+
+  // Load scope conference papers
+  useEffect(() => {
+    if (!users.length) return;
+    const fetchScopeConference = async () => {
+      setScopeConferenceLoading(true);
+      setScopeConference([]);
+      setExpandedConference(null);
+      setSelectedConference(new Set());
+      setSelectAllConference(false);
+      try {
+        const token = localStorage.getItem("token");
+        let pairs = [];
+        if (pubFilters.selectedCollege === "all") {
+          pairs = Array.from(new Set(users.map((u) => `${u.college}||${u.institute}`)))
+            .filter(Boolean)
+            .map((s) => {
+              const [college, institute] = s.split("||");
+              return { college, institute };
+            });
+        } else if (pubFilters.selectedInstitute === "all") {
+          pairs = Array.from(
+            new Set(
+              users
+                .filter((u) => u.college === pubFilters.selectedCollege)
+                .map((u) => `${u.college}||${u.institute}`)
+            )
+          )
+            .filter(Boolean)
+            .map((s) => {
+              const [college, institute] = s.split("||");
+              return { college, institute };
+            });
+        } else {
+          pairs = [{ college: pubFilters.selectedCollege, institute: pubFilters.selectedInstitute }];
+        }
+        const all = [];
+        await Promise.all(
+          pairs.map(async ({ college, institute }) => {
+            const res = await axios.get("http://localhost:5000/api/conference-papers/institute", {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { college, institute },
+            });
+            all.push(...(res.data || []));
+          })
+        );
+        setScopeConference(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      } catch {
+        // Silently fail - conference papers may not exist
+      } finally {
+        setScopeConferenceLoading(false);
+      }
+    };
+    fetchScopeConference();
   }, [users, pubFilters.selectedCollege, pubFilters.selectedInstitute]);
 
   // Publications filtered by publication filter (for main table)
@@ -683,7 +827,38 @@ export default function SuperAdminDashboard() {
           </div>
         )}
 
-        {/* Publications table */}
+        {/* Tab Navigation for Publication Types */}
+        {!selectedUser && (
+          <div className="mb-6 border-b border-gray-200">
+            <nav className="flex gap-4">
+              {PUB_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const count = tab.id === "papers" ? scopePapers.length :
+                  tab.id === "bookChapters" ? scopeBookChapters.length :
+                    scopeConference.length;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActivePublicationType(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${activePublicationType === tab.id
+                        ? "border-blue-600 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${activePublicationType === tab.id ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                      }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+
+        {/* Publications table summary */}
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm text-gray-700 flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-blue-600" />
@@ -695,15 +870,19 @@ export default function SuperAdminDashboard() {
               </>
             ) : (
               <>
-                Showing <span className="font-semibold text-gray-900">{filteredPapers.length}</span> of{" "}
-                <span className="font-semibold text-gray-900">{scopePapers.length}</span> publications in scope
+                Showing <span className="font-semibold text-gray-900">
+                  {activePublicationType === "papers" ? filteredPapers.length :
+                    activePublicationType === "bookChapters" ? scopeBookChapters.length :
+                      scopeConference.length}
+                </span> of{" "}
+                <span className="font-semibold text-gray-900">
+                  {activePublicationType === "papers" ? scopePapers.length :
+                    activePublicationType === "bookChapters" ? scopeBookChapters.length :
+                      scopeConference.length}
+                </span> {activePublicationType === "papers" ? "research papers" :
+                  activePublicationType === "bookChapters" ? "book chapters" :
+                    "conference papers"} in scope
               </>
-            )}
-            {selectedPapers.size > 0 && (
-              <span className="text-blue-600">
-                {" "}
-                • <span className="font-semibold">{selectedPapers.size}</span> selected
-              </span>
             )}
           </p>
           {selectedUser && (
@@ -715,116 +894,274 @@ export default function SuperAdminDashboard() {
           )}
         </div>
 
-        <PublicationsTable
-          papers={tablePapers}
-          selectedPapers={selectedPapers}
-          selectAll={selectAll}
-          onToggleSelectAll={() => {
-            if (selectAll) {
-              setSelectedPapers(new Set());
-              setSelectAll(false);
-              toast.info("Deselected all", { duration: 1500 });
-            } else {
-              const ids = new Set(filteredPapers.map((p) => p._id));
-              setSelectedPapers(ids);
-              setSelectAll(true);
-              toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
-            }
-          }}
-          onToggleSelect={(id) => {
-            const next = new Set(selectedPapers);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            setSelectedPapers(next);
-            setSelectAll(next.size === filteredPapers.length);
-          }}
-          expandedIndex={expanded}
-          onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
-          onEdit={(paper) => {
-            setEditingId(paper._id);
-            setEditData({
-              title: paper.title || "",
-              journal: paper.journal || "",
-              publisher: paper.publisher || "",
-              year: paper.year || new Date().getFullYear(),
-              qRating: paper.qRating || "Q1",
-              doi: paper.doi || "",
-              volume: paper.volume || "",
-              issue: paper.issue || "",
-              pageNo: paper.pageNo || "",
-              publicationType: paper.publicationType || "scopus",
-              subjectArea: paper.subjectArea || "Computer Science",
-              subjectCategories: paper.subjectCategories?.length ? paper.subjectCategories : ["Artificial Intelligence"],
-              publicationId: paper.publicationId || "",
-              typeOfIssue: paper.typeOfIssue || "Regular Issue",
-              claimedBy: paper.claimedBy || "",
-              authorNo: paper.authorNo || "1",
-              isStudentScholar: paper.isStudentScholar || "no",
-              authors: paper.authors?.length
-                ? paper.authors.map((a) => ({ name: a.name || "", isCorresponding: !!a.isCorresponding }))
-                : [{ name: paper.claimedBy || "", isCorresponding: true }],
-              studentScholars: paper.studentScholars?.length
-                ? paper.studentScholars.map((s) => (typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }))
-                : [],
-            });
-            setEditDialogOpen(true);
-          }}
-          onDelete={async (id) => {
-            setDeletingId(id);
-            try {
-              const token = localStorage.getItem("token");
-              await axios.delete(`http://localhost:5000/api/papers/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
+        {/* Conditional Table Rendering */}
+        {activePublicationType === "papers" && (
+          <PublicationsTable
+            papers={tablePapers}
+            selectedPapers={selectedPapers}
+            selectAll={selectAll}
+            onToggleSelectAll={() => {
+              if (selectAll) {
+                setSelectedPapers(new Set());
+                setSelectAll(false);
+                toast.info("Deselected all", { duration: 1500 });
+              } else {
+                const ids = new Set(filteredPapers.map((p) => p._id));
+                setSelectedPapers(ids);
+                setSelectAll(true);
+                toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
+              }
+            }}
+            onToggleSelect={(id) => {
+              const next = new Set(selectedPapers);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              setSelectedPapers(next);
+              setSelectAll(next.size === filteredPapers.length);
+            }}
+            expandedIndex={expanded}
+            onToggleExpand={(i) => setExpanded(expanded === i ? null : i)}
+            onEdit={(paper) => {
+              setEditingId(paper._id);
+              setEditData({
+                title: paper.title || "",
+                journal: paper.journal || "",
+                publisher: paper.publisher || "",
+                year: paper.year || new Date().getFullYear(),
+                qRating: paper.qRating || "Q1",
+                doi: paper.doi || "",
+                volume: paper.volume || "",
+                issue: paper.issue || "",
+                pageNo: paper.pageNo || "",
+                publicationType: paper.publicationType || "scopus",
+                subjectArea: paper.subjectArea || "Computer Science",
+                subjectCategories: paper.subjectCategories?.length ? paper.subjectCategories : ["Artificial Intelligence"],
+                publicationId: paper.publicationId || "",
+                typeOfIssue: paper.typeOfIssue || "Regular Issue",
+                claimedBy: paper.claimedBy || "",
+                authorNo: paper.authorNo || "1",
+                isStudentScholar: paper.isStudentScholar || "no",
+                authors: paper.authors?.length
+                  ? paper.authors.map((a) => ({ name: a.name || "", isCorresponding: !!a.isCorresponding }))
+                  : [{ name: paper.claimedBy || "", isCorresponding: true }],
+                studentScholars: paper.studentScholars?.length
+                  ? paper.studentScholars.map((s) => (typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }))
+                  : [],
               });
-              setScopePapers((prev) => prev.filter((p) => p._id !== id));
-              setSelectedPapers((prev) => {
-                const next = new Set(prev);
-                next.delete(id);
-                return next;
+              setEditDialogOpen(true);
+            }}
+            onDelete={async (id) => {
+              setDeletingId(id);
+              try {
+                const token = localStorage.getItem("token");
+                await axios.delete(`http://localhost:5000/api/papers/${id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                setScopePapers((prev) => prev.filter((p) => p._id !== id));
+                setSelectedPapers((prev) => {
+                  const next = new Set(prev);
+                  next.delete(id);
+                  return next;
+                });
+                toast.success("Publication deleted", { duration: 2000 });
+              } catch {
+                toast.error("Delete failed", { duration: 2500 });
+              } finally {
+                setDeletingId(null);
+              }
+            }}
+            deletingId={deletingId}
+            hasActiveFilters={!selectedUser && hasActiveFilters}
+            onClearFilters={() => {
+              setPubFilters({
+                searchTerm: "",
+                selectedYear: "all",
+                selectedQRating: "all",
+                selectedPublicationType: "all",
+                selectedSubjectArea: "all",
+                selectedSubjectCategory: "all",
+                selectedCollege: "all",
+                selectedInstitute: "all",
+                selectedDepartment: "all",
               });
-              toast.success("Publication deleted", { duration: 2000 });
-            } catch {
-              toast.error("Delete failed", { duration: 2500 });
-            } finally {
-              setDeletingId(null);
-            }
-          }}
-          deletingId={deletingId}
-          hasActiveFilters={!selectedUser && hasActiveFilters}
-          onClearFilters={() => {
-            setPubFilters({
-              searchTerm: "",
-              selectedYear: "all",
-              selectedQRating: "all",
-              selectedPublicationType: "all",
-              selectedSubjectArea: "all",
-              selectedSubjectCategory: "all",
-              selectedCollege: "all",
-              selectedInstitute: "all",
-              selectedDepartment: "all",
-            });
-            toast.info("Cleared filters", { duration: 1500 });
-          }}
-          showAuthorInfo={true}
-          users={users}
-          currentUser={{ role: "super_admin" }}
-          canEditPaper={() => true}
-          canDeletePaper={() => true}
-        />
+              toast.info("Cleared filters", { duration: 1500 });
+            }}
+            showAuthorInfo={true}
+            users={users}
+            currentUser={{ role: "super_admin" }}
+            canEditPaper={() => true}
+            canDeletePaper={() => true}
+          />
+        )}
+
+        {activePublicationType === "bookChapters" && (
+          <BookChaptersTable
+            chapters={scopeBookChapters}
+            selectedChapters={selectedChapters}
+            selectAll={selectAllChapters}
+            onToggleSelectAll={() => {
+              if (selectAllChapters) {
+                setSelectedChapters(new Set());
+                setSelectAllChapters(false);
+              } else {
+                setSelectedChapters(new Set(scopeBookChapters.map((c) => c._id)));
+                setSelectAllChapters(true);
+              }
+            }}
+            onToggleSelect={(id) => {
+              const next = new Set(selectedChapters);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              setSelectedChapters(next);
+              setSelectAllChapters(next.size === scopeBookChapters.length);
+            }}
+            expandedIndex={expandedChapter}
+            onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
+            onEdit={(chapter) => {
+              setEditingChapter(chapter);
+              setEditChapterOpen(true);
+            }}
+            onDelete={async (id) => {
+              setDeletingChapterId(id);
+              try {
+                const token = localStorage.getItem("token");
+                await axios.delete(`http://localhost:5000/api/book-chapters/${id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                setScopeBookChapters((prev) => prev.filter((c) => c._id !== id));
+                setSelectedChapters((prev) => { const next = new Set(prev); next.delete(id); return next; });
+                toast.success("Book chapter deleted", { duration: 2000 });
+              } catch {
+                toast.error("Delete failed", { duration: 2500 });
+              } finally {
+                setDeletingChapterId(null);
+              }
+            }}
+            deletingId={deletingChapterId}
+            hasActiveFilters={false}
+            onClearFilters={() => { }}
+          />
+        )}
+
+        {activePublicationType === "conferencePapers" && (
+          <ConferencePapersTable
+            papers={scopeConference}
+            selectedPapers={selectedConference}
+            selectAll={selectAllConference}
+            onToggleSelectAll={() => {
+              if (selectAllConference) {
+                setSelectedConference(new Set());
+                setSelectAllConference(false);
+              } else {
+                setSelectedConference(new Set(scopeConference.map((p) => p._id)));
+                setSelectAllConference(true);
+              }
+            }}
+            onToggleSelect={(id) => {
+              const next = new Set(selectedConference);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              setSelectedConference(next);
+              setSelectAllConference(next.size === scopeConference.length);
+            }}
+            expandedIndex={expandedConference}
+            onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
+            onEdit={(paper) => {
+              setEditingConference(paper);
+              setEditConferenceOpen(true);
+            }}
+            onDelete={async (id) => {
+              setDeletingConferenceId(id);
+              try {
+                const token = localStorage.getItem("token");
+                await axios.delete(`http://localhost:5000/api/conference-papers/${id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                setScopeConference((prev) => prev.filter((p) => p._id !== id));
+                setSelectedConference((prev) => { const next = new Set(prev); next.delete(id); return next; });
+                toast.success("Conference paper deleted", { duration: 2000 });
+              } catch {
+                toast.error("Delete failed", { duration: 2500 });
+              } finally {
+                setDeletingConferenceId(null);
+              }
+            }}
+            deletingId={deletingConferenceId}
+            hasActiveFilters={false}
+            onClearFilters={() => { }}
+          />
+        )}
       </div>
+
+      {/* Edit Dialogs */}
       <EditPublicationDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         value={editData}
         onChange={setEditData}
         onSubmit={async () => {
-          // ...your update logic goes here
+          if (!editingId || !editData) return;
+          try {
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:5000/api/papers/${editingId}`, editData, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setScopePapers((prev) => prev.map((p) => (p._id === editingId ? { ...p, ...editData } : p)));
+            setEditDialogOpen(false);
+            setEditingId(null);
+            setEditData(null);
+            toast.success("Publication updated", { duration: 2200 });
+          } catch (e) {
+            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+          }
         }}
         onCancel={() => setEditDialogOpen(false)}
         isSubmitting={false}
         subjectAreas={SUBJECT_AREAS}
         publicationTypes={PUBLICATION_TYPES}
         qRatings={Q_RATINGS}
+      />
+
+      <EditBookChapterDialog
+        open={editChapterOpen}
+        onOpenChange={setEditChapterOpen}
+        chapter={editingChapter}
+        onSave={async (data) => {
+          try {
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:5000/api/book-chapters/${data._id}`, data, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setScopeBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
+            setEditChapterOpen(false);
+            setEditingChapter(null);
+            toast.success("Book chapter updated", { duration: 2200 });
+          } catch (e) {
+            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+          }
+        }}
+        isSubmitting={false}
+      />
+
+      <EditConferencePaperDialog
+        open={editConferenceOpen}
+        onOpenChange={setEditConferenceOpen}
+        paper={editingConference}
+        onSave={async (data) => {
+          try {
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:5000/api/conference-papers/${data._id}`, data, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setScopeConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
+            setEditConferenceOpen(false);
+            setEditingConference(null);
+            toast.success("Conference paper updated", { duration: 2200 });
+          } catch (e) {
+            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+          }
+        }}
+        isSubmitting={false}
       />
     </div>
   );
