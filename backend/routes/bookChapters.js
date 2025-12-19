@@ -225,6 +225,11 @@ router.delete("/:id", verifyToken, async (req, res) => {
     console.error("Error deleting book chapter:", err);
     return res.status(500).json({ error: "Server error while deleting book chapter" });
   }
+  const chapters = await BookChapter.find({
+    facultyId: req.user.facultyId
+  }).sort({ createdAt: -1 });
+
+  res.json(chapters);
 });
 
 export default router;
