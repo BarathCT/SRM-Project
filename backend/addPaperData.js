@@ -14,8 +14,8 @@ const MAX_PAPERS = 18;          // maximum mock papers per user
 
 // Academic publishers
 const PUBLISHERS = [
-  'Springer', 'Elsevier', 'IEEE', 'ACM', 'Wiley', 'Nature Portfolio', 
-  'Taylor & Francis', 'SAGE Publications', 'Oxford University Press', 
+  'Springer', 'Elsevier', 'IEEE', 'ACM', 'Wiley', 'Nature Portfolio',
+  'Taylor & Francis', 'SAGE Publications', 'Oxford University Press',
   'Cambridge University Press', 'Hindawi', 'MDPI', 'IOP Publishing',
   'American Chemical Society', 'Royal Society of Chemistry', 'JMLR',
   'AI Access Foundation', 'MIT Press', 'World Scientific', 'Academic Press'
@@ -24,7 +24,7 @@ const PUBLISHERS = [
 // Journal name components for dynamic generation
 const JOURNAL_COMPONENTS = {
   prefixes: [
-    'International Journal of', 'Journal of', 'Advanced', 'IEEE', 'ACM', 'European', 
+    'International Journal of', 'Journal of', 'Advanced', 'IEEE', 'ACM', 'European',
     'American', 'International', 'Proceedings of', 'Transactions on', 'Advances in',
     'Applied', 'Clinical', 'Experimental', 'Theoretical', 'Computational', 'Modern',
     'Contemporary', 'Global', 'World', 'Annual Review of', 'Frontiers in'
@@ -37,7 +37,7 @@ const JOURNAL_COMPONENTS = {
     'Reports', 'Reviews', 'Discoveries', 'Innovations', 'Solutions', 'Advances'
   ],
   suffixes: [
-    'and Applications', 'Research', 'Letters', 'Communications', 'Review', 
+    'and Applications', 'Research', 'Letters', 'Communications', 'Review',
     'Technology', 'Engineering', 'Science', 'Today', 'Quarterly', 'International',
     'and Practice', 'Reports', 'Studies', 'and Development', 'Innovations',
     'and Technology', 'Methods', 'Systems', 'and Analysis', 'Proceedings'
@@ -50,7 +50,7 @@ const diverseCoAuthorPool = [
   'Arun V', 'Sneha T', 'Vikram J', 'Nisha L', 'Harish B', 'Anjali C',
   'Suresh Kumar', 'Lakshmi Devi', 'Ravi Shankar', 'Kavitha M',
   'Srinivas R', 'Padmavathi S', 'Venkatesh N', 'Deepika Rao',
-  
+
   // International Names
   'John Smith', 'Maria Garcia', 'Chen Wei', 'Ahmed Hassan',
   'Sarah Johnson', 'Michael Brown', 'Lisa Anderson', 'David Wilson',
@@ -131,7 +131,7 @@ function generateUniqueDoi() {
     doi = `10.${publisher}/${journal}.${year}.${paper}`;
     attempts++;
   } while (usedDOIs.has(doi) && attempts < 100);
-  
+
   usedDOIs.add(doi);
   return doi;
 }
@@ -139,12 +139,12 @@ function generateUniqueDoi() {
 function generateUniqueJournal(userFacultyId, userFullName) {
   let journal;
   let attempts = 0;
-  
+
   do {
     const prefix = pick(JOURNAL_COMPONENTS.prefixes);
     const subject = pick(JOURNAL_COMPONENTS.subjects);
     const suffix = Math.random() < 0.6 ? pick(JOURNAL_COMPONENTS.suffixes) : '';
-    
+
     // Create different journal name patterns
     const patterns = [
       `${prefix} ${subject}${suffix ? ' ' + suffix : ''}`,
@@ -153,9 +153,9 @@ function generateUniqueJournal(userFacultyId, userFullName) {
       `${subject} Research ${suffix || 'Letters'}`,
       `${subject}: ${suffix || 'Theory and Practice'}`,
     ];
-    
+
     journal = pick(patterns);
-    
+
     // Add uniqueness by incorporating user info for very similar journals
     if (usedJournals.has(journal)) {
       const uniquePatterns = [
@@ -170,15 +170,15 @@ function generateUniqueJournal(userFacultyId, userFullName) {
       ];
       journal = pick(uniquePatterns);
     }
-    
+
     attempts++;
   } while (usedJournals.has(journal) && attempts < 100);
-  
+
   // If still not unique after 100 attempts, add a random suffix
   if (usedJournals.has(journal)) {
     journal = `${journal} - Edition ${randomInt(100, 999)}`;
   }
-  
+
   usedJournals.add(journal);
   return {
     journal,
@@ -189,12 +189,12 @@ function generateUniqueJournal(userFacultyId, userFullName) {
 function generateUniqueTitle() {
   let title;
   let attempts = 0;
-  
+
   do {
     const prefix = pick(titlePrefixes);
     const action = pick(researchActions);
     const topic = pick(ALL_RESEARCH_TOPICS);
-    
+
     // Create variations
     const variations = [
       `${prefix} ${action} ${topic}`,
@@ -204,16 +204,16 @@ function generateUniqueTitle() {
       `${prefix} Framework for ${topic}`,
       `${topic}: A ${prefix} Perspective`
     ];
-    
+
     title = pick(variations);
     attempts++;
   } while (usedTitles.has(title) && attempts < 100);
-  
+
   // If we can't find a unique title after 100 attempts, add a suffix
   if (usedTitles.has(title)) {
     title = `${title} - Study ${randomInt(1, 1000)}`;
   }
-  
+
   usedTitles.add(title);
   return title;
 }
@@ -221,22 +221,22 @@ function generateUniqueTitle() {
 function getRandomSubjectAreaAndCategories() {
   // Get ALL subject areas from the imported SUBJECT_AREAS
   const allSubjectAreas = Object.keys(SUBJECT_AREAS);
-  
+
   // Pick a random subject area
   const subjectArea = pick(allSubjectAreas);
   const availableCategories = SUBJECT_AREAS[subjectArea];
-  
+
   // Select 1-3 random categories from the SAME subject area
   const numCategories = randomInt(1, Math.min(3, availableCategories.length));
   const selectedCategories = [];
-  
+
   while (selectedCategories.length < numCategories) {
     const category = pick(availableCategories);
     if (!selectedCategories.includes(category)) {
       selectedCategories.push(category);
     }
   }
-  
+
   return {
     subjectArea,
     subjectCategories: selectedCategories
@@ -247,7 +247,7 @@ function makeAuthors(primaryAuthor) {
   const authorCount = randomInt(2, 5);
   const pool = diverseCoAuthorPool.filter(n => n !== primaryAuthor);
   const authors = [{ name: primaryAuthor, isCorresponding: Math.random() < 0.6 }];
-  
+
   // Add random co-authors
   while (authors.length < authorCount) {
     const name = pick(pool);
@@ -255,18 +255,18 @@ function makeAuthors(primaryAuthor) {
       authors.push({ name, isCorresponding: false });
     }
   }
-  
+
   // Ensure at least one corresponding author
   if (!authors.some(a => a.isCorresponding)) {
     authors[randomInt(0, authors.length - 1)].isCorresponding = true;
   }
-  
+
   return authors;
 }
 
 function makeStudentScholars() {
   if (Math.random() < 0.7) return { isStudentScholar: 'no', studentScholars: [] };
-  
+
   const count = randomInt(1, 3);
   const list = [];
   for (let i = 0; i < count; i++) {
@@ -289,7 +289,7 @@ async function run() {
     }
 
     // Get both faculty and campus admin users
-    const users = await User.find({ 
+    const users = await User.find({
       role: { $in: ['faculty', 'campus_admin'] },
       facultyId: { $exists: true, $ne: 'N/A' }
     }).lean();
@@ -300,11 +300,11 @@ async function run() {
     }
 
     console.log(`👥 Found ${users.length} users (faculty + campus admins)`);
-    
+
     // Separate by role for reporting
     const facultyUsers = users.filter(u => u.role === 'faculty');
     const campusAdminUsers = users.filter(u => u.role === 'campus_admin');
-    
+
     console.log(`📊 Faculty: ${facultyUsers.length}, Campus Admins: ${campusAdminUsers.length}`);
     console.log(`🎲 Applying RANDOM subject areas with MATCHING categories to ALL users`);
 
@@ -316,23 +316,23 @@ async function run() {
       const userFacultyId = user.facultyId || 'FAC-000';
       const userDepartment = user.department || 'Unknown';
       const papersForUser = randomInt(MIN_PAPERS, MAX_PAPERS);
-      
+
       console.log(`📝 Generating ${papersForUser} papers for ${userName} (${userFacultyId}) - ${user.role} - ${userDepartment}`);
-      
+
       for (let i = 0; i < papersForUser; i++) {
         const year = randomInt(2020, 2025);
         const { journal, publisher } = generateUniqueJournal(userFacultyId, userName);
-        
-        // Only use valid publication types
-        const pub = buildPublication(pick(['scopus', 'sci', 'webOfScience', 'pubmed']));
-        
+
+        // Only use valid publication types (as defined in Paper schema)
+        const pub = buildPublication(pick(['scopus', 'sci', 'webOfScience']));
+
         const authors = makeAuthors(userName);
         const claimedByObj = pick(authors);
         const claimedBy = claimedByObj.name;
         const correspondingIndex = authors.findIndex(a => a.isCorresponding);
         const authorNo = Math.random() < 0.3 && correspondingIndex >= 0 ? 'C' : String(randomInt(1, authors.length));
         const studentScholars = makeStudentScholars();
-        
+
         // Get random subject area with matching categories from imported SUBJECT_AREAS
         const { subjectArea, subjectCategories } = getRandomSubjectAreaAndCategories();
 
@@ -392,20 +392,20 @@ async function run() {
     // Insert in smaller batches to handle large datasets better
     const batchSize = 1000;
     let insertedCount = 0;
-    
+
     console.log(`\n🔄 Inserting papers in batches of ${batchSize}...`);
-    
+
     for (let i = 0; i < docs.length; i += batchSize) {
       const batch = docs.slice(i, i + batchSize);
       try {
         const result = await Paper.insertMany(batch, { ordered: false });
         insertedCount += result.length;
-        console.log(`✅ Batch ${Math.floor(i/batchSize) + 1}: Inserted ${result.length} papers (Total: ${insertedCount})`);
+        console.log(`✅ Batch ${Math.floor(i / batchSize) + 1}: Inserted ${result.length} papers (Total: ${insertedCount})`);
       } catch (error) {
-        console.error(`❌ Error in batch ${Math.floor(i/batchSize) + 1}:`, error.message);
-        
+        console.error(`❌ Error in batch ${Math.floor(i / batchSize) + 1}:`, error.message);
+
         // Try inserting one by one to identify problematic documents
-        console.log(`🔍 Attempting individual inserts for batch ${Math.floor(i/batchSize) + 1}...`);
+        console.log(`🔍 Attempting individual inserts for batch ${Math.floor(i / batchSize) + 1}...`);
         for (const doc of batch) {
           try {
             await Paper.create(doc);
@@ -430,28 +430,28 @@ async function run() {
     if (finalCount > 0) {
       // Statistics for successfully inserted papers
       const created = await Paper.find().lean();
-      
+
       // Papers by user role
       const facultyPapers = created.filter(p => {
         const user = users.find(u => u.facultyId === p.facultyId);
         return user?.role === 'faculty';
       }).length;
-      
+
       const campusAdminPapers = created.filter(p => {
         const user = users.find(u => u.facultyId === p.facultyId);
         return user?.role === 'campus_admin';
       }).length;
-      
+
       console.log('\n📈 Paper Distribution:');
       console.log('======================');
       console.log(`Faculty Papers: ${facultyPapers}`);
       console.log(`Campus Admin Papers: ${campusAdminPapers}`);
       console.log(`Total Papers: ${created.length}`);
-      
+
       // Unique journals in database
       const uniqueJournalsInDB = new Set(created.map(p => p.journal));
       console.log(`📰 Unique journals in database: ${uniqueJournalsInDB.size}`);
-      
+
       // Papers by subject area (showing random distribution)
       console.log('\n🎲 Papers by Subject Area (Random Distribution):');
       console.log('================================================');
@@ -460,7 +460,7 @@ async function run() {
         const area = paper.subjectArea;
         subjectAreaMap.set(area, (subjectAreaMap.get(area) || 0) + 1);
       });
-      
+
       // Sort by count to see distribution
       const sortedSubjectAreas = Array.from(subjectAreaMap.entries()).sort((a, b) => b[1] - a[1]);
       sortedSubjectAreas.forEach(([area, count]) => {
@@ -482,7 +482,7 @@ async function run() {
       const qRatings = ['Q1', 'Q2', 'Q3', 'Q4'];
       qRatings.forEach(rating => {
         const count = created.filter(p => p.qRating === rating).length;
-        console.log(`${rating}: ${count} papers (${((count/created.length)*100).toFixed(1)}%)`);
+        console.log(`${rating}: ${count} papers (${((count / created.length) * 100).toFixed(1)}%)`);
       });
 
       // Sample papers showing random nature
