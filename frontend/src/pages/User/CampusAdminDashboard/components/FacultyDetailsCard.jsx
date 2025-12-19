@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { X } from "lucide-react";
 import { 
   GraduationCap, 
   Award, 
@@ -186,20 +187,28 @@ const FacultyDetailsCard = ({ faculty, papers, onClear }) => {
             </div>
           </div>
 
-          {onClear && (
-            <button
-              onClick={onClear}
-              className="text-sm text-blue-700 hover:text-blue-900 hover:underline font-medium"
-            >
-              Clear selection
-            </button>
-          )}
+{onClear && (
+  <button
+    onClick={onClear}
+    aria-label="Close"
+    className="
+      rounded-full p-2
+      text-gray-500
+      hover:text-gray-700
+      hover:bg-gray-100
+      transition
+    "
+  >
+    <X className="h-6 w-6 text-gray-500" />
+  </button>
+)}
+
         </div>
       </CardHeader>
 
       <CardContent className="p-6 space-y-6">
         {/* Author IDs Section for Faculty */}
-        {faculty.role === 'faculty' || faculty.role === 'campus_admin'  && (
+        {(faculty.role === 'faculty' || faculty.role === 'campus_admin')  && (
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <Award className="h-4 w-4 text-blue-600" />
@@ -208,35 +217,98 @@ const FacultyDetailsCard = ({ faculty, papers, onClear }) => {
             
             {authorIdInfo.hasAny ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="flex items-center gap-2 p-3 rounded-lg border border-blue-100 bg-blue-50">
-                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <span className="text-xs text-blue-600 font-medium">Scopus ID</span>
-                    <div className="font-mono text-sm text-blue-800">
-                      {authorIdInfo.scopus || <span className="text-gray-400">Not set</span>}
-                    </div>
-                  </div>
-                </div>
+<div className="flex items-center gap-2 p-3 rounded-lg border border-blue-100 bg-blue-50">
+  <CheckCircle className="h-4 w-4 text-blue-600" />
+  <div>
+    <span className="text-xs text-blue-600 font-medium">Scopus ID</span>
+
+    <div className="text-sm">
+      {authorIdInfo.scopus ? (
+        <a
+          href={`https://www.scopus.com/authid/detail.uri?authorId=${authorIdInfo.scopus}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="
+            inline-flex items-center gap-1
+            font-mono
+            text-blue-700
+            underline underline-offset-2
+            hover:text-blue-500
+            transition-colors
+          "
+        >
+          {authorIdInfo.scopus}
+          <span className="text-xs">↗</span>
+        </a>
+      ) : (
+        <span className="text-gray-400">Not set</span>
+      )}
+    </div>
+  </div>
+</div>
+
                 
-                <div className="flex items-center gap-2 p-3 rounded-lg border border-green-100 bg-green-50">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <div>
-                    <span className="text-xs text-green-600 font-medium">SCI ID</span>
-                    <div className="font-mono text-sm text-green-800">
-                      {authorIdInfo.sci || <span className="text-gray-400">Not set</span>}
-                    </div>
-                  </div>
-                </div>
+<div className="flex items-center gap-2 p-3 rounded-lg border border-green-100 bg-green-50">
+  <CheckCircle className="h-4 w-4 text-green-600" />
+  <div>
+    <span className="text-xs text-green-600 font-medium">SCI ID</span>
+
+    <div className="text-sm">
+      {authorIdInfo.sci ? (
+        <a
+          href={`https://www.webofscience.com/wos/author/record/${authorIdInfo.sci}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="
+            inline-flex items-center gap-1
+            font-mono
+            text-green-700
+            underline underline-offset-2
+            hover:text-green-500
+            transition-colors
+          "
+        >
+          {authorIdInfo.sci}
+          <span className="text-xs">↗</span>
+        </a>
+      ) : (
+        <span className="text-gray-400">Not set</span>
+      )}
+    </div>
+  </div>
+</div>
+
                 
-                <div className="flex items-center gap-2 p-3 rounded-lg border border-purple-100 bg-purple-50">
-                  <CheckCircle className="h-4 w-4 text-purple-600" />
-                  <div>
-                    <span className="text-xs text-purple-600 font-medium">Web of Science</span>
-                    <div className="font-mono text-sm text-purple-800">
-                      {authorIdInfo.webOfScience || <span className="text-gray-400">Not set</span>}
-                    </div>
-                  </div>
-                </div>
+<div className="flex items-center gap-2 p-3 rounded-lg border border-purple-100 bg-purple-50">
+  <CheckCircle className="h-4 w-4 text-purple-600" />
+  <div>
+    <span className="text-xs text-purple-600 font-medium">Web of Science</span>
+
+    <div className="text-sm">
+      {authorIdInfo.webOfScience ? (
+        <a
+          href={`https://www.webofscience.com/wos/author/record/${authorIdInfo.webOfScience}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="
+            inline-flex items-center gap-1
+            font-mono
+            text-purple-700
+            underline underline-offset-2
+            hover:text-purple-500
+            transition-colors
+          "
+        >
+          {authorIdInfo.webOfScience}
+          <span className="text-xs">↗</span>
+        </a>
+      ) : (
+        <span className="text-gray-400">Not set</span>
+      )}
+    </div>
+  </div>
+</div>
+
               </div>
             ) : (
               <div className="flex items-center gap-3 p-4 rounded-lg border border-orange-200 bg-orange-50">

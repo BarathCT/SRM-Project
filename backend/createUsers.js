@@ -90,11 +90,11 @@ const run = async () => {
       socketTimeoutMS: 30000,
       connectTimeoutMS: 30000
     });
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
-    console.log('⏳ Clearing existing users...');
+    console.log('Clearing existing users...');
     await User.deleteMany({});
-    console.log('🗑️  Existing users cleared');
+    console.log('Existing users cleared');
 
     // Generate users in memory
     const users = [];
@@ -204,6 +204,8 @@ const run = async () => {
             }
           }
         }
+
+        
       } else {
         // For colleges WITHOUT institutes
         for (const department of collegeData.departments) {
