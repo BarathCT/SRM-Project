@@ -1,206 +1,1544 @@
-import React from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import debounce from "lodash.debounce";
+import { toast } from "sonner";
+import {
+  Check,
+  AlertTriangle,
+  Loader2,
+  X,
+  Info,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  Users,
+  FileText,
+  Building,
+  Calendar,
+  Hash,
+  ArrowLeft,
+  BookOpen,
+  UserCog,
+} from "lucide-react";
+import Swal from "sweetalert2";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider
+} from "@/components/ui/tooltip";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+
+// Subject areas and categories data (same as UploadResearchPage)
+const subjectAreasData = {
+  "Agricultural and Biological Sciences": [
+    "Agronomy and Crop Science",
+    "Animal Science and Zoology",
+    "Aquatic Science",
+    "Ecology, Evolution, Behavior and Systematics",
+    "Food Science", 
+    "Forestry",
+    "Horticulture",
+    "Insect Science",
+    "Plant Science",
+    "Soil Science",
+    "Agricultural and Biological Sciences (miscellaneous)"
+  ],
+  "Arts and Humanities": [
+    "Archeology",
+    "Arts and Humanities (miscellaneous)",
+    "Classics",
+    "Conservation",
+    "History",
+    "History and Philosophy of Science",
+    "Language and Linguistics",
+    "Literature and Literary Theory",
+    "Music",
+    "Philosophy",
+    "Religious Studies",
+    "Visual Arts and Performing Arts"
+  ],
+  "Biochemistry, Genetics and Molecular Biology": [
+    "Aging",
+    "Biochemistry",
+    "Biochemistry, Genetics and Molecular Biology (miscellaneous)",
+    "Biophysics",
+    "Biotechnology",
+    "Cancer Research",
+    "Cell Biology",
+    "Clinical Biochemistry",
+    "Developmental Biology",
+    "Endocrinology",
+    "Genetics",
+    "Molecular Biology",
+    "Molecular Medicine",
+    "Structural Biology"
+  ],
+  "Business, Management and Accounting": [
+    "Accounting",
+    "Business and International Management",
+    "Business, Management and Accounting (miscellaneous)",
+    "Industrial and Manufacturing Engineering",
+    "Management Information Systems",
+    "Management of Technology and Innovation",
+    "Marketing",
+    "Organizational Behavior and Human Resource Management",
+    "Strategy and Management",
+    "Tourism, Leisure and Hospitality Management"
+  ],
+  "Chemical Engineering": [
+    "Bioengineering",
+    "Catalysis",
+    "Chemical Engineering (miscellaneous)",
+    "Chemical Health and Safety",
+    "Colloid and Surface Chemistry",
+    "Filtration and Separation",
+    "Fluid Flow and Transfer Processes",
+    "Process Chemistry and Technology"
+  ],
+  "Chemistry": [
+    "Analytical Chemistry",
+    "Chemistry (miscellaneous)",
+    "Electrochemistry",
+    "Inorganic Chemistry",
+    "Organic Chemistry",
+    "Physical and Theoretical Chemistry",
+    "Spectroscopy"
+  ],
+  "Computer Science": [
+    "Artificial Intelligence",
+    "Computational Theory and Mathematics",
+    "Computer Graphics and Computer-Aided Design",
+    "Computer Networks and Communications",
+    "Computer Science Applications",
+    "Computer Science (miscellaneous)",
+    "Computer Vision and Pattern Recognition",
+    "Hardware and Architecture",
+    "Human-Computer Interaction",
+    "Information Systems",
+    "Signal Processing",
+    "Software"
+  ],
+  "Decision Sciences": [
+    "Decision Sciences (miscellaneous)",
+    "Information Systems and Management",
+    "Management Science and Operations Research"
+  ],
+  "Earth and Planetary Sciences": [
+    "Atmospheric Science",
+    "Computers in Earth Sciences",
+    "Earth and Planetary Sciences (miscellaneous)",
+    "Earth-Surface Processes",
+    "Economic Geology",
+    "Geochemistry and Petrology",
+    "Geology",
+    "Geophysics",
+    "Geotechnical Engineering and Engineering Geology",
+    "Oceanography",
+    "Paleontology",
+    "Space and Planetary Science",
+    "Stratigraphy"
+  ],
+  "Economics, Econometrics and Finance": [
+    "Economics and Econometrics",
+    "Economics, Econometrics and Finance (miscellaneous)",
+    "Finance"
+  ],
+  "Energy": [
+    "Energy Engineering and Power Technology",
+    "Energy (miscellaneous)",
+    "Fuel Technology",
+    "Nuclear Energy and Engineering",
+    "Renewable Energy, Sustainability and the Environment"
+  ],
+  "Engineering": [
+    "Aerospace Engineering",
+    "Automotive Engineering",
+    "Biomedical Engineering",
+    "Civil and Structural Engineering",
+    "Control and Systems Engineering",
+    "Electrical and Electronic Engineering",
+    "Engineering (miscellaneous)",
+    "Industrial and Manufacturing Engineering",
+    "Mechanical Engineering",
+    "Ocean Engineering",
+    "Safety, Risk, Reliability and Quality"
+  ],
+  "Environmental Science": [
+    "Ecological Modeling",
+    "Ecology",
+    "Environmental Chemistry",
+    "Environmental Engineering",
+    "Environmental Science (miscellaneous)",
+    "Global and Planetary Change",
+    "Health, Toxicology and Mutagenesis",
+    "Management, Monitoring, Policy and Law",
+    "Nature and Landscape Conservation",
+    "Pollution",
+    "Waste Management and Disposal",
+    "Water Science and Technology"
+  ],
+  "Immunology and Microbiology": [
+    "Applied Microbiology and Biotechnology",
+    "Immunology",
+    "Immunology and Microbiology (miscellaneous)",
+    "Microbiology",
+    "Parasitology",
+    "Virology"
+  ],
+  "Materials Science": [
+    "Biomaterials",
+    "Ceramics and Composites",
+    "Electronic, Optical and Magnetic Materials",
+    "Materials Chemistry",
+    "Materials Science (miscellaneous)",
+    "Metals and Alloys",
+    "Polymers and Plastics",
+    "Surfaces, Coatings and Films"
+  ],
+  "Mathematics": [
+    "Algebra and Number Theory",
+    "Analysis",
+    "Applied Mathematics",
+    "Computational Mathematics",
+    "Control and Optimization",
+    "Discrete Mathematics and Combinatorics",
+    "Geometry and Topology",
+    "Logic",
+    "Mathematical Physics",
+    "Mathematics (miscellaneous)",
+    "Modeling and Simulation",
+    "Numerical Analysis",
+    "Statistics and Probability",
+    "Theoretical Computer Science"
+  ],
+  "Medicine": [
+    "Anesthesiology and Pain Medicine",
+    "Biochemistry (medical)",
+    "Cardiology and Cardiovascular Medicine",
+    "Critical Care and Intensive Care Medicine",
+    "Complementary and Alternative Medicine",
+    "Dermatology",
+    "Drug Discovery",
+    "Emergency Medicine",
+    "Endocrinology, Diabetes and Metabolism",
+    "Epidemiology",
+    "Family Practice",
+    "Gastroenterology",
+    "Geriatrics and Gerontology",
+    "Health Informatics",
+    "Health Policy",
+    "Hematology",
+    "Hepatology",
+    "Histology and Pathology",
+    "Immunology and Allergy",
+    "Internal Medicine",
+    "Medicine (miscellaneous)",
+    "Microbiology (medical)",
+    "Nephrology",
+    "Neurology (clinical)",
+    "Obstetrics and Gynecology",
+    "Oncology",
+    "Ophthalmology",
+    "Orthopedics and Sports Medicine",
+    "Otorhinolaryngology",
+    "Pathology and Forensic Medicine",
+    "Pediatrics, Perinatology and Child Health",
+    "Pharmacology (medical)",
+    "Physiology (medical)",
+    "Psychiatry and Mental Health",
+    "Public Health, Environmental and Occupational Health",
+    "Pulmonary and Respiratory Medicine",
+    "Radiology, Nuclear Medicine and Imaging",
+    "Rehabilitation",
+    "Reproductive Medicine",
+    "Reviews and References (medical)",
+    "Rheumatology",
+    "Surgery",
+    "Transplantation",
+    "Urology"
+  ],
+  "Neuroscience": [
+    "Behavioral Neuroscience",
+    "Biological Psychiatry",
+    "Cellular and Molecular Neuroscience",
+    "Cognitive Neuroscience",
+    "Developmental Neuroscience",
+    "Endocrine and Autonomic Systems",
+    "Neurology",
+    "Neuroscience (miscellaneous)",
+    "Sensory Systems"
+  ],
+  "Nursing": [
+    "Advanced and Specialized Nursing",
+    "Assessment and Diagnosis",
+    "Care Planning",
+    "Community and Home Care",
+    "Critical Care Nursing",
+    "Emergency Nursing",
+    "Fundamentals and Skills",
+    "Gerontology",
+    "Issues, Ethics and Legal Aspects",
+    "Leadership and Management",
+    "Maternity and Midwifery",
+    "Nurse Assisting",
+    "Nursing (miscellaneous)",
+    "Nutrition and Dietetics",
+    "Oncology (nursing)",
+    "Pathophysiology",
+    "Pediatric Nursing",
+    "Pharmacology (nursing)",
+    "Psychiatric Mental Health",
+    "Public Health, Environmental and Occupational Health",
+    "Research and Theory",
+    "Review and Exam Preparation"
+  ],
+  "Pharmacology, Toxicology and Pharmaceutics": [
+    "Drug Discovery",
+    "Pharmaceutical Science",
+    "Pharmacology",
+    "Pharmacology, Toxicology and Pharmaceutics (miscellaneous)",
+    "Toxicology"
+  ],
+  "Physics and Astronomy": [
+    "Acoustics and Ultrasonics",
+    "Astronomy and Astrophysics",
+    "Atomic and Molecular Physics, and Optics",
+    "Condensed Matter Physics",
+    "Instrumentation",
+    "Nuclear and High Energy Physics",
+    "Physics and Astronomy (miscellaneous)",
+    "Radiation",
+    "Statistical and Nonlinear Physics",
+    "Surfaces and Interfaces"
+  ],
+  "Psychology": [
+    "Applied Psychology",
+    "Clinical Psychology",
+    "Developmental and Educational Psychology",
+    "Experimental and Cognitive Psychology",
+    "Neuropsychology and Physiological Psychology",
+    "Psychology (miscellaneous)",
+    "Social Psychology"
+  ],
+  "Social Sciences": [
+    "Anthropology",
+    "Archeology",
+    "Communication",
+    "Cultural Studies",
+    "Demography",
+    "Development",
+    "Education",
+    "Gender Studies",
+    "Geography, Planning and Development",
+    "Health (social science)",
+    "Human Factors and Ergonomics",
+    "Law",
+    "Library and Information Sciences",
+    "Linguistics and Language",
+    "Political Science and International Relations",
+    "Public Administration",
+    "Safety Research",
+    "Social Sciences (miscellaneous)",
+    "Social Work",
+    "Sociology and Political Science",
+    "Transportation",
+    "Urban Studies"
+  ],
+  "Veterinary": [
+    "Equine",
+    "Food Animals",
+    "Small Animals",
+    "Veterinary (miscellaneous)"
+  ],
+  "Dentistry": [
+    "Dental Assisting",
+    "Dental Hygiene",
+    "Dentistry (miscellaneous)",
+    "Oral Surgery",
+    "Orthodontics",
+    "Periodontics"
+  ],
+  "Health Professions": [
+    "Chiropractics",
+    "Complementary and Manual Therapy",
+    "Emergency Medical Services",
+    "Health Information Management",
+    "Health Professions (miscellaneous)",
+    "Medical Assisting and Transcription",
+    "Medical Laboratory Technology",
+    "Occupational Therapy",
+    "Optometry",
+    "Pharmacy",
+    "Physical Therapy, Sports Therapy and Rehabilitation",
+    "Podiatry",
+    "Radiological and Ultrasound Technology",
+    "Respiratory Care",
+    "Speech and Hearing"
+  ],
+  "Multidisciplinary": [
+    "Multidisciplinary"
+  ]
+};
+
+const formSchema = z.object({
+  chapterTitle: z.string().min(1, "Chapter title is required."),
+  bookTitle: z.string().min(1, "Book title is required."),
+  authors: z.array(z.object({
+    name: z.string().min(1, "Author name is required."),
+  })).min(1, "At least one author is required.").max(15, "You can add up to 15 authors only."),
+  editors: z.array(z.string()).min(1, "At least one editor is required."),
+  year: z.string().min(4, "Year must be 4 digits.").max(4, "Year must be 4 digits."),
+  chapterNumber: z.string().optional(),
+  pageRange: z.string().min(1, "Page range is required."),
+  publisher: z.string().min(1, "Publisher is required."),
+  isbn: z.string().min(1, "ISBN is required."),
+  doi: z.string().optional(),
+  bookSeries: z.string().optional(),
+  claimedBy: z.string().min(1, "This field is required."),
+  authorNo: z.string().min(1, "This field is required."),
+  isStudentScholar: z.enum(["yes", "no"], { required_error: "Student scholar selection is required." }),
+  studentScholars: z.array(z.object({
+    name: z.string().min(1, "Student author name is required."),
+    id: z.string().min(1, "Student ID is required."),
+  })).optional(),
+  subjectArea: z.string().min(1, "Subject area is required."),
+  subjectCategories: z.array(z.string()).min(1, "At least one subject category is required.")
+}).superRefine((data, ctx) => {
+  if (data.isStudentScholar === 'yes') {
+    if (!data.studentScholars || data.studentScholars.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one student scholar must be added.",
+        path: ['studentScholars']
+      });
+    }
+  }
+});
+
+function decodeToken(token) {
+  try {
+    const base64 = token.split('.')[1];
+    const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function SectionHeader({ step, icon: Icon, title, subtitle }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-200">
+        <span className="text-sm font-semibold text-blue-800">{step}</span>
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-black flex items-center gap-2">
+          <Icon className="h-5 w-5 text-blue-700" />
+          {title}
+        </h3>
+        {subtitle && <p className="text-sm text-black/70">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const availableCategories = subjectArea ? subjectAreasData[subjectArea] || [] : [];
+  const filteredCategories = availableCategories.filter(category =>
+    category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleToggleCategory = (category) => {
+    const currentValue = value || [];
+    const updatedValue = currentValue.includes(category)
+      ? currentValue.filter(item => item !== category)
+      : [...currentValue, category];
+    onChange(updatedValue);
+  };
+
+  const handleSelectAll = () => onChange(filteredCategories);
+  const handleClearAll = () => onChange([]);
+
+  const selectedCount = value?.length || 0;
+
+  return (
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={`w-full justify-between ${error ? "border-blue-600" : ""}`}
+            disabled={!subjectArea}
+          >
+            <span className="text-black">
+              {selectedCount > 0
+                ? `${selectedCount} categories selected`
+                : subjectArea
+                  ? "Select subject categories..."
+                  : "Select subject area first"}
+            </span>
+            {open ? <ChevronUp className="ml-2 h-4 w-4 text-blue-700" /> : <ChevronDown className="ml-2 h-4 w-4 text-blue-700" />}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0 border border-blue-200" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+          <div className="p-4 space-y-4 bg-white">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-blue-700" />
+              <Input
+                placeholder="Search categories..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                disabled={filteredCategories.length === 0}
+                className="flex-1 border-blue-600 text-blue-700 hover:bg-blue-50"
+              >
+                Select All ({filteredCategories.length})
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleClearAll}
+                disabled={selectedCount === 0}
+                className="flex-1 border-blue-600 text-blue-700 hover:bg-blue-50"
+              >
+                Clear All
+              </Button>
+            </div>
+
+            <div className="max-h-60 overflow-y-auto space-y-2">
+              {filteredCategories.length > 0 ? (
+                filteredCategories.map((category) => (
+                  <div key={category} className="flex items-center space-x-2 p-2 rounded hover:bg-blue-50">
+                    <Checkbox
+                      id={category}
+                      checked={value?.includes(category) || false}
+                      onCheckedChange={() => handleToggleCategory(category)}
+                    />
+                    <label
+                      htmlFor={category}
+                      className="text-sm leading-none cursor-pointer flex-1 text-black"
+                    >
+                      {category}
+                    </label>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-black/70 text-center py-4">
+                  {searchTerm ? "No categories found" : "No categories available"}
+                </p>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {selectedCount > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {value.map((category) => (
+            <Badge
+              key={category}
+              variant="secondary"
+              className="text-xs bg-blue-100 text-blue-800 border border-blue-200"
+            >
+              {category}
+              <button
+                type="button"
+                onClick={() => handleToggleCategory(category)}
+                className="ml-1 rounded-full hover:bg-blue-50"
+              >
+                <X className="h-3 w-3 text-blue-700" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function UploadBookChapterPage() {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [isCheckingDoi, setIsCheckingDoi] = useState(false);
+  const [isCheckingIsbn, setIsCheckingIsbn] = useState(false);
+  const [doiStatus, setDoiStatus] = useState({ validOnCrossref: false, message: "" });
+  const [isbnStatus, setIsbnStatus] = useState({ validOnOpenLibrary: false, message: "" });
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    watch,
-    setValue
-  } = useForm({
+  const form = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
+      chapterTitle: "",
+      bookTitle: "",
       authors: [{ name: "" }],
       editors: [""],
-      studentScholars: [],
+      year: "",
+      chapterNumber: "",
+      pageRange: "",
+      publisher: "",
+      isbn: "",
+      doi: "",
+      bookSeries: "",
+      claimedBy: "",
+      authorNo: "",
       isStudentScholar: "no",
+      studentScholars: [],
+      subjectArea: "",
       subjectCategories: []
+    },
+    mode: "onChange"
+  });
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
     }
-  });
+    const payload = decodeToken(token);
+    if (!payload) {
+      localStorage.removeItem('token');
+      navigate('/login');
+      return;
+    }
+    setIsAuthenticated(true);
+  }, [navigate]);
 
-  const { fields: authors, append: addAuthor } = useFieldArray({
-    control,
-    name: "authors"
-  });
+  const { fields: authorFields, append: appendAuthor, remove: removeAuthor } = useFieldArray({ control: form.control, name: "authors" });
+  const { fields: editorFields, append: appendEditor, remove: removeEditor } = useFieldArray({ control: form.control, name: "editors" });
+  const { fields: studentFields, append: appendStudent, remove: removeStudent } = useFieldArray({ control: form.control, name: "studentScholars" });
 
-  const { fields: editors, append: addEditor } = useFieldArray({
-    control,
-    name: "editors"
-  });
+  const watchAuthors = form.watch("authors");
+  const watchIsStudentScholar = form.watch("isStudentScholar");
+  const watchSubjectArea = form.watch("subjectArea");
+  const watchSubjectCategories = form.watch("subjectCategories");
+  const watchClaimedBy = form.watch("claimedBy");
 
-  const { fields: scholars, append: addScholar } = useFieldArray({
-    control,
-    name: "studentScholars"
-  });
+  // Auto-calculate author number when claimedBy changes
+  useEffect(() => {
+    const sub = form.watch((values, { name }) => {
+      if (name === "claimedBy") {
+        const claimed = values.claimedBy;
+        if (!claimed) {
+          form.setValue("authorNo", "", { shouldValidate: true });
+          return;
+        }
 
-  const isStudentScholar = watch("isStudentScholar");
-
-  async function onSubmit(data) {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch("http://localhost:5000/api/book-chapters", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        ...data,
-        year: Number(data.year)
-      })
+        const foundIndex = watchAuthors?.findIndex(a => a.name === claimed) ?? -1;
+        if (foundIndex !== -1) {
+          form.setValue("authorNo", (foundIndex + 1).toString(), { shouldValidate: true });
+        } else {
+          form.setValue("authorNo", "", { shouldValidate: true });
+        }
+      }
     });
+    return () => sub.unsubscribe();
+  }, [form, watchAuthors]);
 
-    const json = await res.json();
-    if (!res.ok) {
-      alert(json.error);
+  // DOI validation with Crossref
+  const debouncedDoiCheck = useCallback(
+    debounce(async (doiRaw) => {
+      const doi = doiRaw?.trim?.();
+      if (!doi) {
+        setDoiStatus({ validOnCrossref: false, message: "" });
+        return;
+      }
+      setIsCheckingDoi(true);
+      try {
+        // Crossref lookup
+        const normalizedDoi = doi.toLowerCase();
+        const resCrossref = await fetch(`https://api.crossref.org/works/${encodeURIComponent(normalizedDoi)}`);
+        if (resCrossref.ok) {
+          setDoiStatus({
+            validOnCrossref: true,
+            message: ""
+          });
+        } else {
+          setDoiStatus({
+            validOnCrossref: false,
+            message: "You have entered an invalid DOI."
+          });
+        }
+      } catch (err) {
+        setDoiStatus({
+          validOnCrossref: false,
+          message: "Error checking DOI."
+        });
+      } finally {
+        setIsCheckingDoi(false);
+      }
+    }, 350),
+    []
+  );
+
+  // ISBN validation with Open Library API
+  const debouncedIsbnCheck = useCallback(
+    debounce(async (isbnRaw) => {
+      const isbn = isbnRaw?.trim?.();
+      if (!isbn) {
+        setIsbnStatus({ validOnOpenLibrary: false, message: "" });
+        return;
+      }
+      setIsCheckingIsbn(true);
+      try {
+        // Open Library API
+        const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+        const data = await res.json();
+        
+        if (data && Object.keys(data).length > 0) {
+          setIsbnStatus({
+            validOnOpenLibrary: true,
+            message: ""
+          });
+        } else {
+          setIsbnStatus({
+            validOnOpenLibrary: false,
+            message: "ISBN not found in Open Library."
+          });
+        }
+      } catch (err) {
+        setIsbnStatus({
+          validOnOpenLibrary: false,
+          message: "Error checking ISBN."
+        });
+      } finally {
+        setIsCheckingIsbn(false);
+      }
+    }, 350),
+    []
+  );
+
+  async function onSubmit(values) {
+    // Check DOI if provided
+    if (values.doi && !doiStatus.validOnCrossref) {
+      toast.error("Please enter a valid DOI or remove it.");
       return;
     }
 
-    alert("Book chapter uploaded successfully");
-    navigate(-1);
+    // Check ISBN if provided (ISBN is required for book chapters)
+    if (values.isbn && !isbnStatus.validOnOpenLibrary) {
+      toast.error("Please enter a valid ISBN.");
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    const payload = {
+      ...values,
+      year: Number(values.year),
+      studentScholars: values.isStudentScholar === 'yes' ? values.studentScholars : []
+    };
+
+    setIsPending(true);
+    try {
+      const data = await toast.promise(
+        (async () => {
+          const res = await fetch('http://localhost:5000/api/book-chapters', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+
+          let resJson = null;
+          try {
+            resJson = await res.json();
+          } catch (e) {
+            console.warn("Response has no JSON body");
+          }
+
+          if (!res.ok) {
+            const message = Array.isArray(resJson?.details)
+              ? `${resJson?.error || 'Submission failed'}: ${resJson.details.join(', ')}`
+              : resJson?.error || `Submission failed (${res.status})`;
+            throw new Error(message);
+          }
+
+          return resJson || { success: true };
+        })(),
+        {
+          loading: 'Saving book chapter...',
+          success: 'Book chapter uploaded successfully.',
+          error: (err) => err.message || 'Submission failed',
+        }
+      );
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Successfully Submitted!',
+        text: 'Your book chapter has been uploaded.',
+        confirmButtonColor: '#2563eb',
+      });
+
+      form.reset({
+        chapterTitle: "",
+        bookTitle: "",
+        authors: [{ name: "" }],
+        editors: [""],
+        year: "",
+        chapterNumber: "",
+        pageRange: "",
+        publisher: "",
+        isbn: "",
+        doi: "",
+        bookSeries: "",
+        claimedBy: "",
+        authorNo: "",
+        isStudentScholar: "no",
+        studentScholars: [],
+        subjectArea: "",
+        subjectCategories: []
+      });
+      setDoiStatus({ validOnCrossref: false, message: "" });
+      setIsbnStatus({ validOnOpenLibrary: false, message: "" });
+
+    } catch (err) {
+      console.error("Submission error:", err);
+    } finally {
+      setIsPending(false);
+    }
   }
 
+  if (!isAuthenticated) return null;
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold mb-6">
-        Upload Book Chapter
-      </h1>
+    <div className="min-h-screen bg-blue-50">
+      <div className="container mx-auto px-4 py-6">
+        <div className="mx-auto w-full max-w-5xl space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="border-blue-600 text-blue-700 hover:bg-blue-50"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-black">
+                Submit a Book Chapter
+              </h1>
+              <p className="text-black/70">Fill in the details of the book chapter publication.</p>
+            </div>
+          </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <Card className="border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-black">Book Chapter Details</CardTitle>
+              <CardDescription className="text-black/70">
+                Please provide accurate information for all required fields.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(
+                    onSubmit,
+                    (errors) => {
+                      console.error('Validation errors:', errors);
+                      toast.error("Please fix the highlighted fields.");
+                    }
+                  )}
+                  className="space-y-10"
+                >
+                  {/* Basic Information */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={1}
+                      icon={BookOpen}
+                      title="Basic Information"
+                      subtitle="Basic details about the book chapter"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="chapterTitle"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel className="text-black">Chapter Title</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Chapter Title" {...field} />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
-        {/* BASIC */}
-        <section className="space-y-4">
-          <input {...register("chapterTitle", { required: true })}
-            placeholder="Chapter Title"
-            className="w-full border rounded px-3 py-2" />
+                      <FormField
+                        control={form.control}
+                        name="bookTitle"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel className="text-black">Book Title</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Book Title" {...field} />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
-          <input {...register("bookTitle", { required: true })}
-            placeholder="Book Title"
-            className="w-full border rounded px-3 py-2" />
-        </section>
+                      <FormField
+                        control={form.control}
+                        name="year"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-blue-700" />
+                              Year
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="e.g., 2025" 
+                                {...field} 
+                                type="number"
+                                min="1900"
+                                max="2100"
+                              />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
-        {/* AUTHORS */}
-        <section className="space-y-3">
-          <h2 className="font-medium">Authors</h2>
-          {authors.map((_, i) => (
-            <input key={i}
-              {...register(`authors.${i}.name`, { required: true })}
-              placeholder={`Author ${i + 1}`}
-              className="w-full border rounded px-3 py-2" />
-          ))}
-          <button type="button" onClick={() => addAuthor({ name: "" })}
-            className="text-blue-600 text-sm">+ Add Author</button>
-        </section>
+                      <FormField
+                        control={form.control}
+                        name="chapterNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Chapter Number (Optional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="e.g., 5" 
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (/^[0-9]*$/.test(value)) {
+                                    field.onChange(value);
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-        {/* EDITORS */}
-        <section className="space-y-3">
-          <h2 className="font-medium">Editors</h2>
-          {editors.map((_, i) => (
-            <input key={i}
-              {...register(`editors.${i}`, { required: true })}
-              placeholder={`Editor ${i + 1}`}
-              className="w-full border rounded px-3 py-2" />
-          ))}
-          <button type="button" onClick={() => addEditor("")}
-            className="text-blue-600 text-sm">+ Add Editor</button>
-        </section>
+                  {/* Authors */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={2}
+                      icon={Users}
+                      title="Authors"
+                      subtitle="Add all authors of the chapter"
+                    />
+                    {authorFields.map((field, index) => (
+                      <div key={field.id} className="flex flex-col md:flex-row items-stretch md:items-center gap-4 p-3 border border-blue-200 rounded-md bg-white">
+                        <span className="text-sm font-medium text-blue-700">{index + 1}.</span>
+                        <FormField
+                          control={form.control}
+                          name={`authors.${index}.name`}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel className="text-black">Author Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder={`Author ${index + 1} Name`} {...field} />
+                              </FormControl>
+                              <FormMessage className="text-blue-700" />
+                            </FormItem>
+                          )}
+                        />
+                        {authorFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => removeAuthor(index)}
+                            className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                            aria-label="Remove author"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {authorFields.length < 15 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                        onClick={() => appendAuthor({ name: "" })}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Author
+                      </Button>
+                    )}
+                  </div>
 
-        {/* META */}
-        <section className="grid md:grid-cols-3 gap-4">
-          <input type="number" {...register("year", { required: true })}
-            placeholder="Year"
-            className="border rounded px-3 py-2" />
+                  {/* Editors */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={3}
+                      icon={UserCog}
+                      title="Editors"
+                      subtitle="Add all editors of the book"
+                    />
+                    {editorFields.map((field, index) => (
+                      <div key={field.id} className="flex flex-col md:flex-row items-stretch md:items-center gap-4 p-3 border border-blue-200 rounded-md bg-white">
+                        <span className="text-sm font-medium text-blue-700">{index + 1}.</span>
+                        <FormField
+                          control={form.control}
+                          name={`editors.${index}`}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel className="text-black">Editor Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder={`Editor ${index + 1} Name`} {...field} />
+                              </FormControl>
+                              <FormMessage className="text-blue-700" />
+                            </FormItem>
+                          )}
+                        />
+                        {editorFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => removeEditor(index)}
+                            className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                            aria-label="Remove editor"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                      onClick={() => appendEditor("")}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Editor
+                    </Button>
+                  </div>
 
-          <input {...register("chapterNumber")}
-            placeholder="Chapter Number (optional)"
-            className="border rounded px-3 py-2" />
+                  {/* Publishing Details */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={4}
+                      icon={Building}
+                      title="Publishing Details"
+                      subtitle="Information about the publisher and book"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="publisher"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Publisher</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Publisher" {...field} />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
-          <input {...register("pageRange", { required: true })}
-            placeholder="Page Range (e.g. 12–25)"
-            className="border rounded px-3 py-2" />
-        </section>
+                      <FormField
+                        control={form.control}
+                        name="bookSeries"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Book Series (Optional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Book Series" {...field} />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
-        {/* PUBLISHING */}
-        <section className="grid md:grid-cols-2 gap-4">
-          <input {...register("publisher", { required: true })}
-            placeholder="Publisher"
-            className="border rounded px-3 py-2" />
+                      <FormField
+                        control={form.control}
+                        name="pageRange"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Page Range</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="e.g., 12-25" 
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (/^[0-9]*-?[0-9]*$/.test(value)) {
+                                    field.onChange(value);
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-          <input {...register("isbn", { required: true })}
-            placeholder="ISBN"
-            className="border rounded px-3 py-2" />
+                  {/* Author Claim */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={5}
+                      icon={Users}
+                      title="Author Claim"
+                      subtitle="Select which author is claiming this chapter"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="claimedBy"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Claimed By</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                              <FormControl>
+                                <SelectTrigger className="text-black">
+                                  <SelectValue placeholder="Select an author" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {watchAuthors?.map((author, index) =>
+                                  author.name ? (
+                                    <SelectItem key={index} value={author.name}>
+                                      {author.name}
+                                    </SelectItem>
+                                  ) : null
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
-          <input {...register("doi")}
-            placeholder="DOI (optional)"
-            className="border rounded px-3 py-2" />
+                      <FormField
+                        control={form.control}
+                        name="authorNo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Author No.</FormLabel>
+                            <FormControl>
+                              <Select value={field.value ?? ""} disabled>
+                                <FormControl>
+                                  <SelectTrigger className="text-black">
+                                    <SelectValue placeholder="Auto-calculated" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {watchAuthors?.map((author, index) =>
+                                    author.name ? (
+                                      <SelectItem key={index} value={(index + 1).toString()}>
+                                        {index + 1}
+                                      </SelectItem>
+                                    ) : null
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-          <input {...register("bookSeries")}
-            placeholder="Book Series (optional)"
-            className="border rounded px-3 py-2" />
-        </section>
+                  {/* DOI and ISBN */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={6}
+                      icon={Hash}
+                      title="Identifiers"
+                      subtitle="DOI and ISBN information"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* DOI Field */}
+                      <FormField
+                        control={form.control}
+                        name="doi"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black flex items-center gap-2">
+                              <Hash className="h-4 w-4 text-blue-700" />
+                              DOI (Optional)
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  placeholder="e.g., 10.1000/xyz123"
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    if (e.target.value.trim()) {
+                                      debouncedDoiCheck(e.target.value);
+                                    } else {
+                                      setDoiStatus({ validOnCrossref: false, message: "" });
+                                    }
+                                  }}
+                                />
+                                {isCheckingDoi && (
+                                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-700" />
+                                )}
+                                {doiStatus.validOnCrossref && !isCheckingDoi && field.value.trim() && (
+                                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
+                                )}
+                              </div>
+                            </FormControl>
 
-        {/* AUTHOR META */}
-        <section className="grid md:grid-cols-2 gap-4">
-          <input {...register("authorNo", { required: true })}
-            placeholder="Author No (1 / 2 / C)"
-            className="border rounded px-3 py-2" />
+                            {doiStatus.message && !doiStatus.validOnCrossref && !isCheckingDoi && field.value.trim() && (
+                              <div className="flex items-center text-sm mt-2 text-red-800 bg-red-100 border border-red-200 rounded p-2">
+                                <AlertTriangle className="h-4 w-4 mr-2 text-red-700" />
+                                {doiStatus.message}
+                              </div>
+                            )}
 
-          <input {...register("claimedBy", { required: true })}
-            placeholder="Claimed By"
-            className="border rounded px-3 py-2" />
-        </section>
+                            {doiStatus.validOnCrossref && !isCheckingDoi && field.value.trim() && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 border-blue-600 text-blue-700 hover:bg-blue-50"
+                                onClick={() => window.open(`https://doi.org/${field.value.trim()}`, "_blank")}
+                              >
+                                Ensure DOI
+                              </Button>
+                            )}
 
-        {/* STUDENT SCHOLAR */}
-        <section className="space-y-3">
-          <select {...register("isStudentScholar")}
-            className="border rounded px-3 py-2">
-            <option value="no">No Student Scholar</option>
-            <option value="yes">Student Scholar</option>
-          </select>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
-          {isStudentScholar === "yes" && (
-            <>
-              {scholars.map((_, i) => (
-                <input key={i}
-                  {...register(`studentScholars.${i}.name`, { required: true })}
-                  placeholder={`Student ${i + 1}`}
-                  className="border rounded px-3 py-2" />
-              ))}
-              <button type="button" onClick={() => addScholar({ name: "", id: "" })}
-                className="text-blue-600 text-sm">+ Add Student</button>
-            </>
-          )}
-        </section>
+                      {/* ISBN Field */}
+                      <FormField
+                        control={form.control}
+                        name="isbn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">ISBN</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  placeholder="e.g., 978-3-16-148410-0"
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    if (e.target.value.trim()) {
+                                      debouncedIsbnCheck(e.target.value);
+                                    } else {
+                                      setIsbnStatus({ validOnOpenLibrary: false, message: "" });
+                                    }
+                                  }}
+                                />
+                                {isCheckingIsbn && (
+                                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-700" />
+                                )}
+                                {isbnStatus.validOnOpenLibrary && !isCheckingIsbn && field.value.trim() && (
+                                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
+                                )}
+                              </div>
+                            </FormControl>
 
-        {/* SUBJECT */}
-        <section className="space-y-3">
-          <input {...register("subjectArea", { required: true })}
-            placeholder="Subject Area"
-            className="border rounded px-3 py-2" />
+                            {isbnStatus.message && !isbnStatus.validOnOpenLibrary && !isCheckingIsbn && field.value.trim() && (
+                              <div className="flex items-center text-sm mt-2 text-red-800 bg-red-100 border border-red-200 rounded p-2">
+                                <AlertTriangle className="h-4 w-4 mr-2 text-red-700" />
+                                {isbnStatus.message}
+                              </div>
+                            )}
 
-          <input
-            placeholder="Subject Categories (comma separated)"
-            className="border rounded px-3 py-2"
-            onChange={(e) =>
-              setValue("subjectCategories",
-                e.target.value.split(",").map(v => v.trim()))
-            }
-          />
-        </section>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-        {/* SUBMIT */}
-        <div className="flex justify-end gap-4">
-          <button type="button" onClick={() => navigate(-1)}
-            className="border px-4 py-2 rounded">Cancel</button>
-          <button type="submit"
-            className="bg-blue-600 text-white px-6 py-2 rounded">
-            Submit Book Chapter
-          </button>
+                  {/* Subject Classification */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={7}
+                      icon={FileText}
+                      title="Subject Classification"
+                      subtitle="Choose the relevant subject area and categories"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="subjectArea"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Subject Area</FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue("subjectCategories", []);
+                              }}
+                              value={field.value ?? ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="text-black">
+                                  <SelectValue placeholder="Select subject area" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Object.keys(subjectAreasData).map((area) => (
+                                  <SelectItem key={area} value={area}>
+                                    {area}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="subjectCategories"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-black">Subject Categories</FormLabel>
+                            <FormControl>
+                              <SubjectCategoriesSelect
+                                value={field.value}
+                                onChange={field.onChange}
+                                subjectArea={watchSubjectArea}
+                                error={form.formState.errors.subjectCategories}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Student Scholars */}
+                  <div className="space-y-4">
+                    <SectionHeader
+                      step={8}
+                      icon={Users}
+                      title="Student Scholars"
+                      subtitle="Indicate if any authors are student scholars"
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="isStudentScholar"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3 md:col-span-2">
+                            <FormLabel className="text-black">Student Scholar?</FormLabel>
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex gap-6"
+                              >
+                                <FormItem className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <RadioGroupItem value="yes" />
+                                  </FormControl>
+                                  <FormLabel className="font-normal text-black">Yes</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2">
+                                  <FormControl>
+                                    <RadioGroupItem value="no" />
+                                  </FormControl>
+                                  <FormLabel className="font-normal text-black">No</FormLabel>
+                                </FormItem>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {watchIsStudentScholar === "yes" && (
+                        <div className="space-y-4 md:col-span-2">
+                          <span className="text-black font-medium">Student Scholars</span>
+                          {studentFields.map((field, index) => (
+                            <div key={field.id} className="flex flex-col md:flex-row items-stretch md:items-start gap-4 p-3 border border-blue-200 rounded-md bg-white">
+                              <span className="text-sm font-medium text-blue-700">{index + 1}.</span>
+                              <FormField
+                                control={form.control}
+                                name={`studentScholars.${index}.name`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormLabel className="text-black">Student Author</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                      <FormControl>
+                                        <SelectTrigger className="text-black">
+                                          <SelectValue placeholder="Select student author" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {watchAuthors?.map((author, authorIndex) => (
+                                          author.name && <SelectItem key={authorIndex} value={author.name}>{author.name}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage className="text-blue-700" />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`studentScholars.${index}.id`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormLabel className="text-black">Student ID</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="Student ID" {...field} />
+                                    </FormControl>
+                                    <FormMessage className="text-blue-700" />
+                                  </FormItem>
+                                )}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => removeStudent(index)}
+                                className="border-blue-600 text-blue-700 hover:bg-blue-50 self-start"
+                                aria-label="Remove student"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                            onClick={() => appendStudent({ name: "", id: "" })}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Student Scholar
+                          </Button>
+                          {form.formState.errors.studentScholars?.root && (
+                            <p className="text-sm font-medium text-blue-700">
+                              {form.formState.errors.studentScholars.root.message}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <Alert className="border-blue-200 bg-blue-100">
+                    <Info className="h-4 w-4 text-blue-700" />
+                    <AlertTitle className="text-black">Heads up!</AlertTitle>
+                    <AlertDescription className="text-black/80">
+                      Please double-check all fields before submission.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                      type="submit"
+                      disabled={isPending || 
+                        (form.watch("doi") && !doiStatus.validOnCrossref) ||
+                        !isbnStatus.validOnOpenLibrary
+                      }
+                      className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 text-white"
+                    >
+                      {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Submit Book Chapter
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        form.reset();
+                        setDoiStatus({ validOnCrossref: false, message: "" });
+                        setIsbnStatus({ validOnOpenLibrary: false, message: "" });
+                      }}
+                      disabled={isPending}
+                      className="w-full sm:w-auto border-blue-600 text-blue-700 hover:bg-blue-50"
+                    >
+                      Reset Form
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
