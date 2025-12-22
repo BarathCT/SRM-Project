@@ -66,7 +66,7 @@ const subjectAreasData = {
     "Animal Science and Zoology",
     "Aquatic Science",
     "Ecology, Evolution, Behavior and Systematics",
-    "Food Science",
+    "Food Science", 
     "Forestry",
     "Horticulture",
     "Insect Science",
