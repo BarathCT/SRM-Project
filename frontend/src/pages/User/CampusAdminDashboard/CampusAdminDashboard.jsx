@@ -39,6 +39,7 @@ function useDebouncedValue(value, delay = 250) {
   }, [value, delay]);
   return debounced;
 }
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
@@ -193,7 +194,7 @@ const CampusAdminDashboard = () => {
   const fetchInstitutePapers = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/papers/institute", {
+      const response = await axios.get(`${API_BASE_URL}/api/papers/institute`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
@@ -207,7 +208,7 @@ const CampusAdminDashboard = () => {
   const fetchMyPapers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/papers/my", {
+      const response = await axios.get(`${API_BASE_URL}/api/papers/my`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMyPapers(response.data || []);
@@ -220,7 +221,7 @@ const CampusAdminDashboard = () => {
   const fetchInstituteBookChapters = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/book-chapters/institute", {
+      const response = await axios.get(`${API_BASE_URL}/api/book-chapters/institute`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
@@ -233,7 +234,7 @@ const CampusAdminDashboard = () => {
   const fetchMyBookChapters = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/book-chapters/my", {
+      const response = await axios.get(`${API_BASE_URL}/api/book-chapters/my`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMyBookChapters(response.data || []);
@@ -245,7 +246,7 @@ const CampusAdminDashboard = () => {
   const fetchInstituteConference = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/conference-papers/institute", {
+      const response = await axios.get(`${API_BASE_URL}/api/conference-papers/institute`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
@@ -258,7 +259,7 @@ const CampusAdminDashboard = () => {
   const fetchMyConference = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/conference-papers/my", {
+      const response = await axios.get(`${API_BASE_URL}/api/conference-papers/my`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMyConference(response.data || []);
@@ -270,7 +271,7 @@ const CampusAdminDashboard = () => {
   const fetchUsers = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/admin/users", {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute, role: "faculty" },
       });
@@ -575,7 +576,7 @@ const CampusAdminDashboard = () => {
     setDeletingId(id);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`${API_BASE_URL}/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 
       setInstitutePapers((prev) => prev.filter((p) => p._id !== id));
       setMyPapers((prev) => prev.filter((p) => p._id !== id));
@@ -610,7 +611,7 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       await Promise.all(
         Array.from(instituteSelectedPapers).map((id) =>
-          axios.delete(`http://localhost:5000/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+          axios.delete(`${API_BASE_URL}/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
         )
       );
       setInstitutePapers((prev) => prev.filter((p) => !instituteSelectedPapers.has(p._id)));
@@ -629,7 +630,7 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       await Promise.all(
         Array.from(mySelectedPapers).map((id) =>
-          axios.delete(`http://localhost:5000/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+          axios.delete(`${API_BASE_URL}/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
         )
       );
       setMyPapers((prev) => prev.filter((p) => !mySelectedPapers.has(p._id)));
@@ -690,7 +691,7 @@ const CampusAdminDashboard = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/papers/${editingId}`, editData, {
+      await axios.put(`${API_BASE_URL}/api/papers/${editingId}`, editData, {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
 
@@ -1019,7 +1020,7 @@ const CampusAdminDashboard = () => {
               setDeletingChapterId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`http://localhost:5000/api/book-chapters/${id}`, {
+                await axios.delete(`${API_BASE_URL}/api/book-chapters/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setInstituteBookChapters((prev) => prev.filter((c) => c._id !== id));
@@ -1062,7 +1063,7 @@ const CampusAdminDashboard = () => {
               setDeletingConferenceId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`http://localhost:5000/api/conference-papers/${id}`, {
+                await axios.delete(`${API_BASE_URL}/api/conference-papers/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setInstituteConference((prev) => prev.filter((p) => p._id !== id));
@@ -1344,7 +1345,7 @@ const CampusAdminDashboard = () => {
         onSave={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`http://localhost:5000/api/book-chapters/${data._id}`, data, {
+            await axios.put(`${API_BASE_URL}/api/book-chapters/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setInstituteBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
@@ -1366,7 +1367,7 @@ const CampusAdminDashboard = () => {
         onSave={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`http://localhost:5000/api/conference-papers/${data._id}`, data, {
+            await axios.put(`${API_BASE_URL}/api/conference-papers/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setInstituteConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));

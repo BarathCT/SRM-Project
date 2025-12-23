@@ -662,6 +662,8 @@ export default function UploadBookChapterPage() {
   const watchSubjectCategories = form.watch("subjectCategories");
   const watchClaimedBy = form.watch("claimedBy");
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
   // Auto-calculate author number when claimedBy changes
   useEffect(() => {
     const sub = form.watch((values, { name }) => {
@@ -785,7 +787,7 @@ export default function UploadBookChapterPage() {
     try {
       const data = await toast.promise(
         (async () => {
-          const res = await fetch('http://localhost:5000/api/book-chapters', {
+          const res = await fetch(`${API_BASE_URL}/api/book-chapters`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

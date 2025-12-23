@@ -467,6 +467,7 @@ function decodeToken(token) {
     return null;
   }
 }
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function SectionHeader({ step, icon: Icon, title, subtitle }) {
   return (
@@ -802,7 +803,7 @@ export default function UploadConferencePage() {
     try {
       const data = await toast.promise(
         (async () => {
-          const res = await fetch('http://localhost:5000/api/conference-papers', {
+          const res = await fetch(`${API_BASE_URL}/api/conference-papers`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
