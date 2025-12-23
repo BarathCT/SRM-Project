@@ -680,6 +680,7 @@ export default function UploadPage() {
       }
     })();
   }, [form, navigate]);
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const publicationType = form.watch("publication");
   const publicationLabel = useMemo(
@@ -746,7 +747,7 @@ useEffect(() => {
         // Step 1: Check duplicate in DB
         let dataDb = null;
         try {
-          const resDb = await fetch(`http://localhost:5000/api/papers/doi/${encodeURIComponent(doi)}`, {
+          const resDb = await fetch(`${API_BASE_URL}/api/papers/doi/${encodeURIComponent(doi)}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (resDb.ok) {
@@ -827,7 +828,7 @@ useEffect(() => {
     try {
       const data = await toast.promise(
         (async () => {
-          const res = await fetch('http://localhost:5000/api/papers', {
+          const res = await fetch(`${API_BASE_URL}/api/papers`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
