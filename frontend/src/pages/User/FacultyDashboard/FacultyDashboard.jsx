@@ -16,6 +16,9 @@ import StatsCard from "../components/StatsCard";
 
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 
+import api from '@/lib/api';
+
+
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
 const TABS = [
@@ -105,7 +108,7 @@ const FacultyDashboard = () => {
     try {
       setLoadingPapers(true);
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/papers/my`, {
+      const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPapers(response.data || []);
@@ -120,7 +123,7 @@ const FacultyDashboard = () => {
     try {
       setLoadingChapters(true);
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/book-chapters/my`, {
+      const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setBookChapters(response.data || []);
@@ -135,7 +138,7 @@ const FacultyDashboard = () => {
     try {
       setLoadingConference(true);
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/conference-papers/my`, {
+      const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setConferencePapers(response.data || []);
