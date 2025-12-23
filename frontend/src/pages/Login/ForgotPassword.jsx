@@ -63,6 +63,8 @@ export default function ForgotPassword({ onClose }) {
   const [emailError, setEmailError] = useState("");
   const [attemptsLeft, setAttemptsLeft] = useState(3);
 
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
   useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
@@ -87,7 +89,7 @@ export default function ForgotPassword({ onClose }) {
 
     setOtpLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/forgot-password", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -128,7 +130,7 @@ export default function ForgotPassword({ onClose }) {
 
   setOtpLoading(true);
   try {
-    const response = await fetch("http://localhost:5000/api/auth/verify-otp", {
+    const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
@@ -164,7 +166,7 @@ export default function ForgotPassword({ onClose }) {
 
     setOtpLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/forgot-password", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
@@ -213,7 +215,7 @@ export default function ForgotPassword({ onClose }) {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/reset-password", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
