@@ -15,6 +15,7 @@ export default function Login() {
   const [showForgot, setShowForgot] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,7 +37,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
