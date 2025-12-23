@@ -4,7 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+
+    "seed:admin": "node scripts/createUsers.js",
+    "seed:book": "node scripts/addBookChapterData.js",
+    "seed:conference": "node scripts/addConferencePaperData.js",
+    "seed:paper": "node scripts/addPaperData.js"
   },
   "keywords": [],
   "author": "",
