@@ -136,6 +136,8 @@ export default function SuperAdminDashboard() {
   // Finder modal/drawer
   const [finderOpen, setFinderOpen] = useState(false);
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
   // Selected user (faculty or campus_admin) and their publications
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedUserPapers, setSelectedUserPapers] = useState([]);
@@ -157,7 +159,7 @@ export default function SuperAdminDashboard() {
       setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/admin/users", {
+        const res = await axios.get(`${API_BASE_URL}/api/admin/users`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { role: "all" },
         });
@@ -211,7 +213,7 @@ export default function SuperAdminDashboard() {
         const all = [];
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await axios.get("http://localhost:5000/api/papers/institute", {
+            const res = await axios.get(`${API_BASE_URL}/api/papers/institute`, {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
@@ -267,7 +269,7 @@ export default function SuperAdminDashboard() {
         const all = [];
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await axios.get("http://localhost:5000/api/book-chapters/institute", {
+            const res = await axios.get(`${API_BASE_URL}/api/book-chapters/institute`, {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
@@ -322,7 +324,7 @@ export default function SuperAdminDashboard() {
         const all = [];
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await axios.get("http://localhost:5000/api/conference-papers/institute", {
+            const res = await axios.get(`${API_BASE_URL}/api/conference-papers/institute`, {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
@@ -535,7 +537,7 @@ export default function SuperAdminDashboard() {
     try {
       setSelectedUserLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/papers/institute", {
+      const res = await axios.get(`${API_BASE_URL}/api/papers/institute`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
@@ -954,7 +956,7 @@ export default function SuperAdminDashboard() {
               setDeletingId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`http://localhost:5000/api/papers/${id}`, {
+                await axios.delete(`${API_BASE_URL}/api/papers/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setScopePapers((prev) => prev.filter((p) => p._id !== id));
@@ -1025,7 +1027,7 @@ export default function SuperAdminDashboard() {
               setDeletingChapterId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`http://localhost:5000/api/book-chapters/${id}`, {
+                await axios.delete(`${API_BASE_URL}/api/book-chapters/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setScopeBookChapters((prev) => prev.filter((c) => c._id !== id));
@@ -1074,7 +1076,7 @@ export default function SuperAdminDashboard() {
               setDeletingConferenceId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`http://localhost:5000/api/conference-papers/${id}`, {
+                await axios.delete(`${API_BASE_URL}/api/conference-papers/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setScopeConference((prev) => prev.filter((p) => p._id !== id));
@@ -1103,7 +1105,7 @@ export default function SuperAdminDashboard() {
           if (!editingId || !editData) return;
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`http://localhost:5000/api/papers/${editingId}`, editData, {
+            await axios.put(`${API_BASE_URL}/api/papers/${editingId}`, editData, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setScopePapers((prev) => prev.map((p) => (p._id === editingId ? { ...p, ...editData } : p)));
@@ -1129,7 +1131,7 @@ export default function SuperAdminDashboard() {
         onSave={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`http://localhost:5000/api/book-chapters/${data._id}`, data, {
+            await axios.put(`${API_BASE_URL}/api/book-chapters/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setScopeBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
@@ -1150,7 +1152,7 @@ export default function SuperAdminDashboard() {
         onSave={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`http://localhost:5000/api/conference-papers/${data._id}`, data, {
+            await axios.put(`${API_BASE_URL}/api/conference-papers/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setScopeConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));

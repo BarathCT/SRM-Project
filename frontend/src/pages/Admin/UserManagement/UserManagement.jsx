@@ -28,7 +28,7 @@ const ROLE_OPTIONS = [
 ];
 
 const COLLEGES_WITH_INSTITUTES = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
-const API_BASE_URL = 'http://localhost:5000/api/admin';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
