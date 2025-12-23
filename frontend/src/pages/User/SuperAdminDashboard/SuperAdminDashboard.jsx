@@ -36,6 +36,9 @@ import {
   collegesWithoutInstitutes,
 } from "@/utils/collegeData";
 
+import api from '@/lib/api';
+
+
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
 const PUB_TABS = [
@@ -159,7 +162,7 @@ export default function SuperAdminDashboard() {
       setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${API_BASE_URL}/api/admin/users`, {
+        const res = await api.get('/admin/users', {
           headers: { Authorization: `Bearer ${token}` },
           params: { role: "all" },
         });
@@ -213,7 +216,7 @@ export default function SuperAdminDashboard() {
         const all = [];
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await axios.get(`${API_BASE_URL}/api/papers/institute`, {
+            const res = await api.get('/papers/institute', {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
@@ -269,7 +272,7 @@ export default function SuperAdminDashboard() {
         const all = [];
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await axios.get(`${API_BASE_URL}/api/book-chapters/institute`, {
+            const res = await api.get('/book-chapters/institute', {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
@@ -324,7 +327,7 @@ export default function SuperAdminDashboard() {
         const all = [];
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await axios.get(`${API_BASE_URL}/api/conference-papers/institute`, {
+            const res = await api.get('/conference-papers/institute', {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
@@ -537,7 +540,7 @@ export default function SuperAdminDashboard() {
     try {
       setSelectedUserLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_BASE_URL}/api/papers/institute`, {
+      const res = await api.get('/papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });

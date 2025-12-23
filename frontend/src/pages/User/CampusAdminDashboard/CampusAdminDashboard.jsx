@@ -29,6 +29,7 @@ import CampusAnalyticsCard from "./components/CampusAnalyticsCard";
 import FacultyDetailsCard from "./components/FacultyDetailsCard";
 import UserFinderSidebar from "../components/UserFinderSidebar";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
+import api from '@/lib/api';
 
 /* Local debounce hook to reduce filtering cost while typing */
 function useDebouncedValue(value, delay = 250) {
@@ -194,7 +195,7 @@ const CampusAdminDashboard = () => {
   const fetchInstitutePapers = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/papers/institute`, {
+      const response = await api.get('/papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
@@ -208,7 +209,7 @@ const CampusAdminDashboard = () => {
   const fetchMyPapers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/papers/my`, {
+      const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMyPapers(response.data || []);
@@ -221,7 +222,7 @@ const CampusAdminDashboard = () => {
   const fetchInstituteBookChapters = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/book-chapters/institute`, {
+      const response = await api.get('/book-chapters/institute', {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
@@ -234,7 +235,7 @@ const CampusAdminDashboard = () => {
   const fetchMyBookChapters = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/book-chapters/my`, {
+      const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMyBookChapters(response.data || []);
@@ -246,7 +247,7 @@ const CampusAdminDashboard = () => {
   const fetchInstituteConference = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/conference-papers/institute`, {
+      const response = await api.get('/conference-papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
@@ -259,7 +260,7 @@ const CampusAdminDashboard = () => {
   const fetchMyConference = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/conference-papers/my`, {
+      const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMyConference(response.data || []);
@@ -271,7 +272,7 @@ const CampusAdminDashboard = () => {
   const fetchUsers = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/api/admin/users`, {
+      const response = await api.get('/admin/users', {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute, role: "faculty" },
       });
