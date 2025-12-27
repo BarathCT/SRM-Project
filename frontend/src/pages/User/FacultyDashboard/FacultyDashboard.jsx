@@ -496,6 +496,7 @@ const FacultyDashboard = () => {
         refreshing={isLoading}
         onRefresh={handleRefresh}
         role="faculty"
+        icon={null}
       />
 
       {/* Stats Cards */}

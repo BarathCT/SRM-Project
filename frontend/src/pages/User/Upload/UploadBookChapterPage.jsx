@@ -883,13 +883,7 @@ export default function UploadBookChapterPage({ embedded = false } = {}) {
           )}
 
           <Card className="border border-gray-200">
-            <CardHeader>
-              <CardTitle className="text-black">Book Chapter Details</CardTitle>
-              <CardDescription className="text-black/70">
-                Please provide accurate information for all required fields.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(
