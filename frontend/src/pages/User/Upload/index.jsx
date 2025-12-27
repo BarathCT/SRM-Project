@@ -138,7 +138,9 @@ export default function UploadSelector() {
                         <div className={`p-1.5 rounded-md ${colors.iconBg}`}>
                           <SelectedIcon className={`h-5 w-5 ${colors.iconColor}`} />
                         </div>
-                        <SelectValue placeholder="Select publication type" />
+                        <span className="text-gray-900 font-medium">
+                          {selectedOption?.label || 'Select publication type'}
+                        </span>
                       </div>
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">

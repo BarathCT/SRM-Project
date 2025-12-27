@@ -376,7 +376,7 @@ const SettingsPage = () => {
                   value={profileForm.fullName}
                   onChange={handleProfileChange}
                   placeholder="Enter your full name"
-                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 transition ${
+                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 focus:ring-offset-0 ${
                     errors.fullName
                       ? 'border-red-400 focus:ring-red-200'
                       : 'border-gray-300 focus:ring-blue-200'
@@ -393,7 +393,7 @@ const SettingsPage = () => {
                 <input
                   value={profileForm.email}
                   disabled
-                  className="h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 text-sm cursor-not-allowed"
+                  className="h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 text-sm cursor-not-allowed focus:outline-none focus:ring-0"
                 />
                 <p className="text-[11px] text-gray-400">Email changes are restricted for security reasons.</p>
               </div>
@@ -469,7 +469,7 @@ const SettingsPage = () => {
                       value={authorIdForm[id]}
                       onChange={handleAuthorIdChange}
                       placeholder={placeholder}
-                      className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 transition ${
+                      className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 focus:ring-offset-0 ${
                         errors[id]
                           ? 'border-red-400 focus:ring-red-200'
                           : 'border-gray-300 focus:ring-emerald-200'
@@ -523,7 +523,7 @@ const SettingsPage = () => {
                   value={passwordForm.currentPassword}
                   onChange={handlePasswordChange}
                   autoComplete="current-password"
-                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 ${
+                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 focus:ring-offset-0 ${
                     errors.currentPassword
                       ? 'border-red-400 focus:ring-red-200'
                       : 'border-gray-300 focus:ring-blue-200'
@@ -546,7 +546,7 @@ const SettingsPage = () => {
                   value={passwordForm.newPassword}
                   onChange={handlePasswordChange}
                   autoComplete="new-password"
-                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 ${
+                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 focus:ring-offset-0 ${
                     errors.newPassword
                       ? 'border-red-400 focus:ring-red-200'
                       : 'border-gray-300 focus:ring-blue-200'
@@ -572,7 +572,7 @@ const SettingsPage = () => {
                   value={passwordForm.confirmPassword}
                   onChange={handlePasswordChange}
                   autoComplete="new-password"
-                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 ${
+                  className={`h-12 px-4 rounded-xl border text-sm bg-white/80 backdrop-blur focus:outline-none focus:ring-2 focus:ring-offset-0 ${
                     errors.confirmPassword
                       ? 'border-red-400 focus:ring-red-200'
                       : 'border-gray-300 focus:ring-blue-200'
