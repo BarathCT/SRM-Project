@@ -881,22 +881,23 @@ export default function UploadConferencePage({ embedded = false } = {}) {
 
   if (!isAuthenticated) return null;
 
-  return (
-    <div className="min-h-screen bg-blue-50">
-      <div className="container mx-auto px-4 py-6">
-        <div className="mx-auto w-full max-w-5xl space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(-1)}
-              className="border-blue-600 text-blue-700 hover:bg-blue-50"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div className="flex-1">
+  const content = (
+    <div className={`${embedded ? '' : 'min-h-screen bg-blue-50'}`}>
+      <div className={`${embedded ? '' : 'container mx-auto px-4 py-6'}`}>
+        <div className={`${embedded ? '' : 'mx-auto w-full max-w-5xl'} space-y-6`}>
+          {!embedded && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="border-blue-600 text-blue-700 hover:bg-blue-50"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <div className="flex-1">
                 <h1 className="text-2xl sm:text-3xl font-bold text-black">
                   Submit a Conference Paper
                 </h1>
