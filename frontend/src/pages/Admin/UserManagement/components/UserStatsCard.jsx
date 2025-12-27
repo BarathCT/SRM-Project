@@ -432,10 +432,23 @@ export default function UserStatsCard({
     users.forEach(user => {
       if (user.role === 'super_admin') return;
       const college = user.college || 'Unknown College';
-      const institute = user.institute || 'No Institute';
+      const isCollegeWithoutInstitutes = collegesWithoutInstitutes.includes(college);
+      
       if (!tree[college]) tree[college] = {};
-      if (!tree[college][institute]) tree[college][institute] = {};
-      tree[college][institute][user.role] = (tree[college][institute][user.role] || 0) + 1;
+      
+      if (isCollegeWithoutInstitutes) {
+        // For colleges without institutes, put roles directly under college
+        // Use a special key '_direct' to indicate no institute level
+        if (!tree[college]['_direct']) tree[college]['_direct'] = {};
+        tree[college]['_direct'][user.role] = (tree[college]['_direct'][user.role] || 0) + 1;
+      } else {
+        // For colleges with institutes, use institute level but skip N/A
+        const institute = user.institute && user.institute !== 'N/A' ? user.institute : null;
+        if (institute) {
+          if (!tree[college][institute]) tree[college][institute] = {};
+          tree[college][institute][user.role] = (tree[college][institute][user.role] || 0) + 1;
+        }
+      }
     });
     return tree;
   }, [users]);
