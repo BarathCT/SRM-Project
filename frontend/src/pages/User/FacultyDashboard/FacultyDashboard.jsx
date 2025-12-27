@@ -113,7 +113,8 @@ const FacultyDashboard = () => {
       });
       setPapers(response.data || []);
     } catch (e) {
-      toast.error("Failed to fetch research papers.", { duration: 4000 });
+      // Error fetching - UI shows empty state, no need for toast
+      console.error("Failed to fetch research papers:", e);
     } finally {
       setLoadingPapers(false);
     }
@@ -128,7 +129,8 @@ const FacultyDashboard = () => {
       });
       setBookChapters(response.data || []);
     } catch (e) {
-      toast.error("Failed to fetch book chapters.", { duration: 4000 });
+      // Error fetching - UI shows empty state, no need for toast
+      console.error("Failed to fetch book chapters:", e);
     } finally {
       setLoadingChapters(false);
     }
@@ -143,7 +145,8 @@ const FacultyDashboard = () => {
       });
       setConferencePapers(response.data || []);
     } catch (e) {
-      toast.error("Failed to fetch conference papers.", { duration: 4000 });
+      // Error fetching - UI shows empty state, no need for toast
+      console.error("Failed to fetch conference papers:", e);
     } finally {
       setLoadingConference(false);
     }
@@ -229,7 +232,7 @@ const FacultyDashboard = () => {
     setSelectedQRating("all");
     setSelectedPublicationType("all");
     setSelectedSubjectArea("all");
-    toast.info("Cleared filters", { duration: 1500 });
+    // Filters cleared - UI update is sufficient
   };
 
   // Selection handlers for papers
@@ -299,9 +302,9 @@ const FacultyDashboard = () => {
       });
       setPapers((prev) => prev.filter((p) => p._id !== id));
       setSelectedPapers((prev) => { const next = new Set(prev); next.delete(id); return next; });
-      toast.success("Publication deleted", { duration: 2000 });
+      toast.success("Publication deleted");
     } catch {
-      toast.error("Delete failed", { duration: 2500 });
+      toast.error("Delete failed");
     } finally {
       setDeletingPaperId(null);
     }
@@ -316,9 +319,9 @@ const FacultyDashboard = () => {
       });
       setBookChapters((prev) => prev.filter((c) => c._id !== id));
       setSelectedChapters((prev) => { const next = new Set(prev); next.delete(id); return next; });
-      toast.success("Book chapter deleted", { duration: 2000 });
+      toast.success("Book chapter deleted");
     } catch {
-      toast.error("Delete failed", { duration: 2500 });
+      toast.error("Delete failed");
     } finally {
       setDeletingChapterId(null);
     }
@@ -333,9 +336,9 @@ const FacultyDashboard = () => {
       });
       setConferencePapers((prev) => prev.filter((p) => p._id !== id));
       setSelectedConference((prev) => { const next = new Set(prev); next.delete(id); return next; });
-      toast.success("Conference paper deleted", { duration: 2000 });
+      toast.success("Conference paper deleted");
     } catch {
-      toast.error("Delete failed", { duration: 2500 });
+      toast.error("Delete failed");
     } finally {
       setDeletingConferenceId(null);
     }
@@ -360,9 +363,9 @@ const FacultyDashboard = () => {
       setPapers((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
       setEditPaperOpen(false);
       setEditingPaper(null);
-      toast.success("Publication updated", { duration: 2200 });
+      toast.success("Publication updated");
     } catch (e) {
-      toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+      toast.error(e.response?.data?.error || "Update failed");
     } finally {
       setIsUpdating(false);
     }
@@ -383,9 +386,9 @@ const FacultyDashboard = () => {
       setBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
       setEditChapterOpen(false);
       setEditingChapter(null);
-      toast.success("Book chapter updated", { duration: 2200 });
+      toast.success("Book chapter updated");
     } catch (e) {
-      toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+      toast.error(e.response?.data?.error || "Update failed");
     } finally {
       setIsUpdating(false);
     }
@@ -406,9 +409,9 @@ const FacultyDashboard = () => {
       setConferencePapers((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
       setEditConferenceOpen(false);
       setEditingConference(null);
-      toast.success("Conference paper updated", { duration: 2200 });
+      toast.success("Conference paper updated");
     } catch (e) {
-      toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+      toast.error(e.response?.data?.error || "Update failed");
     } finally {
       setIsUpdating(false);
     }
@@ -449,7 +452,7 @@ const FacultyDashboard = () => {
 
       toast.success("Deleted selected items", { duration: 2200 });
     } catch {
-      toast.error("Some deletions failed", { duration: 2500 });
+      toast.error("Some deletions failed");
     }
   };
 
@@ -464,7 +467,7 @@ const FacultyDashboard = () => {
       setSelectedConference(new Set());
       setSelectAllConference(false);
     }
-    toast.info("Cleared selection", { duration: 1500 });
+    // Selection cleared - UI update is sufficient
   };
 
   const getSelectedCount = () => {

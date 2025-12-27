@@ -225,7 +225,8 @@ export default function SuperAdminDashboard() {
         );
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       } catch {
-        toast.error("Failed to load publications for scope", { duration: 3000 });
+        // Error loading - UI shows loading state, no need for toast
+        console.error("Failed to load publications for scope:", error);
       } finally {
         setScopeLoading(false);
       }
@@ -548,7 +549,8 @@ export default function SuperAdminDashboard() {
       setSelectedUserPapers(papers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       // toast.academic(`Loaded ${papers.length} publications for ${user.fullName}`, { duration: 2200 });
     } catch {
-      toast.error("Failed to load user publications", { duration: 2800 });
+      // Error loading - UI shows loading state, no need for toast
+      console.error("Failed to load user publications:", error);
     } finally {
       setSelectedUserLoading(false);
     }
@@ -642,7 +644,7 @@ export default function SuperAdminDashboard() {
       a.click();
       URL.revokeObjectURL(url);
       setExportDialogOpen(false);
-      toast.academic(`Exported ${papersToExport.length} publications`, { duration: 2200 });
+      toast.success(`Exported ${papersToExport.length} publication${papersToExport.length !== 1 ? 's' : ''}`, { duration: 3000 });
     },
     [selectedPapers, filteredPapers, users, toast]
   );
@@ -768,7 +770,7 @@ export default function SuperAdminDashboard() {
             onClearSelection={() => {
               setSelectedPapers(new Set());
               setSelectAll(false);
-              toast.info("Cleared selection", { duration: 1500 });
+              // Selection cleared - UI update is sufficient
             }}
             exportDialogOpen={exportDialogOpen}
             onExportDialogOpenChange={setExportDialogOpen}
@@ -899,12 +901,12 @@ export default function SuperAdminDashboard() {
               if (selectAll) {
                 setSelectedPapers(new Set());
                 setSelectAll(false);
-                toast.info("Deselected all", { duration: 1500 });
+                // Deselected all - UI update is sufficient
               } else {
                 const ids = new Set(filteredPapers.map((p) => p._id));
                 setSelectedPapers(ids);
                 setSelectAll(true);
-                toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
+                // Selection updated - UI shows the change
               }
             }}
             onToggleSelect={(id) => {
@@ -958,9 +960,9 @@ export default function SuperAdminDashboard() {
                   next.delete(id);
                   return next;
                 });
-                toast.success("Publication deleted", { duration: 2000 });
+                toast.success("Publication deleted");
               } catch {
-                toast.error("Delete failed", { duration: 2500 });
+                toast.error("Delete failed");
               } finally {
                 setDeletingId(null);
               }
@@ -1025,9 +1027,9 @@ export default function SuperAdminDashboard() {
                 });
                 setScopeBookChapters((prev) => prev.filter((c) => c._id !== id));
                 setSelectedChapters((prev) => { const next = new Set(prev); next.delete(id); return next; });
-                toast.success("Book chapter deleted", { duration: 2000 });
+                toast.success("Book chapter deleted");
               } catch {
-                toast.error("Delete failed", { duration: 2500 });
+                toast.error("Delete failed");
               } finally {
                 setDeletingChapterId(null);
               }
@@ -1074,9 +1076,9 @@ export default function SuperAdminDashboard() {
                 });
                 setScopeConference((prev) => prev.filter((p) => p._id !== id));
                 setSelectedConference((prev) => { const next = new Set(prev); next.delete(id); return next; });
-                toast.success("Conference paper deleted", { duration: 2000 });
+                toast.success("Conference paper deleted");
               } catch {
-                toast.error("Delete failed", { duration: 2500 });
+                toast.error("Delete failed");
               } finally {
                 setDeletingConferenceId(null);
               }
@@ -1105,9 +1107,9 @@ export default function SuperAdminDashboard() {
             setEditDialogOpen(false);
             setEditingId(null);
             setEditData(null);
-            toast.success("Publication updated", { duration: 2200 });
+            toast.success("Publication updated");
           } catch (e) {
-            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+            toast.error(e.response?.data?.error || "Update failed");
           }
         }}
         onCancel={() => setEditDialogOpen(false)}
@@ -1130,9 +1132,9 @@ export default function SuperAdminDashboard() {
             setScopeBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
             setEditChapterOpen(false);
             setEditingChapter(null);
-            toast.success("Book chapter updated", { duration: 2200 });
+            toast.success("Book chapter updated");
           } catch (e) {
-            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+            toast.error(e.response?.data?.error || "Update failed");
           }
         }}
         isSubmitting={false}
@@ -1151,9 +1153,9 @@ export default function SuperAdminDashboard() {
             setScopeConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
             setEditConferenceOpen(false);
             setEditingConference(null);
-            toast.success("Conference paper updated", { duration: 2200 });
+            toast.success("Conference paper updated");
           } catch (e) {
-            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+            toast.error(e.response?.data?.error || "Update failed");
           }
         }}
         isSubmitting={false}

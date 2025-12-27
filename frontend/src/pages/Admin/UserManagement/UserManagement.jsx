@@ -189,7 +189,8 @@ export default function UserManagement() {
       setUsers(data);
     } catch (err) {
       console.error('Fetch users error:', err);
-      toast.error(err.message || 'Failed to fetch users');
+      // Error fetching - UI shows empty state, no need for toast
+      console.error('Failed to fetch users:', err);
       setUsers([]);
     } finally {
       setIsLoading(false);
@@ -444,7 +445,8 @@ export default function UserManagement() {
         return;
       }
 
-      toast.success('Bulk upload successful!');
+      const count = result?.count || result?.users?.length || 0;
+      toast.success(`Bulk upload successful! ${count} user${count !== 1 ? 's' : ''} created`);
       await fetchUsers(currentUser);
       return result;
     } catch (err) {

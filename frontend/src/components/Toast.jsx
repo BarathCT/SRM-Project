@@ -5,7 +5,7 @@ import { cva } from 'class-variance-authority';
 
 // Academic-themed color variants
 const toastVariants = cva(
-  'flex w-full items-start gap-3 rounded-lg border-l-4 p-4 pr-8 shadow-md transition-all duration-300 relative overflow-hidden',
+  'flex w-full items-start gap-3 rounded-lg border-l-4 p-4 pr-8 border border-gray-200 transition-all duration-300 relative overflow-hidden',
   {
     variants: {
       variant: {

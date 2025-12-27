@@ -19,7 +19,8 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
-  Shield
+  Shield,
+  AlertCircle
 } from "lucide-react";
 
 const DEFAULT_LABELS = {
@@ -74,12 +75,18 @@ const ExportFieldsDialog = ({
   }, [exportFields, availableFields]);
 
   // Defensive: always have a non-empty array
+  // Derive availableFields from exportFields if not provided
   const fallbackAvailableFields = useMemo(() => {
     if (Array.isArray(availableFields) && availableFields.length > 0) {
       return availableFields;
     }
+    // If exportFields is provided, use its keys
+    if (exportFields && Object.keys(exportFields).length > 0) {
+      return Object.keys(exportFields);
+    }
+    // Otherwise use fallbackFields keys
     return Object.keys(fallbackFields);
-  }, [availableFields, fallbackFields]);
+  }, [availableFields, exportFields, fallbackFields]);
 
   const [search, setSearch] = useState("");
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
@@ -99,7 +106,9 @@ const ExportFieldsDialog = ({
 
   const filteredFields = useMemo(() => {
     const q = search.toLowerCase().trim();
+    // First filter by selection state if "Selected Only" is active
     let fields = showSelectedOnly ? selectedFields : allFields;
+    // Then apply search filter if present
     if (q) {
       fields = fields.filter(
         f =>
@@ -149,7 +158,7 @@ const ExportFieldsDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="px-4 pt-4 pb-2 border-b bg-white flex-shrink-0">
+        <DialogHeader className="px-4 pt-4 pb-2 border-b border-gray-200 bg-white flex-shrink-0">
           <div className="flex justify-between items-center flex-wrap gap-y-2">
             <div className="flex items-center gap-3 min-w-0">
               <Download className="h-6 w-6 text-blue-600 flex-shrink-0" />
@@ -171,14 +180,14 @@ const ExportFieldsDialog = ({
           </div>
         </DialogHeader>
         {/* Search/Filter */}
-        <div className="flex flex-wrap gap-2 items-center px-4 pt-3 pb-2 bg-white z-10 border-b">
+        <div className="flex flex-wrap gap-2 items-center px-4 pt-3 pb-2 bg-white z-10 border-b border-gray-200">
           <div className="relative flex-1 min-w-[150px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search fields..."
-              className="pl-9 h-9 pr-8"
+              className="pl-9 h-9 pr-8 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
             />
             {(search || showSelectedOnly) && (
               <button
@@ -193,31 +202,73 @@ const ExportFieldsDialog = ({
           <Button
             variant={showSelectedOnly ? "default" : "outline"}
             onClick={() => setShowSelectedOnly(x => !x)}
-            className="h-9 px-3 flex items-center"
+            className={`h-9 px-3 flex items-center border-gray-300 transition-all ${
+              showSelectedOnly ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" : ""
+            }`}
+            disabled={selectedFields.length === 0}
+            title={
+              selectedFields.length === 0
+                ? "Select at least one field to use this filter"
+                : showSelectedOnly
+                ? "Show all fields"
+                : "Show only selected fields"
+            }
           >
             {showSelectedOnly ? (
               <Eye className="h-4 w-4 mr-2" />
             ) : (
               <EyeOff className="h-4 w-4 mr-2" />
             )}
-            Selected Only
+            <span className="mr-2">{showSelectedOnly ? "Show All" : "Selected Only"}</span>
+            {selectedFields.length > 0 && (
+              <Badge 
+                variant="secondary" 
+                className={`ml-1 h-5 px-1.5 text-xs ${
+                  showSelectedOnly 
+                    ? "bg-blue-500 text-white border-0" 
+                    : "bg-gray-100 text-gray-700 border-gray-300"
+                }`}
+              >
+                {selectedFields.length}
+              </Badge>
+            )}
           </Button>
         </div>
         {/* Quick Actions */}
-        <div className="flex flex-wrap gap-2 items-center px-4 py-2 bg-white z-10 border-b">
-          <Button variant="outline" size="sm" onClick={selectAll}>
+        <div className="flex flex-wrap gap-2 items-center px-4 py-2 bg-white z-10 border-b border-gray-200">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={selectAll}
+            className="border-gray-300"
+            disabled={selectedFields.length === allFields.length}
+          >
             Select All
           </Button>
-          <Button variant="outline" size="sm" onClick={clearAll}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={clearAll}
+            className="border-gray-300"
+            disabled={selectedFields.length === 0}
+          >
             Clear All
           </Button>
           <Separator orientation="vertical" className="h-5 mx-2 hidden sm:block" />
-          <Badge variant="secondary" className="h-7 px-2 flex items-center">
-            Selected: {selectedFields.length}/{allFields.length}
+          <Badge variant="secondary" className="h-7 px-3 flex items-center bg-blue-50 text-blue-700 border-blue-200">
+            {selectedFields.length} / {allFields.length} selected
           </Badge>
         </div>
         {/* Main Content */}
         <div className="flex-1 min-h-0 overflow-auto bg-gray-50">
+          {showSelectedOnly && selectedFields.length > 0 && (
+            <div className="px-4 pt-3 pb-2 bg-blue-50 border-b border-blue-100">
+              <div className="flex items-center gap-2 text-sm text-blue-700">
+                <Eye className="h-4 w-4" />
+                <span className="font-medium">Showing {selectedFields.length} selected field{selectedFields.length !== 1 ? 's' : ''} only</span>
+              </div>
+            </div>
+          )}
           <ScrollArea className="h-full w-full">
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 min-h-[350px]">
               {filteredFields.map(field => {
@@ -226,7 +277,7 @@ const ExportFieldsDialog = ({
                 return (
                   <label
                     key={field}
-                    className="flex items-start gap-3 p-3 rounded bg-white hover:bg-gray-50 cursor-pointer border shadow-sm transition-colors"
+                    className="flex items-start gap-3 p-3 rounded bg-white hover:bg-gray-50 cursor-pointer border border-gray-200 hover:border-gray-300 transition-colors"
                   >
                     <Checkbox
                       checked={isChecked}
@@ -240,33 +291,67 @@ const ExportFieldsDialog = ({
                 );
               })}
               {filteredFields.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center py-12 text-center bg-white border rounded-lg">
-                  <Search className="h-8 w-8 text-gray-300 mb-4" />
-                  <h4 className="font-medium text-gray-700">No matching fields found</h4>
-                  <p className="text-sm text-gray-500 mb-4">
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center bg-white border border-gray-200 rounded-lg">
+                  <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                    {showSelectedOnly ? (
+                      <EyeOff className="h-8 w-8 text-gray-400" />
+                    ) : (
+                      <Search className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">
+                    {showSelectedOnly 
+                      ? "No selected fields match your search" 
+                      : "No matching fields found"}
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-6 max-w-sm">
                     {showSelectedOnly
-                      ? "No fields are currently selected"
-                      : "Try a different search term"}
+                      ? search
+                        ? `None of your ${selectedFields.length} selected field${selectedFields.length !== 1 ? 's' : ''} match "${search}". Try a different search term.`
+                        : "No fields are currently selected. Select fields to include in your export."
+                      : "Try a different search term or clear the filters to see all available fields."}
                   </p>
-                  <Button variant="outline" onClick={resetSearch}>
-                    Reset Filters
-                  </Button>
+                  <div className="flex gap-2">
+                    {search && (
+                      <Button variant="outline" onClick={() => setSearch("")} className="border-gray-300">
+                        Clear Search
+                      </Button>
+                    )}
+                    {(showSelectedOnly || search) && (
+                      <Button variant="outline" onClick={resetSearch} className="border-gray-300">
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset All Filters
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </ScrollArea>
         </div>
         {/* Footer */}
-        <DialogFooter className="p-4 border-t bg-white flex flex-col sm:flex-row justify-between gap-3">
-          <div className="text-sm text-gray-500 flex items-center">
+        <DialogFooter className="p-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row justify-between gap-3">
+          <div className="text-sm text-gray-600 flex items-center gap-2">
             {selectedFields.length > 0 ? (
-              <span>Ready to export {selectedFields.length} fields</span>
+              <>
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                  {selectedFields.length} selected
+                </Badge>
+                <span className="text-gray-500">Ready to export</span>
+              </>
             ) : (
-              <span>Select at least one field to enable export</span>
+              <span className="text-gray-500 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+                Select at least one field to enable export
+              </span>
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange?.(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange?.(false)}
+              className="border-gray-300"
+            >
               Cancel
             </Button>
             <Button
@@ -275,10 +360,10 @@ const ExportFieldsDialog = ({
                 onOpenChange?.(false);
               }}
               disabled={selectedFields.length === 0}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="h-4 w-4 mr-2" />
-              Export ({selectedFields.length})
+              Export {selectedFields.length > 0 && `(${selectedFields.length})`}
             </Button>
           </div>
         </DialogFooter>
