@@ -29,7 +29,7 @@ export function LoadingSpinner({
  * PageLoader - Full page loading with backdrop (Professional minimal design)
  */
 export function PageLoader({ 
-  message = null, 
+  message = "Loading...", 
   fullScreen = true 
 }) {
   const containerClass = fullScreen 
@@ -40,9 +40,7 @@ export function PageLoader({
     <div className={containerClass}>
       <div className="flex flex-col items-center gap-4">
         <div className="h-10 w-10 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin"></div>
-        {message && (
-          <p className="text-sm font-medium text-gray-500">{message}</p>
-        )}
+        <p className="text-sm font-medium text-gray-600">{message}</p>
       </div>
     </div>
   );

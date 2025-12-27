@@ -24,7 +24,7 @@ export default function StatsCard({
   className,
 }) {
   return (
-    <Card className={cn("border border-blue-100 shadow-md bg-white", className)}>
+    <Card className={cn("border border-gray-200 bg-white", className)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="min-w-0">

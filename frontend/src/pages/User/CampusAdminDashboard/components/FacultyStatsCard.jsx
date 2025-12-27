@@ -19,7 +19,7 @@ import {
 export default function FacultyStatsCard({ facultyData, loading }) {
   if (loading) {
     return (
-      <Card className="border border-blue-100 shadow-md bg-white">
+      <Card className="border border-gray-200 bg-white">
         <CardHeader className="bg-blue-50 border-b border-blue-100">
           <CardTitle className="flex items-center gap-2 text-gray-900">
             <Users className="h-5 w-5 text-blue-600" />
@@ -59,7 +59,7 @@ export default function FacultyStatsCard({ facultyData, loading }) {
             {topPerformers.map((faculty, index) => (
               <div 
                 key={faculty.facultyId} 
-                className="flex items-center justify-between p-4 bg-white border border-blue-100 rounded-lg hover:shadow-md transition-shadow"
+                className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
               >
                 <div className="flex items-center space-x-4">
                   <div className="relative">

@@ -100,7 +100,7 @@ export default function Login() {
         background: "linear-gradient(135deg, #e3f0fd 0%, #ffffff 80%, #c7e6fe 100%)"
       }}
     >
-      <div className="w-full max-w-md rounded-xl shadow-xl bg-white border border-blue-100 px-8 py-8 flex flex-col items-center">
+      <div className="w-full max-w-md rounded-xl bg-white border border-gray-200 px-8 py-8 flex flex-col items-center">
         <img
           src="/logo.jpg"
           alt="ScholarSync"

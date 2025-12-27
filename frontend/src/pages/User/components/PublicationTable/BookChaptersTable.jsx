@@ -138,7 +138,7 @@ export default function BookChaptersTable({
     };
 
     return (
-        <Card className="border border-blue-100 shadow-md bg-white">
+        <Card className="border border-gray-200 bg-white">
             <CardHeader className="bg-white-50 border-b border-blue-100">
                 <div className="flex items-center justify-between">
                     <div>
@@ -360,7 +360,7 @@ export default function BookChaptersTable({
                                                     >
                                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                                             {/* Publication Details */}
-                                                            <Card className="border border-blue-100 shadow-sm bg-white">
+                                                            <Card className="border border-gray-200 bg-white">
                                                                 <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                                                                     <CardTitle className="text-lg text-gray-900">
                                                                         Publication Details
@@ -404,7 +404,7 @@ export default function BookChaptersTable({
                                                             </Card>
 
                                                             {/* Author Information */}
-                                                            <Card className="border border-blue-100 shadow-sm bg-white">
+                                                            <Card className="border border-gray-200 bg-white">
                                                                 <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                                                                     <CardTitle className="text-lg text-gray-900">
                                                                         Author & Editors
@@ -438,7 +438,7 @@ export default function BookChaptersTable({
                                                             </Card>
 
                                                             {/* Subject Classification */}
-                                                            <Card className="border border-blue-100 shadow-sm bg-white">
+                                                            <Card className="border border-gray-200 bg-white">
                                                                 <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                                                                     <CardTitle className="text-lg text-gray-900">
                                                                         Subject Classification

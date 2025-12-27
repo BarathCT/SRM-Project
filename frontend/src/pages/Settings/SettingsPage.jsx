@@ -39,7 +39,7 @@ const FieldStatic = ({ label, value, mono = false, span = 1 }) => (
 
 const SectionCard = ({ title, description, action, children, className = '' }) => (
   <div
-    className={`relative group rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow ${className}`}
+    className={`relative group rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-sm transition-colors hover:border-gray-300 ${className}`}
   >
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-start justify-between gap-4">
@@ -265,7 +265,7 @@ const SettingsPage = () => {
 
   if (!user) {
     return (
-      <div className="max-w-3xl mx-auto p-10 bg-white rounded-2xl shadow-sm border border-red-200/40">
+      <div className="max-w-3xl mx-auto p-10 bg-white rounded-2xl border border-red-200/40">
         <div className="text-center text-red-600 font-medium">
           Authentication required. Please log in.
         </div>
@@ -288,7 +288,7 @@ const SettingsPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white px-4 py-8 sm:px-6 lg:px-10">
       {/* Hero Header */}
       <div className="max-w-6xl mx-auto mb-10">
-        <div className="relative overflow-hidden rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur-sm shadow-sm">
+        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white/70 backdrop-blur-sm">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.08),transparent_60%)]" />
           <div className="relative px-6 py-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-6">
