@@ -662,7 +662,8 @@ export default function UploadPage() {
     // Fetch user's author IDs from /api/settings to populate publication dropdown
     (async () => {
       try {
-        const res = await fetch('/api/settings', {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        const res = await fetch(`${API_BASE_URL}/api/settings`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) return; // ignore silently, user may not have author IDs

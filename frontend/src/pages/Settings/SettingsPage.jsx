@@ -189,8 +189,8 @@ const SettingsPage = () => {
     if (!validatePasswordForm()) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
-        '/api/settings/change-password',
+      await api.post(
+        '/settings/change-password',
         { ...passwordForm },
         {
           headers: {
@@ -211,8 +211,8 @@ const SettingsPage = () => {
     if (!validateProfileForm()) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.put(
-        '/api/settings/profile',
+      await api.put(
+        '/settings/profile',
         { fullName: profileForm.fullName },
         {
           headers: {
@@ -239,8 +239,8 @@ const SettingsPage = () => {
         sci: authorIdForm.sci.trim() || null,
         webOfScience: authorIdForm.webOfScience.trim() || null
       };
-      await axios.put(
-        '/api/settings/author-ids',
+      await api.put(
+        '/settings/author-ids',
         { authorId: cleanAuthorIds },
         {
           headers: {
