@@ -230,6 +230,11 @@ router.delete("/:id", verifyToken, async (req, res) => {
     console.error("Error deleting conference paper:", err);
     return res.status(500).json({ error: "Server error while deleting conference paper" });
   }
+  const papers = await ConferencePaper.find({
+    facultyId: req.user.facultyId
+  }).sort({ createdAt: -1 });
+
+  res.json(papers);
 });
 
 export default router;

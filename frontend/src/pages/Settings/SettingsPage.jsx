@@ -3,6 +3,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/Toast';
+import api from '@/lib/api';
 
 // Colleges with institutes
 const collegesWithInstitutes = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
@@ -81,6 +82,8 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
   // Load data
   useEffect(() => {
     const fetchUserData = async () => {
@@ -92,7 +95,7 @@ const SettingsPage = () => {
 
       try {
         const decoded = jwtDecode(token);
-        const response = await axios.get('/api/settings', {
+        const response = await api.get('/settings', {
           headers: { Authorization: `Bearer ${token}` }
         });
 

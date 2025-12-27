@@ -40,6 +40,23 @@ app.use(morgan('dev'));
 // Health check
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'OK' }));
 
+// Root route handler
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'SRM Project Backend API',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      admin: '/api/admin',
+      settings: '/api/settings',
+      papers: '/api/papers',
+      conferencePapers: '/api/conference-papers',
+      bookChapters: '/api/book-chapters'
+    }
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
