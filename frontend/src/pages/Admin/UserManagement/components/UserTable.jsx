@@ -103,7 +103,7 @@ export default function UserTable({
   };
 
   return (
-    <div className="rounded-lg border shadow-sm overflow-hidden">
+    <div className="rounded-lg border border-gray-200 overflow-hidden">
       <Table className="min-w-full">
         <TableHeader className="bg-gray-50">
           <TableRow>

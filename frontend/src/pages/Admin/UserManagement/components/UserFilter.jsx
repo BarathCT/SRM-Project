@@ -95,7 +95,7 @@ export default function UserFilters({
   }, [availableColleges, availableInstitutes, availableDepartments]);
 
   return (
-    <div className="bg-white p-4 rounded-lg border shadow-sm">
+    <div className="bg-white p-4 rounded-lg border border-gray-200">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <Filter className="h-5 w-5 text-blue-600" />
@@ -144,7 +144,14 @@ export default function UserFilters({
             </Label>
             <Select
               value={filters.college}
-              onValueChange={(value) => setFilters({ ...filters, college: value })}
+              onValueChange={(value) => {
+                setFilters({ 
+                  ...filters, 
+                  college: value,
+                  institute: 'all', // Reset institute when college changes
+                  department: 'all' // Reset department when college changes
+                });
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All colleges" />
@@ -184,8 +191,8 @@ export default function UserFilters({
           </Select>
         </div>
 
-        {/* Institute filter (never for campus admin) */}
-        {shouldShowInstituteFilter && (
+        {/* Institute filter: only show when college is selected and has institutes */}
+        {shouldShowInstituteFilter && filters.college !== 'all' && !collegesWithoutInstitutes.includes(filters.college) && (
           <div className="space-y-2">
             <Label htmlFor="filter-institute" className="flex items-center text-sm">
               <Layers className="h-4 w-4 mr-2 text-gray-500" />
@@ -193,15 +200,21 @@ export default function UserFilters({
             </Label>
             <Select
               value={filters.institute}
-              onValueChange={(value) => setFilters({ ...filters, institute: value })}
+              onValueChange={(value) => {
+                setFilters({ 
+                  ...filters, 
+                  institute: value,
+                  department: value === 'all' ? 'all' : filters.department
+                });
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All institutes" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All institutes</SelectItem>
-                {dynamicFilterOptions.institutes
-                  .filter(institute => institute)
+                {getInstitutesForCollege(filters.college)
+                  .filter(institute => institute && institute !== 'N/A')
                   .map(institute => (
                     <SelectItem key={institute} value={institute}>
                       {institute}
@@ -212,36 +225,98 @@ export default function UserFilters({
           </div>
         )}
 
-        {/* Department filter (always for campus admin and others) */}
-        {shouldShowDepartmentFilter && (
-          <div className="space-y-2">
-            <Label htmlFor="filter-department" className="flex items-center text-sm">
-              <Layers className="h-4 w-4 mr-2 text-gray-500" />
-              Department
-            </Label>
-            <Select
-              value={filters.department}
-              onValueChange={(value) => setFilters({ ...filters, department: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All departments</SelectItem>
-                {(isCampusAdmin
-                  ? campusAdminDepartments
-                  : dynamicFilterOptions.departments
-                )
-                  .filter(department => department && department !== 'N/A')
-                  .map(department => (
+        {/* Department filter: only show when appropriate conditions are met */}
+        {(() => {
+          // For campus admin: always show if they have departments
+          if (isCampusAdmin) {
+            if (campusAdminDepartments.length === 0) return null;
+            return (
+              <div className="space-y-2">
+                <Label htmlFor="filter-department" className="flex items-center text-sm">
+                  <Layers className="h-4 w-4 mr-2 text-gray-500" />
+                  Department
+                </Label>
+                <Select
+                  value={filters.department}
+                  onValueChange={(value) => setFilters({ ...filters, department: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All departments</SelectItem>
+                    {campusAdminDepartments
+                      .filter(department => department && department !== 'N/A')
+                      .map(department => (
+                        <SelectItem key={department} value={department}>
+                          {department}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          }
+          // For super admin: show when college is selected
+          if (filters.college === 'all') return null;
+          // If college has no institutes, show departments directly
+          if (collegesWithoutInstitutes.includes(filters.college)) {
+            const depts = getDepartments(filters.college, null).filter(d => d && d !== 'N/A');
+            if (depts.length === 0) return null;
+            return (
+              <div className="space-y-2">
+                <Label htmlFor="filter-department" className="flex items-center text-sm">
+                  <Layers className="h-4 w-4 mr-2 text-gray-500" />
+                  Department
+                </Label>
+                <Select
+                  value={filters.department}
+                  onValueChange={(value) => setFilters({ ...filters, department: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All departments</SelectItem>
+                    {depts.map(department => (
+                      <SelectItem key={department} value={department}>
+                        {department}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          }
+          // If college has institutes, show departments only when institute is selected
+          if (filters.institute === 'all') return null;
+          const depts = getDepartments(filters.college, filters.institute).filter(d => d && d !== 'N/A');
+          if (depts.length === 0) return null;
+          return (
+            <div className="space-y-2">
+              <Label htmlFor="filter-department" className="flex items-center text-sm">
+                <Layers className="h-4 w-4 mr-2 text-gray-500" />
+                Department
+              </Label>
+              <Select
+                value={filters.department}
+                onValueChange={(value) => setFilters({ ...filters, department: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All departments</SelectItem>
+                  {depts.map(department => (
                     <SelectItem key={department} value={department}>
                       {department}
                     </SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Active filters display */}

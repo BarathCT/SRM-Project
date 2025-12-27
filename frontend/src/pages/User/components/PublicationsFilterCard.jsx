@@ -110,11 +110,16 @@ export default function PublicationsFilterCard(props) {
   ]);
 
   const showCollegeSelect = isSuper || (!isCampusAdmin && showCampusFilters);
-  const showInstituteSelect = (isSuper || (!isCampusAdmin && showCampusFilters)) && institutes.length > 0;
+  // Institute dropdown: only show when college is selected and has institutes
+  const showInstituteSelect = showCollegeSelect && 
+    selectedCollege !== 'all' && 
+    !collegesWithoutInstitutes.includes(selectedCollege) && 
+    institutes.length > 0;
+  // Department dropdown: only show when appropriate conditions are met
   const showDepartmentSelect = (
     isCampusAdmin ||
-    departments.length > 0 ||
-    (collegesWithoutInstitutes.includes(selectedCollege) && selectedCollege !== 'all')
+    (selectedCollege !== 'all' && collegesWithoutInstitutes.includes(selectedCollege)) ||
+    (selectedCollege !== 'all' && selectedInstitute !== 'all' && departments.length > 0)
   );
 
   const subjectCategories = useMemo(() => {
@@ -383,7 +388,7 @@ export default function PublicationsFilterCard(props) {
                       onInstituteChange(value);
                       onDepartmentChange('all');
                     }}
-                    disabled={isCampusAdmin || (isCampusAdmin && (!currentUser?.college || collegesWithoutInstitutes.includes(currentUser.college)))}
+                    disabled={isCampusAdmin}
                   >
                     <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
                       <SelectValue placeholder="All Institutes" />
@@ -409,7 +414,7 @@ export default function PublicationsFilterCard(props) {
                       isCampusAdmin
                         ? !currentUser?.college ||
                           (!collegesWithoutInstitutes.includes(currentUser.college) && (!currentUser.institute || currentUser.institute === "all"))
-                        : (!isCampusAdmin && (selectedCollege === 'all' || (showInstituteSelect && selectedInstitute === 'all')))
+                        : (selectedCollege === 'all' || (showInstituteSelect && selectedInstitute === 'all'))
                     }
                   >
                     <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
