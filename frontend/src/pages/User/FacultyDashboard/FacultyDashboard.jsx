@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "axios";
 import { useToast } from "@/components/Toast";
-import { BookOpen, Presentation, FileText, RefreshCw } from "lucide-react";
+import { BookOpen, Presentation, FileText } from "lucide-react";
+import { PageLoader } from "@/components/ui/loading";
 
 // Components
 import DashboardHeader from "../components/DashboardHeader";
@@ -483,17 +484,7 @@ const FacultyDashboard = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl border border-gray-200">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Loading Publications</h3>
-            <p className="text-gray-600">Please wait…</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoader fullScreen={true} message="Loading Publications..." />;
   }
 
   return (

@@ -615,7 +615,7 @@ function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   );
 }
 
-export default function UploadConferencePage() {
+export default function UploadConferencePage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -897,14 +897,15 @@ export default function UploadConferencePage() {
               Back
             </Button>
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-black">
-                Submit a Conference Paper
-              </h1>
-              <p className="text-black/70">Fill in the details of the conference publication.</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-black">
+                  Submit a Conference Paper
+                </h1>
+                <p className="text-black/70">Fill in the details of the conference publication.</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          <Card className="border-blue-200">
+          <Card className="border border-gray-200">
             <CardHeader>
               <CardTitle className="text-black">Conference Paper Details</CardTitle>
               <CardDescription className="text-black/70">
@@ -1672,4 +1673,6 @@ export default function UploadConferencePage() {
       </div>
     </div>
   );
+
+  return content;
 }
