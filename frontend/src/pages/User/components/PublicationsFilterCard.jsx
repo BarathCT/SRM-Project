@@ -328,29 +328,30 @@ export default function PublicationsFilterCard(props) {
             </div>
           </div>
 
-          {/* Subject Category Filter */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <Label htmlFor="subject-category" className="text-xs text-gray-600 mb-1 block">Subject Category</Label>
-              <Select
-                value={selectedSubjectCategory}
-                onValueChange={onSubjectCategoryChange}
-                disabled={selectedSubjectArea === "all" || subjectCategories.length === 0}
-              >
-                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-blue-200 max-h-[400px] overflow-y-auto">
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {subjectCategories.map((category) => (
-                    <SelectItem key={`category-${category}`} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Subject Category Filter: only show when Subject Area is selected */}
+          {selectedSubjectArea !== "all" && subjectCategories.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label htmlFor="subject-category" className="text-xs text-gray-600 mb-1 block">Subject Category</Label>
+                <Select
+                  value={selectedSubjectCategory}
+                  onValueChange={onSubjectCategoryChange}
+                >
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-blue-200 max-h-[400px] overflow-y-auto">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {subjectCategories.map((category) => (
+                      <SelectItem key={`category-${category}`} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Extended Organizational Filters */}
           {showExtended && (
