@@ -497,7 +497,7 @@ const FacultyDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 lg:p-6 w-[75%] mx-auto">
+    <div className="min-h-screen bg-white px-2 sm:px-4 lg:px-6 py-6">
       <DashboardHeader
         title="Publications Dashboard"
         subtitle="Manage and track your research publications"
