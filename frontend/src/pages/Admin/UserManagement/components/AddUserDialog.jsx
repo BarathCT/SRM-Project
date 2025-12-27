@@ -21,7 +21,7 @@ import { useToast } from '@/components/Toast';
 import { useEffect, useRef, useState } from 'react';
 import { getDepartments as getDepartmentsForCollegeAndInstitute } from '@/utils/collegeData';
 
-const API_BASE_URL = '/api/admin'; // adjust if needed
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function AddUserDialog({
   open,

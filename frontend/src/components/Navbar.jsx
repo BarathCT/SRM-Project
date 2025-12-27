@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/Toast';
+import api from '@/lib/api';
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -41,12 +42,12 @@ export default function Navbar() {
 
       try {
         const decoded = jwtDecode(token);
-        const response = await fetch('/api/settings', {
+        const response = await api.get('/settings', {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
-        const data = await response.json();
+        const data = response.data;
 
         setUser({
           ...decoded,
