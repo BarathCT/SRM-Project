@@ -42,21 +42,72 @@ export default function Navbar() {
 
       try {
         const decoded = jwtDecode(token);
-        const response = await api.get('/settings', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        const data = response.data;
+        
+        // Check if token is expired
+        const currentTime = Date.now() / 1000;
+        if (decoded.exp < currentTime) {
+          console.warn('Token expired');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+          return;
+        }
 
-        setUser({
-          ...decoded,
-            ...(data.data || data)
-        });
+        const response = await api.get('/settings');
+        const responseData = response.data;
+
+        // Handle response structure: { success: true, data: {...} } or direct data
+        const userData = responseData.success ? responseData.data : responseData;
+
+        if (userData) {
+          setUser({
+            ...decoded,
+            ...userData
+          });
+        } else {
+          throw new Error('Invalid response structure');
+        }
       } catch (err) {
-        console.error('Invalid token or failed to fetch user data');
-        localStorage.removeItem('token');
-        navigate('/login');
+        // Only remove token and redirect on authentication errors (401, 403)
+        const isAuthError = err.response?.status === 401 || err.response?.status === 403;
+        const isNetworkError = !err.response && err.message?.includes('Network');
+        
+        console.error('Failed to fetch user data:', {
+          message: err.message,
+          status: err.response?.status,
+          isAuthError,
+          isNetworkError,
+          error: err
+        });
+
+        if (isAuthError) {
+          // Token is invalid or expired
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+        } else {
+          // For non-auth errors, try to use cached user data from localStorage
+          const cachedUser = localStorage.getItem('user');
+          if (cachedUser) {
+            try {
+              const userData = JSON.parse(cachedUser);
+              const decoded = jwtDecode(token);
+              setUser({
+                ...decoded,
+                ...userData
+              });
+              console.warn('Using cached user data due to API error:', err.message);
+            } catch (parseErr) {
+              console.error('Failed to parse cached user data:', parseErr);
+            }
+          } else if (isNetworkError) {
+            // Network error - don't remove token, just log
+            console.warn('Network error while fetching user data. Token preserved.');
+          } else {
+            // Other errors - log but don't remove token
+            console.warn('Error fetching user data, but token preserved:', err.message);
+          }
+        }
       }
     };
 
