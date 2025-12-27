@@ -608,7 +608,7 @@ function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   );
 }
 
-export default function UploadPage({ embedded = false }: { embedded?: boolean }) {
+export default function UploadPage({ embedded = false } = {}) {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);

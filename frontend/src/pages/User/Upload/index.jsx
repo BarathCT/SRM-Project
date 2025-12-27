@@ -37,12 +37,12 @@ const PUBLICATION_TYPES = [
 ];
 
 export default function UploadSelector() {
-  const [selectedType, setSelectedType] = useState<string>("research");
+  const [selectedType, setSelectedType] = useState("research");
 
   const selectedOption = PUBLICATION_TYPES.find((opt) => opt.value === selectedType);
   const SelectedIcon = selectedOption?.icon || FileText;
 
-  const getColorClasses = (color: string) => {
+  const getColorClasses = (color) => {
     switch (color) {
       case "blue":
         return {

@@ -615,7 +615,7 @@ function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   );
 }
 
-export default function UploadConferencePage({ embedded = false }: { embedded?: boolean }) {
+export default function UploadConferencePage({ embedded = false } = {}) {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);

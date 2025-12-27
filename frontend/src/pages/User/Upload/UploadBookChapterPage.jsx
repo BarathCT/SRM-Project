@@ -604,7 +604,7 @@ function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   );
 }
 
-export default function UploadBookChapterPage({ embedded = false }: { embedded?: boolean }) {
+export default function UploadBookChapterPage({ embedded = false } = {}) {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);
