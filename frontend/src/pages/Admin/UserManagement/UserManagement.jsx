@@ -150,7 +150,7 @@ export default function UserManagement() {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      let url = `${API_BASE_URL}/users`;
+      let url = `${API_BASE_URL}/api/admin/users`;
       const params = new URLSearchParams();
 
       // Add filters based on user role
@@ -253,8 +253,8 @@ export default function UserManagement() {
       }
 
       const url = editMode
-        ? `${API_BASE_URL}/users/${currentUserId}`
-        : `${API_BASE_URL}/users`;
+        ? `${API_BASE_URL}/api/admin/users/${currentUserId}`
+        : `${API_BASE_URL}/api/admin/users`;
       const method = editMode ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -316,7 +316,7 @@ export default function UserManagement() {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -422,7 +422,7 @@ export default function UserManagement() {
   const handleBulkUpload = async (formData) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE_URL}/bulk-upload-users`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/bulk-upload-users`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
