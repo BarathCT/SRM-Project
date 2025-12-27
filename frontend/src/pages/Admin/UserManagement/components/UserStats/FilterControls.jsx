@@ -59,7 +59,7 @@ export default function FilterControls({
   }
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200/50 shadow-sm mb-6">
+    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-gray-200 mb-6">
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
@@ -97,7 +97,12 @@ export default function FilterControls({
           {/* College Filter (not for campus admin) */}
           {!isCampusAdmin && (
             <div className="w-full">
-              <Select value={filters.college} onValueChange={v => onFilterChange('college', v)}>
+              <Select value={filters.college} onValueChange={v => {
+                onFilterChange('college', v);
+                // Reset institute and department when college changes
+                onFilterChange('institute', 'all');
+                onFilterChange('department', 'all');
+              }}>
                 <SelectTrigger className="w-full bg-white/90 border-gray-200">
                   <SelectValue placeholder="All Colleges" />
                 </SelectTrigger>
@@ -110,39 +115,89 @@ export default function FilterControls({
               </Select>
             </div>
           )}
-          {/* Institute Filter (not for campus admin) */}
-          {showInstituteFilter && !isCampusAdmin && (
+          {/* Institute Filter: only show when college is selected and has institutes */}
+          {!isCampusAdmin && filters.college !== 'all' && !collegesWithoutInstitutes.includes(filters.college) && (
             <div className="w-full">
-              <Select value={filters.institute} onValueChange={v => onFilterChange('institute', v)}>
+              <Select value={filters.institute} onValueChange={v => {
+                onFilterChange('institute', v);
+                // Reset department when institute changes
+                onFilterChange('department', 'all');
+              }}>
                 <SelectTrigger className="w-full bg-white/90 border-gray-200">
                   <SelectValue placeholder="All Institutes" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Institutes</SelectItem>
-                  {allInstitutes.map(inst => (
+                  {getInstitutesForCollege(filters.college).filter(i => i !== 'N/A').map(inst => (
                     <SelectItem key={inst} value={inst}>{inst}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
-          {/* Department Filter */}
-          <div className="w-full">
-            <Select value={filters.department} onValueChange={v => onFilterChange('department', v)}>
-              <SelectTrigger className="w-full bg-white/90 border-gray-200">
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {(isCampusAdmin
-                  ? departmentOptions
-                  : allDepartments
-                ).map(dep => (
-                  <SelectItem key={dep} value={dep}>{dep}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Department Filter: only show when appropriate conditions are met */}
+          {(() => {
+            // For campus admin: always show if they have departments
+            if (isCampusAdmin) {
+              if (departmentOptions.length === 0) return null;
+              return (
+                <div className="w-full">
+                  <Select value={filters.department} onValueChange={v => onFilterChange('department', v)}>
+                    <SelectTrigger className="w-full bg-white/90 border-gray-200">
+                      <SelectValue placeholder="All Departments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departmentOptions.map(dep => (
+                        <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+            // For super admin: show when college is selected
+            if (filters.college === 'all') return null;
+            // If college has no institutes, show departments directly
+            if (collegesWithoutInstitutes.includes(filters.college)) {
+              const depts = getDepartments(filters.college, null).filter(d => d !== 'N/A');
+              if (depts.length === 0) return null;
+              return (
+                <div className="w-full">
+                  <Select value={filters.department} onValueChange={v => onFilterChange('department', v)}>
+                    <SelectTrigger className="w-full bg-white/90 border-gray-200">
+                      <SelectValue placeholder="All Departments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {depts.map(dep => (
+                        <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+            // If college has institutes, show departments only when institute is selected
+            if (filters.institute === 'all') return null;
+            const depts = getDepartments(filters.college, filters.institute).filter(d => d !== 'N/A');
+            if (depts.length === 0) return null;
+            return (
+              <div className="w-full">
+                <Select value={filters.department} onValueChange={v => onFilterChange('department', v)}>
+                  <SelectTrigger className="w-full bg-white/90 border-gray-200">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {depts.map(dep => (
+                      <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

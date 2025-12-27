@@ -28,9 +28,9 @@ export default function SummaryCard({ location, roles, onClick, isSelected }) {
 
   return (
     <div
-      className={`p-4 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md ${
+      className={`p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-gray-300 ${
         isSelected
-          ? 'bg-blue-50 border-2 border-blue-300 shadow-sm'
+          ? 'bg-blue-50 border-2 border-blue-300'
           : 'bg-white/90 border border-gray-200'
       }`}
       onClick={() => onClick && onClick(location)}

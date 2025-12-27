@@ -22,7 +22,7 @@ export default function AnalyticsChart({
   const ChartComponent = chartMap[type];
 
   return (
-    <div className={`bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm ${className}`}>
+    <div className={`bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 ${className}`}>
       <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
         {Icon && <Icon className={`w-4 h-4 mr-2 ${iconColor}`} />}
         {title}

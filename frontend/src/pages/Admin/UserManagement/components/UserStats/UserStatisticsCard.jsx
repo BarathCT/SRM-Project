@@ -51,7 +51,7 @@ const UserStatisticsCard = ({ roleStats, currentRole }) => {
   }
 
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
+    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
       <div className="mb-6">
         <h5 className="font-semibold text-gray-800 mb-2 flex items-center">
           <UserCheck className="w-5 h-5 mr-2 text-blue-600" />
@@ -68,7 +68,7 @@ const UserStatisticsCard = ({ roleStats, currentRole }) => {
           return (
             <div 
               key={role} 
-              className={`relative p-6 rounded-xl border-2 transition-all duration-300 hover:shadow-md hover:scale-105 bg-white/90 ${config.border} overflow-hidden`}
+              className={`relative p-6 rounded-xl border-2 transition-all duration-300 hover:border-gray-300 bg-white/90 ${config.border} overflow-hidden`}
             >
               <div className="flex flex-col items-center text-center space-y-3 relative z-10">
                 <div className={`p-3 rounded-full ${config.bg} ${config.border} border-2`}>
