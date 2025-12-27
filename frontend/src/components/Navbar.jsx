@@ -60,22 +60,28 @@ export default function Navbar() {
         const userData = responseData.success ? responseData.data : responseData;
 
         if (userData) {
-          setUser({
+          const fullUserData = {
             ...decoded,
             ...userData
-          });
+          };
+          setUser(fullUserData);
+          // Save to localStorage for caching (useful for Render cold starts)
+          localStorage.setItem('user', JSON.stringify(userData));
         } else {
           throw new Error('Invalid response structure');
         }
       } catch (err) {
         // Only remove token and redirect on authentication errors (401, 403)
         const isAuthError = err.response?.status === 401 || err.response?.status === 403;
-        const isNetworkError = !err.response && err.message?.includes('Network');
+        const isTimeoutError = err.code === 'ECONNABORTED' || err.message?.includes('timeout');
+        const isNetworkError = !err.response && (err.message?.includes('Network') || err.message?.includes('ERR_NETWORK'));
         
         console.error('Failed to fetch user data:', {
           message: err.message,
           status: err.response?.status,
+          code: err.code,
           isAuthError,
+          isTimeoutError,
           isNetworkError,
           error: err
         });
@@ -86,7 +92,7 @@ export default function Navbar() {
           localStorage.removeItem('user');
           navigate('/login');
         } else {
-          // For non-auth errors, try to use cached user data from localStorage
+          // For timeout/network errors, use cached user data from localStorage
           const cachedUser = localStorage.getItem('user');
           if (cachedUser) {
             try {
@@ -96,13 +102,24 @@ export default function Navbar() {
                 ...decoded,
                 ...userData
               });
-              console.warn('Using cached user data due to API error:', err.message);
+              if (isTimeoutError) {
+                console.warn('API timeout - using cached user data. Backend may be starting up.');
+              } else {
+                console.warn('Using cached user data due to API error:', err.message);
+              }
             } catch (parseErr) {
               console.error('Failed to parse cached user data:', parseErr);
+              // If we can't parse cached data and it's a timeout, just keep trying in background
+              if (!isTimeoutError) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                navigate('/login');
+              }
             }
-          } else if (isNetworkError) {
-            // Network error - don't remove token, just log
-            console.warn('Network error while fetching user data. Token preserved.');
+          } else if (isTimeoutError || isNetworkError) {
+            // Timeout/network error but no cached data - backend might be starting
+            // Don't remove token, user might be able to retry
+            console.warn('API timeout/network error. Backend may be starting up. Token preserved.');
           } else {
             // Other errors - log but don't remove token
             console.warn('Error fetching user data, but token preserved:', err.message);
