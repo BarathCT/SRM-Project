@@ -1,5 +1,6 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils"; // optional; remove if you don't use it
 
 /**
@@ -30,7 +31,7 @@ export default function StatsCard({
             <p className="text-gray-600 text-sm font-medium truncate">{title}</p>
 
             {loading ? (
-              <div className="mt-2 h-8 w-24 rounded bg-blue-100 animate-pulse" />
+              <Skeleton className="mt-2 h-8 w-24" />
             ) : (
               <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
             )}

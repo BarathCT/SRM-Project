@@ -26,24 +26,23 @@ export function LoadingSpinner({
 }
 
 /**
- * PageLoader - Full page loading with backdrop
+ * PageLoader - Full page loading with backdrop (Professional minimal design)
  */
 export function PageLoader({ 
-  message = "Loading...", 
+  message = null, 
   fullScreen = true 
 }) {
   const containerClass = fullScreen 
-    ? "fixed inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50"
+    ? "fixed inset-0 flex items-center justify-center bg-white z-50"
     : "flex items-center justify-center min-h-[400px] py-12";
 
   return (
     <div className={containerClass}>
       <div className="flex flex-col items-center gap-4">
-        <div className="relative">
-          <div className="h-12 w-12 rounded-full border-4 border-gray-200"></div>
-          <div className="h-12 w-12 rounded-full border-4 border-blue-600 border-t-transparent animate-spin absolute top-0 left-0"></div>
-        </div>
-        <p className="text-sm font-medium text-gray-600 tracking-wide">{message}</p>
+        <div className="h-10 w-10 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin"></div>
+        {message && (
+          <p className="text-sm font-medium text-gray-500">{message}</p>
+        )}
       </div>
     </div>
   );

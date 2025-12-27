@@ -48,17 +48,9 @@ export default function HierarchicalTree({ data, title, type }) {
               <div className="flex items-center space-x-3">
                 <Building2 className="w-4 h-4 text-blue-600" />
                 <span className="font-medium text-gray-800">{college}</span>
-                {(() => {
-                  const instituteKeys = Object.keys(institutes).filter(key => key !== '_direct');
-                  if (instituteKeys.length > 0) {
-                    return (
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        {instituteKeys.length} {type}{instituteKeys.length !== 1 ? 's' : ''}
-                      </Badge>
-                    );
-                  }
-                  return null;
-                })()}
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                  {Object.keys(institutes).length} {type}{Object.keys(institutes).length !== 1 ? 's' : ''}
+                </Badge>
               </div>
               {expandedItems.has(college) ?
                 <ChevronDown className="w-4 h-4 text-gray-500" /> :
@@ -66,54 +58,21 @@ export default function HierarchicalTree({ data, title, type }) {
               }
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2 ml-6 space-y-2">
-              {Object.entries(institutes).map(([item, roles]) => {
-                // Skip rendering if item is '_direct' (colleges without institutes)
-                // These will be handled separately below
-                if (item === '_direct') return null;
-                
-                return (
-                  <div key={item} className="p-3 bg-white/95 rounded-lg border border-gray-100 border-l-4 border-l-green-400">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <Layers className="w-3 h-3 text-green-600" />
-                        <span className="font-medium text-sm text-gray-800">{item}</span>
-                      </div>
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                        {Object.values(roles).filter((count, index) =>
-                          Object.keys(roles)[index] !== 'super_admin'
-                        ).reduce((sum, count) => sum + count, 0)} users
-                      </Badge>
+              {Object.entries(institutes).map(([item, roles]) => (
+                <div key={item} className="p-3 bg-white/95 rounded-lg border border-gray-100 border-l-4 border-l-green-400">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Layers className="w-3 h-3 text-green-600" />
+                      <span className="font-medium text-sm text-gray-800">{item}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(roles).map(([role, count]) => {
-                        if (count === 0 || role === 'super_admin') return null;
-                        const config = roleConfig[role];
-                        return (
-                          <div key={role} className="flex items-center justify-between p-2 bg-white/90 rounded border border-gray-100">
-                            <div className="flex items-center space-x-1">
-                              {config && <config.icon className={`w-3 h-3 ${config.text}`} />}
-                              <span className="text-xs">{config?.label}</span>
-                            </div>
-                            <span className="text-xs font-mono">{count}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-              {/* For colleges without institutes, show roles directly without institute label */}
-              {institutes['_direct'] && (
-                <div className="p-3 bg-white/95 rounded-lg border border-gray-100 border-l-4 border-l-blue-400">
-                  <div className="flex items-center justify-end mb-2">
-                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                      {Object.values(institutes['_direct']).filter((count, index) =>
-                        Object.keys(institutes['_direct'])[index] !== 'super_admin'
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      {Object.values(roles).filter((count, index) =>
+                        Object.keys(roles)[index] !== 'super_admin'
                       ).reduce((sum, count) => sum + count, 0)} users
                     </Badge>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(institutes['_direct']).map(([role, count]) => {
+                    {Object.entries(roles).map(([role, count]) => {
                       if (count === 0 || role === 'super_admin') return null;
                       const config = roleConfig[role];
                       return (
@@ -128,7 +87,7 @@ export default function HierarchicalTree({ data, title, type }) {
                     })}
                   </div>
                 </div>
-              )}
+              ))}
             </CollapsibleContent>
           </Collapsible>
         ))}

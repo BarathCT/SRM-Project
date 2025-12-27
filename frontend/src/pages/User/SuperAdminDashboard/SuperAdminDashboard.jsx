@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
 import {
-  RefreshCw,
   Building2,
   Users,
   Award,
@@ -37,6 +36,7 @@ import {
 } from "@/utils/collegeData";
 
 import api from '@/lib/api';
+import { PageLoader } from '@/components/ui/loading';
 
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
@@ -649,17 +649,7 @@ export default function SuperAdminDashboard() {
 
   // --- RENDER ---
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-md border border-blue-100">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Loading Super Admin Dashboard</h3>
-            <p className="text-gray-600">Preparing global analytics…</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoader fullScreen={true} />;
   }
 
   return (

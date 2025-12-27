@@ -536,7 +536,7 @@ export default function AddUserDialog({
                     placeholder="John Doe"
                     value={form.fullName}
                     onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                    className="w-full"
+                    className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
                   />
                 </div>
                 {form.role !== 'super_admin' && (
@@ -556,7 +556,7 @@ export default function AddUserDialog({
                       placeholder="FAC-12345"
                       value={form.facultyId}
                       onChange={(e) => setForm({ ...form, facultyId: e.target.value })}
-                      className="w-full"
+                      className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
                     />
                     {!facultyIdStatus.checking && facultyIdStatus.exists && form.facultyId && (
                       <p className="text-xs text-red-500 mt-1">This faculty ID is already in use. Please enter a unique ID.</p>
@@ -583,7 +583,7 @@ export default function AddUserDialog({
                     }
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full"
+                    className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
                   />
                   {emailDomainHints.length > 0 && (
                     <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
@@ -638,7 +638,7 @@ export default function AddUserDialog({
                         onValueChange={handleRoleChange}
                         disabled={editMode && currentUser?.role !== 'super_admin'}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
                         <SelectContent>
@@ -662,7 +662,7 @@ export default function AddUserDialog({
                       value={form.college}
                       onValueChange={handleCollegeChange}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
                         <SelectValue placeholder="Select college" />
                       </SelectTrigger>
                       <SelectContent>
@@ -690,7 +690,7 @@ export default function AddUserDialog({
                   onValueChange={handleInstituteChange}
                   disabled={!form.college}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
                     <SelectValue placeholder="Select institute" />
                   </SelectTrigger>
                   <SelectContent>
@@ -728,7 +728,7 @@ export default function AddUserDialog({
                     onValueChange={handleDepartmentChange}
                     disabled={shouldShowInstituteField() && !form.institute && currentUser?.role !== 'campus_admin'}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>

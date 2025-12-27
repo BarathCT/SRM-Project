@@ -279,10 +279,9 @@ export default function SuperAdminAnalyticsCard({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl p-8 border border-blue-100 shadow-md">
-        <div className="animate-pulse space-y-4">
-          <div className="h-64 bg-blue-100 rounded" />
-          <div className="h-64 bg-blue-100 rounded" />
+      <div className="bg-white rounded-2xl p-8 border border-gray-200">
+        <div className="flex items-center justify-center py-24">
+          <div className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin"></div>
         </div>
       </div>
     );
