@@ -187,14 +187,14 @@ export async function sendUserWelcomeEmail({
   `;
 
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  host: process.env.SMTP_HOST,          // smtp-relay.brevo.com
+  port: Number(process.env.SMTP_PORT),  // 587
+  secure: false,                        // REQUIRED for port 587
+  auth: {
+    user: process.env.SMTP_USER,        // Brevo login email
+    pass: process.env.SMTP_PASS         // Brevo SMTP key
+  }
+});
 
   await transporter.sendMail({
     from: `"ScholarSync" <${process.env.SMTP_USER}>`,
