@@ -10,7 +10,7 @@ if (!baseURL) {
 
 const api = axios.create({
   baseURL: apiBaseURL,
-  timeout: 30000, // 30 second timeout
+  timeout: 60000, // 60 second timeout (for Render free tier cold starts)
 });
 
 api.interceptors.request.use((config) => {
