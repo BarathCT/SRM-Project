@@ -437,10 +437,11 @@ export default function UserStatsCard({
       if (!tree[college]) tree[college] = {};
       
       if (isCollegeWithoutInstitutes) {
-        // For colleges without institutes, put roles directly under college
-        // Use a special key '_direct' to indicate no institute level
-        if (!tree[college]['_direct']) tree[college]['_direct'] = {};
-        tree[college]['_direct'][user.role] = (tree[college]['_direct'][user.role] || 0) + 1;
+        // For colleges without institutes, use college name as the "institute" label
+        // This makes it consistent with how institutes are displayed
+        const collegeLabel = college;
+        if (!tree[college][collegeLabel]) tree[college][collegeLabel] = {};
+        tree[college][collegeLabel][user.role] = (tree[college][collegeLabel][user.role] || 0) + 1;
       } else {
         // For colleges with institutes, use institute level but skip N/A
         const institute = user.institute && user.institute !== 'N/A' ? user.institute : null;

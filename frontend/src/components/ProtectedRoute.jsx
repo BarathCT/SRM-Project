@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
+import { PageLoader } from '@/components/ui/loading';
 
 /**
  * ProtectedRoute ensures only authenticated users with allowedRoles can access the route.
@@ -69,11 +70,7 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   // Loading spinner while checking
   if (status === 'validating') {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <PageLoader fullScreen={true} />;
   }
 
   // Not logged in: always go to /login

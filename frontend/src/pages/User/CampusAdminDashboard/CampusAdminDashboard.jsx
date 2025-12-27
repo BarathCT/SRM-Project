@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "axios";
 import { useToast } from "@/components/Toast";
 import {
-  RefreshCw,
   Users,
   Award,
   Building2,
@@ -30,6 +29,7 @@ import FacultyDetailsCard from "./components/FacultyDetailsCard";
 import UserFinderSidebar from "../components/UserFinderSidebar";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 import api from '@/lib/api';
+import { PageLoader } from '@/components/ui/loading';
 
 /* Local debounce hook to reduce filtering cost while typing */
 function useDebouncedValue(value, delay = 250) {
@@ -825,17 +825,7 @@ const CampusAdminDashboard = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-sm border border-blue-100">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Loading Campus Dashboard</h3>
-            <p className="text-gray-600">Analyzing institute publications…</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoader fullScreen={true} />;
   }
 
   return (

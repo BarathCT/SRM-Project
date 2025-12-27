@@ -348,20 +348,16 @@ export default function CampusAnalyticsCard({ stats, loading }) {
 
   if (loading) {
     return (
-      <Card className="border border-blue-100 shadow-md bg-white">
-        <CardHeader className="bg-blue-50 border-b border-blue-100">
+      <Card className="border border-gray-200 bg-white">
+        <CardHeader className="border-b border-gray-200">
           <CardTitle className="flex items-center gap-2 text-gray-900">
             <BarChart3 className="h-5 w-5 text-blue-600" />
             Campus Analytics
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-64 bg-blue-100 rounded"></div>
-            <div className="flex space-x-4">
-              <div className="h-4 bg-blue-100 rounded flex-1"></div>
-              <div className="h-4 bg-blue-100 rounded flex-1"></div>
-            </div>
+          <div className="flex items-center justify-center py-24">
+            <div className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin"></div>
           </div>
         </CardContent>
       </Card>

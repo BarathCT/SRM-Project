@@ -40,7 +40,7 @@ export default function UserManagement() {
     email: '',
     password: '',
     role: 'faculty',
-    college: 'N/A',
+    college: 'SRMIST RAMAPURAM',
     institute: 'N/A',
     department: 'N/A'
   });
@@ -304,7 +304,7 @@ export default function UserManagement() {
       email: '',
       password: '',
       role: 'faculty',
-      college: currentUser?.role === 'super_admin' ? 'N/A' : currentUser?.college || 'N/A',
+      college: currentUser?.role === 'super_admin' ? 'SRMIST RAMAPURAM' : currentUser?.college || 'SRMIST RAMAPURAM',
       institute: 'N/A',
       department: 'N/A'
     });
