@@ -228,7 +228,7 @@ export default function AddUserDialog({
     emailDebounce.current = setTimeout(async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/user-keys`, {
+        const res = await fetch(`${API_BASE_URL}/api/admin/user-keys`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error('Failed to check email');
@@ -257,7 +257,7 @@ export default function AddUserDialog({
     facultyIdDebounce.current = setTimeout(async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/user-keys`, {
+        const res = await fetch(`${API_BASE_URL}/api/admin/user-keys`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error('Failed to check facultyId');
