@@ -21,16 +21,9 @@ export default function Login() {
     e.preventDefault();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      toast.error('Email is required');
-      return;
-    }
-    if (!password) {
-      toast.error('Password is required');
-      return;
-    }
-    if (!emailRegex.test(email)) {
-      toast.error('Please enter a valid email address');
+    // Validation - form should handle these
+    if (!email || !password || !emailRegex.test(email)) {
+      toast.error('Please enter valid email and password');
       return;
     }
 
@@ -62,7 +55,7 @@ export default function Login() {
         localStorage.setItem('token', data.token);
       }
       localStorage.setItem('user', JSON.stringify(data.user));
-      toast.success('Login successful');
+      // Login successful - redirect handles feedback
 
       switch(data.user.role) {
         case 'super_admin':
@@ -91,7 +84,7 @@ export default function Login() {
   };
 
   const handleContactSupport = () => {
-    toast.info('Please contact your campus administrator for assistance', { duration: 8000 });
+    // Contact support - user can see the button, no need for toast
   };
 
   return (

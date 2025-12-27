@@ -135,7 +135,7 @@ export default function Navbar() {
     localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
-    toast.success('You have been logged out successfully');
+    // Logout successful - redirect handles feedback
   };
 
   /**
@@ -168,13 +168,9 @@ export default function Navbar() {
 
       if (!canUpload) {
         toast.warning(
-          'Author ID Required: You must add at least one Author ID (Scopus, SCI, or Web of Science) before uploading research papers.',
+          'Add at least one Author ID (Scopus, SCI, or Web of Science) in Settings to upload papers',
           {
-            duration: 8000,
-            action: {
-              label: 'Go to Settings',
-              onClick: () => navigate('/settings')
-            }
+            duration: 5000
           }
         );
         return;
@@ -183,7 +179,8 @@ export default function Navbar() {
       navigate(getUploadPath());
     } catch (error) {
       console.error('Error checking Author ID requirement:', error);
-      toast.error('Unable to verify Author ID requirements. Please try again.');
+      // Error checking - user can still try to upload
+      console.error('Error checking Author ID requirement:', error);
     } finally {
       setLoading(false);
     }
@@ -196,29 +193,20 @@ export default function Navbar() {
       const canUpload = await checkAuthorIdRequirement();
 
       if (!canUpload) {
-        toast.academic(
-          'Upload Restricted: Add at least one Author ID (Scopus, SCI, or Web of Science) to proceed.',
+        toast.warning(
+          'Add at least one Author ID in Settings to upload papers',
           {
-            duration: 10000
+            duration: 5000
           }
         );
-
-        setTimeout(() => {
-          toast.info(
-            'Open Account Settings to add your research identifiers.',
-            {
-              duration: 8000
-            }
-          );
-        }, 1000);
-
         return;
       }
 
       navigate(getUploadPath());
     } catch (error) {
       console.error('Error checking Author ID requirement:', error);
-      toast.error('Unable to verify upload permissions. Please try again.');
+      // Error checking - user can still try to upload
+      console.error('Error checking upload permissions:', error);
     } finally {
       setLoading(false);
     }

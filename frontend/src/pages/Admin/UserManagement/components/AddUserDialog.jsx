@@ -195,7 +195,7 @@ export default function AddUserDialog({
           ...prev,
           department: departments[0]
         }));
-        toast.info(`Department automatically set to: ${departments[0]}`);
+        // Department auto-set - UI shows the value
       } else if (form.department !== '') {
         setForm(prev => ({
           ...prev,
@@ -320,12 +320,12 @@ export default function AddUserDialog({
       updates.college = 'N/A';
       updates.institute = 'N/A';
       updates.department = 'N/A';
-      toast.info('Super Admin selected - college and institute not required');
+      // Super Admin - fields auto-cleared, UI shows the change
     } else if (value === 'campus_admin') {
       if (form.college && !selectedCollegeHasInstitutes()) {
         updates.institute = 'N/A';
         updates.department = 'N/A';
-        toast.info('Campus Admin for college without institutes - no institute/department required');
+        // Campus Admin - fields auto-set, UI shows the change
       } else {
         updates.department = 'N/A';
       }
@@ -358,15 +358,15 @@ export default function AddUserDialog({
       updates.institute = 'N/A';
       if (form.role === 'campus_admin') {
         updates.department = 'N/A';
-        toast.info(`Selected ${value} - Campus Admin manages entire college (no institute/department required)`);
+        // College selected - UI shows available fields
       } else {
         updates.department = '';
-        toast.info(`Selected ${value} - no institute required`);
+        // College selected - UI shows available fields
       }
     } else {
       updates.institute = '';
       updates.department = '';
-      toast.info(`Selected ${value} - please choose an institute`);
+      // College selected - UI shows institute dropdown
     }
     setForm({ ...form, ...updates });
   };
@@ -374,7 +374,7 @@ export default function AddUserDialog({
   const handleInstituteChange = (value) => {
     setForm({ ...form, institute: value, department: '' });
     if (value === 'SRM RESEARCH') {
-      toast.info('SRM RESEARCH selected - department will be auto-assigned');
+      // SRM RESEARCH - department will be auto-assigned, UI shows the change
     }
   };
 

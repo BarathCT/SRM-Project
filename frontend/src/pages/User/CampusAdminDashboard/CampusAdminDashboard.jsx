@@ -186,7 +186,8 @@ const CampusAdminDashboard = () => {
       ]);
     } catch (error) {
       console.error("Dashboard initialization error:", error);
-      toast.error("Failed to load dashboard", { duration: 4000 });
+      // Error loading - UI shows loading state, no need for toast
+      console.error("Failed to load dashboard:", error);
     } finally {
       setLoading(false);
     }
@@ -487,12 +488,12 @@ const CampusAdminDashboard = () => {
     if (instituteSelectAll) {
       setInstituteSelectedPapers(new Set());
       setInstituteSelectAll(false);
-      toast.info("Deselected all", { duration: 1500 });
+      // Deselected all - UI update is sufficient
     } else {
       const ids = new Set(filteredInstitutePapers.map((p) => p._id));
       setInstituteSelectedPapers(ids);
       setInstituteSelectAll(ids.size === filteredInstitutePapers.length && ids.size > 0);
-      toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
+      // Selection updated - UI shows the change
     }
   }, [instituteSelectAll, filteredInstitutePapers, toast]);
 
@@ -511,12 +512,12 @@ const CampusAdminDashboard = () => {
     if (mySelectAll) {
       setMySelectedPapers(new Set());
       setMySelectAll(false);
-      toast.info("Deselected all", { duration: 1500 });
+      // Deselected all - UI update is sufficient
     } else {
       const ids = new Set(filteredMyPapers.map((p) => p._id));
       setMySelectedPapers(ids);
       setMySelectAll(ids.size === filteredMyPapers.length);
-      toast.success(`Selected ${ids.size} visible`, { duration: 1500 });
+      // Selection updated - UI shows the change
     }
   }, [mySelectAll, filteredMyPapers, toast]);
 
@@ -543,7 +544,7 @@ const CampusAdminDashboard = () => {
       selectedAuthor: "all",
       selectedDepartment: "all",
     });
-    toast.info("Cleared institute filters", { duration: 1500 });
+    // Filters cleared - UI update is sufficient
   };
   const clearMyFilters = () => {
     setMyFilters({
@@ -554,17 +555,17 @@ const CampusAdminDashboard = () => {
       selectedSubjectArea: "all",
       selectedSubjectCategory: "all",
     });
-    toast.info("Cleared my filters", { duration: 1500 });
+    // Filters cleared - UI update is sufficient
   };
   const clearInstituteSelection = () => {
     setInstituteSelectedPapers(new Set());
     setInstituteSelectAll(false);
-    toast.info("Cleared institute selection", { duration: 1500 });
+    // Selection cleared - UI update is sufficient
   };
   const clearMySelection = () => {
     setMySelectedPapers(new Set());
     setMySelectAll(false);
-    toast.info("Cleared my selection", { duration: 1500 });
+    // Selection cleared - UI update is sufficient
   };
 
   // Delete operations
@@ -594,7 +595,7 @@ const CampusAdminDashboard = () => {
       toast.success("Publication deleted", { duration: 2000 });
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Delete failed";
-      toast.error(errorMessage, { duration: 2500 });
+      toast.error(errorMessage);
     } finally {
       setDeletingId(null);
     }
@@ -619,9 +620,9 @@ const CampusAdminDashboard = () => {
       setMyPapers((prev) => prev.filter((p) => !instituteSelectedPapers.has(p._id)));
       setInstituteSelectedPapers(new Set());
       setInstituteSelectAll(false);
-      toast.success("Deleted selected publications", { duration: 2200 });
+      toast.success("Deleted selected publications");
     } catch {
-      toast.error("Some deletions failed", { duration: 2500 });
+      toast.error("Some deletions failed");
     }
   };
 
@@ -638,16 +639,16 @@ const CampusAdminDashboard = () => {
       setInstitutePapers((prev) => prev.filter((p) => !mySelectedPapers.has(p._id)));
       setMySelectedPapers(new Set());
       setMySelectAll(false);
-      toast.success("Deleted selected publications", { duration: 2200 });
+      toast.success("Deleted selected publications");
     } catch {
-      toast.error("Some deletions failed", { duration: 2500 });
+      toast.error("Some deletions failed");
     }
   };
 
   // Edit
   const startEdit = (paper) => {
     if (!canEditPaper(paper)) {
-      toast.warning("You can only edit your own publications", { duration: 2500 });
+      toast.warning("You can only edit your own publications");
       return;
     }
     setEditingId(paper._id);
@@ -680,15 +681,16 @@ const CampusAdminDashboard = () => {
   };
 
   const updatePaper = async () => {
-    if (!editData.title?.trim()) return toast.warning("Title is required");
-    if (!editData.journal?.trim()) return toast.warning("Journal is required");
-    if (!editData.publisher?.trim()) return toast.warning("Publisher is required");
-    if (!Number(editData.year)) return toast.warning("Valid year is required");
-    if (!PUBLICATION_TYPES.includes(editData.publicationType)) return toast.warning("Invalid publication type");
-    if (!Object.keys(SUBJECT_AREAS).includes(editData.subjectArea)) return toast.warning("Invalid subject area");
+    // Validation - errors should be shown in form UI, not toasts
+    if (!editData.title?.trim() || !editData.journal?.trim() || !editData.publisher?.trim() || !Number(editData.year) || !PUBLICATION_TYPES.includes(editData.publicationType) || !Object.keys(SUBJECT_AREAS).includes(editData.subjectArea)) {
+      toast.error("Please fill in all required fields correctly");
+      return;
+    }
     const validCats = SUBJECT_AREAS[editData.subjectArea] || [];
-    if (!editData.subjectCategories?.length || !editData.subjectCategories.every((c) => validCats.includes(c)))
-      return toast.warning("Choose valid subject categories for the selected area");
+    if (!editData.subjectCategories?.length || !editData.subjectCategories.every((c) => validCats.includes(c))) {
+      toast.error("Please select valid subject categories");
+      return;
+    }
 
     try {
       const token = localStorage.getItem("token");
@@ -702,10 +704,10 @@ const CampusAdminDashboard = () => {
       setEditDialogOpen(false);
       setEditingId(null);
       setEditData(null);
-      toast.success("Publication updated", { duration: 2200 });
+      toast.success("Publication updated");
     } catch (e) {
       const errorMessage = e.response?.data?.error || "Update failed";
-      toast.error(errorMessage, { duration: 3000 });
+      toast.error(errorMessage);
     }
   };
 
@@ -719,7 +721,10 @@ const CampusAdminDashboard = () => {
         ? myPapers.filter((p) => mySelectedPapers.has(p._id))
         : filteredMyPapers;
 
-    if (!data.length) return toast.warning("No publications to export");
+    if (!data.length) {
+      toast.warning("No publications to export");
+      return;
+    }
 
     const headerMap = {
       title: "Title",
@@ -781,7 +786,7 @@ const CampusAdminDashboard = () => {
     a.click();
     URL.revokeObjectURL(url);
     setExportDialogOpen(false);
-    toast.academic(`Exported ${data.length} publications`, { duration: 2200 });
+    toast.success(`Exported ${data.length} publication${data.length !== 1 ? 's' : ''}`, { duration: 3000 });
   };
 
   // --- Decoupled UserFinderSidebar: Compute usersWithPubCount based on publication filter ---
@@ -1016,7 +1021,7 @@ const CampusAdminDashboard = () => {
                 });
                 setInstituteBookChapters((prev) => prev.filter((c) => c._id !== id));
                 setMyBookChapters((prev) => prev.filter((c) => c._id !== id));
-                toast.success("Book chapter deleted", { duration: 2000 });
+                toast.success("Book chapter deleted");
               } catch { toast.error("Delete failed"); }
               finally { setDeletingChapterId(null); }
             }}
@@ -1059,7 +1064,7 @@ const CampusAdminDashboard = () => {
                 });
                 setInstituteConference((prev) => prev.filter((p) => p._id !== id));
                 setMyConference((prev) => prev.filter((p) => p._id !== id));
-                toast.success("Conference paper deleted", { duration: 2000 });
+                toast.success("Conference paper deleted");
               } catch { toast.error("Delete failed"); }
               finally { setDeletingConferenceId(null); }
             }}
@@ -1343,9 +1348,9 @@ const CampusAdminDashboard = () => {
             setMyBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
             setEditChapterOpen(false);
             setEditingChapter(null);
-            toast.success("Book chapter updated", { duration: 2200 });
+            toast.success("Book chapter updated");
           } catch (e) {
-            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+            toast.error(e.response?.data?.error || "Update failed");
           }
         }}
         isSubmitting={false}
@@ -1365,9 +1370,9 @@ const CampusAdminDashboard = () => {
             setMyConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
             setEditConferenceOpen(false);
             setEditingConference(null);
-            toast.success("Conference paper updated", { duration: 2200 });
+            toast.success("Conference paper updated");
           } catch (e) {
-            toast.error(e.response?.data?.error || "Update failed", { duration: 3000 });
+            toast.error(e.response?.data?.error || "Update failed");
           }
         }}
         isSubmitting={false}

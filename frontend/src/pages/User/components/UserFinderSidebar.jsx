@@ -353,6 +353,7 @@ export default function UserFinderSidebar({
                   value={instituteFilter}
                   onValueChange={(v) => {
                     onInstituteFilterChange?.(v);
+                    // Reset department filter when institute changes
                     onDeptFilterChange?.("all");
                   }}
                   disabled={loading}
@@ -370,20 +371,23 @@ export default function UserFinderSidebar({
                   </SelectContent>
                 </Select>
               )}
-            {/* Show department dropdown only when a college with institutes is selected */}
+            {/* Show department dropdown only when a college with institutes is selected AND an institute is selected */}
             {(() => {
-              // For super admin: show only if college is selected and has institutes
+              // For super admin: show only if college is selected, has institutes, AND an institute is selected
               if (context === "super") {
                 const shouldShow = 
                   collegeFilter !== "all" && 
-                  !collegesWithoutInstitutes.includes(collegeFilter);
+                  !collegesWithoutInstitutes.includes(collegeFilter) &&
+                  instituteFilter !== "all";
                 if (!shouldShow) return null;
               }
-              // For campus admin: show only if the campus college has institutes
+              // For campus admin: show only if the campus college has institutes AND an institute is selected
               if (context === "campus") {
                 const shouldShow = 
                   campusCollege && 
-                  !collegesWithoutInstitutes.includes(campusCollege);
+                  !collegesWithoutInstitutes.includes(campusCollege) &&
+                  campusInstitute &&
+                  campusInstitute !== "all";
                 if (!shouldShow) return null;
               }
               

@@ -200,7 +200,7 @@ const SettingsPage = () => {
           }
         }
       );
-      toast.success('Password changed successfully!');
+      toast.success('Password changed successfully');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to change password.');
@@ -223,7 +223,7 @@ const SettingsPage = () => {
         }
       );
       setUser((prev) => ({ ...prev, fullName: profileForm.fullName }));
-      toast.success('Profile updated successfully!');
+      toast.success('Profile updated successfully');
       setEditMode(false);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update profile.');
@@ -251,7 +251,7 @@ const SettingsPage = () => {
         }
       );
       setUser((prev) => ({ ...prev, authorId: cleanAuthorIds }));
-      toast.success('Author IDs updated successfully!');
+      toast.success('Author IDs updated successfully');
       setAuthorIdEditMode(false);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update Author IDs.');
