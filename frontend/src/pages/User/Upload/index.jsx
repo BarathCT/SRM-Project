@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { FileText, Users, BookOpen, Upload } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { FileText, Users, BookOpen, ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -38,6 +40,7 @@ const PUBLICATION_TYPES = [
 
 export default function UploadSelector() {
   const [selectedType, setSelectedType] = useState("research");
+  const navigate = useNavigate();
 
   const selectedOption = PUBLICATION_TYPES.find((opt) => opt.value === selectedType);
   const SelectedIcon = selectedOption?.icon || FileText;
@@ -100,10 +103,16 @@ export default function UploadSelector() {
         {/* Premium Header Section */}
         <div className="mb-8">
           <div className="mb-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-sm">
-                <Upload className="h-6 w-6 text-white" />
-              </div>
+            <div className="flex items-center gap-4 mb-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+                className="h-9 w-9 hover:bg-gray-100 text-gray-700"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
                   Upload Publication
@@ -116,7 +125,7 @@ export default function UploadSelector() {
           </div>
 
           {/* Premium Publication Type Selector */}
-          <Card className="border border-gray-200 bg-white shadow-sm">
+          <Card className="border border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row lg:items-end gap-4">
                 <div className="flex-1">
@@ -124,15 +133,15 @@ export default function UploadSelector() {
                     Select Publication Type
                   </label>
                   <Select value={selectedType} onValueChange={setSelectedType}>
-                    <SelectTrigger className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white hover:border-gray-400 transition-colors">
-                      <div className="flex items-center gap-3">
+                    <SelectTrigger className="h-12 text-base border-gray-300 focus:border-gray-400 focus:ring-0 focus:ring-offset-0 bg-white hover:border-gray-400 transition-colors">
+                      <div className="flex items-center gap-3 flex-1">
                         <div className={`p-1.5 rounded-md ${colors.iconBg}`}>
                           <SelectedIcon className={`h-5 w-5 ${colors.iconColor}`} />
                         </div>
                         <SelectValue placeholder="Select publication type" />
                       </div>
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white border-gray-200">
                       {PUBLICATION_TYPES.map((type) => {
                         const Icon = type.icon;
                         const typeColors = getColorClasses(type.color);
@@ -140,7 +149,7 @@ export default function UploadSelector() {
                           <SelectItem
                             key={type.value}
                             value={type.value}
-                            className="py-3 cursor-pointer hover:bg-gray-50"
+                            className="py-3 cursor-pointer hover:bg-gray-50 focus:bg-gray-50 focus:ring-0"
                           >
                             <div className="flex items-center gap-3">
                               <div className={`p-1.5 rounded-md ${typeColors.iconBg}`}>
