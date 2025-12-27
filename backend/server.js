@@ -14,14 +14,12 @@ import paperRoutes from './routes/papers.js';
 import conferencePaperRoutes from "./routes/conferencePapers.js";
 import bookChapterRoutes from "./routes/bookChapters.js";
 
-
 dotenv.config();
 
 const app = express();
 
 // Trust proxy (useful if behind reverse proxy)
 app.set('trust proxy', 1);
-
 // CORS
 app.use(
   cors({
