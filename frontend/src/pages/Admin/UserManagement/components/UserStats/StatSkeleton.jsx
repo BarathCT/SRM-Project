@@ -1,25 +1,34 @@
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
+
 const StatSkeleton = () => (
-  <div className="animate-pulse">
-    {/* Header skeleton with light blue background */}
-    <div className="bg-gradient-to-r from-white to-blue-50 border-b border-blue-100 p-6 space-y-6">
+  <div className="space-y-6">
+    {/* Header skeleton - minimal and clean */}
+    <div className="bg-white border-b border-gray-200 p-6 space-y-6">
       <div className="flex items-center space-x-4">
-        <div className="w-12 h-12 bg-blue-200/50 rounded-xl"></div>
+        <Skeleton className="w-12 h-12 rounded-lg" />
         <div className="flex-1 space-y-2">
-          <div className="h-6 bg-blue-200/50 rounded w-3/4"></div>
-          <div className="h-4 bg-blue-200/50 rounded w-1/2"></div>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-32" />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-32 bg-blue-100/40 rounded-2xl"></div>
+          <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 space-y-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-3 w-32" />
+          </div>
         ))}
       </div>
     </div>
     {/* Content skeleton */}
-    <div className="p-6 space-y-4 bg-white/95">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="p-6 space-y-6 bg-white">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {[1, 2].map(i => (
-          <div key={i} className="h-96 bg-gray-100/70 rounded-2xl"></div>
+          <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-64 w-full rounded" />
+          </div>
         ))}
       </div>
     </div>

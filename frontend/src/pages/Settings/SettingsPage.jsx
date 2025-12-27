@@ -4,6 +4,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/Toast';
 import api from '@/lib/api';
+import { PageLoader } from '@/components/ui/loading';
 
 // Colleges with institutes
 const collegesWithInstitutes = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
@@ -259,14 +260,7 @@ const SettingsPage = () => {
 
   // Rendering
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh] bg-gradient-to-br from-white via-blue-50/30 to-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-full border-4 border-blue-100 border-t-blue-500 animate-spin" />
-          <p className="text-sm font-medium text-gray-500 tracking-wide">Loading your settings...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Loading your settings..." fullScreen={false} />;
   }
 
   if (!user) {

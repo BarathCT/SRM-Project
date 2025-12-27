@@ -394,9 +394,11 @@ export default function UserFinderSidebar({
         {/* User list */}
         <div className="flex-1 min-h-0 overflow-y-auto px-2 py-3">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-gray-400 animate-pulse">
-              <Users className="h-8 w-8 mr-2" />
-              <span className="text-lg">Loading users…</span>
+            <div className="flex items-center justify-center h-40">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin"></div>
+                <span className="text-sm font-medium text-gray-500">Loading users…</span>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
