@@ -252,7 +252,7 @@ export default function UserFinderSidebar({
       />
       <aside
         className={cn(
-          "fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-blue-100 flex flex-col transition-transform duration-300",
+          "fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white border-l border-gray-200 flex flex-col transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
         aria-modal="true"
@@ -370,24 +370,43 @@ export default function UserFinderSidebar({
                   </SelectContent>
                 </Select>
               )}
-            {/* Show department if context or super with valid college/institute */}
-            <Select
-              value={deptFilter}
-              onValueChange={onDeptFilterChange}
-              disabled={loading || departmentOptions.length === 0}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All departments</SelectItem>
-                {departmentOptions.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Show department dropdown only when a college with institutes is selected */}
+            {(() => {
+              // For super admin: show only if college is selected and has institutes
+              if (context === "super") {
+                const shouldShow = 
+                  collegeFilter !== "all" && 
+                  !collegesWithoutInstitutes.includes(collegeFilter);
+                if (!shouldShow) return null;
+              }
+              // For campus admin: show only if the campus college has institutes
+              if (context === "campus") {
+                const shouldShow = 
+                  campusCollege && 
+                  !collegesWithoutInstitutes.includes(campusCollege);
+                if (!shouldShow) return null;
+              }
+              
+              return (
+                <Select
+                  value={deptFilter}
+                  onValueChange={onDeptFilterChange}
+                  disabled={loading || departmentOptions.length === 0}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All departments</SelectItem>
+                    {departmentOptions.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
           </div>
         </div>
 

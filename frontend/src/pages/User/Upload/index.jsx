@@ -33,7 +33,7 @@ export default function UploadSelector() {
           <Card
             key={title}
             onClick={() => navigate(path)}
-            className="cursor-pointer hover:shadow-lg transition border-blue-200"
+            className="cursor-pointer hover:border-gray-300 transition-colors border-gray-200"
           >
             <CardHeader className="text-center space-y-3">
               <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">

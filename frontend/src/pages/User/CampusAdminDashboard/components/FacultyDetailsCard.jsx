@@ -114,7 +114,7 @@ const FacultyDetailsCard = ({ faculty, papers, onClear }) => {
   const roleBadge = getRoleBadge(faculty.role);
 
   return (
-    <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
+    <Card className="bg-white border border-gray-200 rounded-xl">
       <CardHeader className="bg-gradient-to-r from-white-50 to-white-50 border-b border-grey-200">
         <div className="flex items-start justify-between">
           <div className="space-y-3">
@@ -406,7 +406,7 @@ const FacultyDetailsCard = ({ faculty, papers, onClear }) => {
 };
 
 const StatCard = ({ icon, label, value, subtitle }) => (
-  <div className="border border-gray-200 rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
+  <div className="border border-gray-200 rounded-lg p-3 bg-white hover:border-gray-300 transition-colors">
     <div className="flex items-center gap-2 text-gray-700 mb-1">
       {icon}
       <span className="text-xs font-medium">{label}</span>

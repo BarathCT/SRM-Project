@@ -430,7 +430,7 @@ export default function CampusAnalyticsCard({ stats, loading }) {
   // --- Badge card for area/category/QRating top-right ---
   function BadgeCard({ label, count }) {
     return (
-      <div className="absolute top-3 right-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm px-3 py-1 flex items-center gap-2 z-10">
+      <div className="absolute top-3 right-4 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1 flex items-center gap-2 z-10">
         <span className="text-xs font-semibold text-blue-700">{label}</span>
         <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 rounded-full">
           {count}
@@ -440,7 +440,7 @@ export default function CampusAnalyticsCard({ stats, loading }) {
   }
 
   return (
-    <Card className="border border-blue-100 shadow-md bg-white">
+    <Card className="border border-gray-200 bg-white">
       <CardHeader className="bg-white-50 border-b border-blue-100">
         <CardTitle className="flex items-center gap-2 text-gray-900">
           <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -538,7 +538,7 @@ export default function CampusAnalyticsCard({ stats, loading }) {
                     : subjectAreaFilter}
                   count={subjectAreaTotal}
                 />
-                <Card className="border border-blue-100 shadow bg-white w-full">
+                <Card className="border border-gray-200 bg-white w-full">
                   <CardHeader className="pb-2">
                     <h4 className="text-sm font-semibold text-gray-700 text-center">
                       Subject Area Distribution
@@ -561,7 +561,7 @@ export default function CampusAnalyticsCard({ stats, loading }) {
                       : subjectCategoryFilter}
                     count={subjectCategoryTotal}
                   />
-                  <Card className="border border-blue-100 shadow bg-white w-full">
+                  <Card className="border border-gray-200 bg-white w-full">
                     <CardHeader className="pb-2">
                       <h4 className="text-sm font-semibold text-gray-700 text-center">
                         Subject Categories in {subjectAreaFilter}

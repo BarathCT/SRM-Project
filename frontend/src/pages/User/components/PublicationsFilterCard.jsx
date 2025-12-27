@@ -155,7 +155,7 @@ export default function PublicationsFilterCard(props) {
 
   return (
     <>
-      <Card className="mb-4 border border-blue-100 shadow-sm bg-white">
+      <Card className="mb-4 border border-gray-200 bg-white">
         <CardHeader className="bg-white-50 border-b border-blue-100 pb-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>

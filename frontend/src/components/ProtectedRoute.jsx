@@ -70,7 +70,7 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   // Loading spinner while checking
   if (status === 'validating') {
-    return <PageLoader fullScreen={true} />;
+    return <PageLoader message="Verifying authentication..." fullScreen={true} />;
   }
 
   // Not logged in: always go to /login

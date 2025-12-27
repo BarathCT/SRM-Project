@@ -482,7 +482,7 @@ const FacultyDashboard = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl shadow-sm border border-blue-100">
+        <div className="flex items-center space-x-3 bg-white p-8 rounded-xl border border-gray-200">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Loading Publications</h3>

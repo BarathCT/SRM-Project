@@ -578,7 +578,7 @@ export default function UserStatsCard({
   if (loading) {
     return (
       <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
-        <Card className="border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <Card className="border border-gray-200 bg-white overflow-hidden">
           <StatSkeleton />
         </Card>
       </div>
@@ -615,7 +615,7 @@ export default function UserStatsCard({
 
   return (
     <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
-      <Card className="border border-gray-200 bg-white shadow-xs overflow-hidden">
+      <Card className="border border-gray-200 bg-white overflow-hidden">
         {/* Header */}
         <CardHeader className="pb-4 pt-5 bg-gradient-to-r from-white to-blue-50/80 border-b border-blue-100">
           <div className="flex flex-col space-y-6">
@@ -861,7 +861,7 @@ export default function UserStatsCard({
                       type="Colleges"
                     />
                   </AnalyticsChart>
-                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
                     <h5 className="font-semibold text-gray-800 mb-4">Interactive College Summary</h5>
                     <CollegeSummaryGrid summaries={collegeSummaries} />
                   </div>
