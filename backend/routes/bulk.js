@@ -316,7 +316,7 @@ router.post('/bulk-upload-users', authenticate, upload.single('file'), async (re
               collegeName: finalCollege,
               institute: finalInstitute,
               department: finalDepartment,
-              appUrl: process.env.APP_URL || 'https://scholarsync.example.com'
+              appUrl: process.env.APP_URL || 'https://srm-project-eight.vercel.app/'
             });
           } catch {
             // Ignore mail failure in batch summary
