@@ -43,6 +43,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import EditPublicationDialog from "./EditPublicationDialog";
@@ -122,15 +123,26 @@ export default function PublicationsTable({
     [papers.length]
   );
 
-  const pageSlice = useMemo(() => {
+  const displayedPapers = useMemo(() => {
     const start = (page - 1) * PER_PAGE;
-    return { start, end: start + PER_PAGE };
-  }, [page]);
+    const end = start + PER_PAGE;
+    return papers.slice(start, end);
+  }, [papers, page]);
 
-  const displayedPapers = useMemo(
-    () => papers.slice(pageSlice.start, pageSlice.end),
-    [papers, pageSlice]
-  );
+  // Calculate permissions for mobile modal
+  const mobileModalPermissions = useMemo(() => {
+    if (!selectedPaperForMobile) return null;
+    const isOwn = !!currentUser && selectedPaperForMobile.facultyId === currentUser.facultyId;
+    const canEditPaperValue = !canEditPaper || canEditPaper(selectedPaperForMobile);
+    const canDeletePaperValue = !canDeletePaper || canDeletePaper(selectedPaperForMobile);
+    const showDropdownMenuValue = !showAuthorInfo || isOwn;
+    return {
+      isOwn,
+      canEditPaperValue,
+      canDeletePaperValue,
+      showDropdownMenuValue,
+    };
+  }, [selectedPaperForMobile, canEditPaper, canDeletePaper, showAuthorInfo, currentUser?.facultyId]);
 
   // Helpers
   const getFacultyInfo = (facultyId) => {
@@ -837,8 +849,8 @@ export default function PublicationsTable({
               {/* Footer */}
               <div className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-t border-blue-100 bg-white">
                 <span className="text-sm text-gray-600">
-                  Showing {papers.length === 0 ? 0 : pageSlice.start + 1}–
-                  {Math.min(pageSlice.end, papers.length)} of {papers.length}
+                  Showing {papers.length === 0 ? 0 : (page - 1) * PER_PAGE + 1}–
+                  {Math.min(page * PER_PAGE, papers.length)} of {papers.length}
                 </span>
                 <PaginationControls />
               </div>
@@ -859,10 +871,18 @@ export default function PublicationsTable({
       {/* Mobile/Tablet Full-Screen Modal */}
       <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
         <DialogContent className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0">
-          {selectedPaperForMobile && (
+          {selectedPaperForMobile && mobileModalPermissions && (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-gray-900">
+              <DialogHeader className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMobileModalOpen(false)}
+                  className="absolute left-0 top-0 -ml-2 -mt-1 p-2 hover:bg-gray-100"
+                >
+                  <ArrowLeft className="h-5 w-5 text-gray-700" />
+                </Button>
+                <DialogTitle className="text-xl font-bold text-gray-900 pr-8">
                   {selectedPaperForMobile.title}
                 </DialogTitle>
               </DialogHeader>
@@ -1059,9 +1079,9 @@ export default function PublicationsTable({
                     {getOwnershipBadge(selectedPaperForMobile)}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    {showDropdownMenu && (
+                    {mobileModalPermissions.showDropdownMenuValue && (
                       <>
-                        {canEdit && (
+                        {mobileModalPermissions.canEditPaperValue && (
                           <Button
                             onClick={() => {
                               setIsMobileModalOpen(false);
@@ -1074,7 +1094,7 @@ export default function PublicationsTable({
                             Edit Publication
                           </Button>
                         )}
-                        {canDelete && (
+                        {mobileModalPermissions.canDeletePaperValue && (
                           <DeleteConfirmationDialog
                             trigger={
                               <Button
