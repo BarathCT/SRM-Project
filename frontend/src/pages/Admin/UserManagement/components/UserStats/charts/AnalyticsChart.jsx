@@ -22,17 +22,17 @@ export default function AnalyticsChart({
   const ChartComponent = chartMap[type];
 
   return (
-    <div className={`bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 ${className}`}>
-      <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
-        {Icon && <Icon className={`w-4 h-4 mr-2 ${iconColor}`} />}
+    <div className={`bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-200 ${className}`}>
+      <h5 className="font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+        {Icon && <Icon className={`w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 ${iconColor}`} />}
         {title}
         {badgeText && (
-          <Badge variant="outline" className={`ml-2 text-xs ${badgeColor}`}>
+          <Badge variant="outline" className={`ml-1.5 sm:ml-2 text-xs ${badgeColor}`}>
             {badgeText}
           </Badge>
         )}
       </h5>
-      <div className={type === 'bar' ? 'h-80' : 'h-80 relative'}>
+      <div className={type === 'bar' ? 'h-64 sm:h-72 lg:h-80' : 'h-64 sm:h-72 lg:h-80 relative'}>
         <ChartComponent data={data} options={options} />
       </div>
       {children}

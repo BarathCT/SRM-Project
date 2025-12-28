@@ -1,5 +1,17 @@
 import React, { useMemo, useState, useCallback } from "react";
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
     Card,
     CardContent,
     CardHeader,
@@ -32,6 +44,7 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    ArrowLeft,
 } from "lucide-react";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 
@@ -55,6 +68,10 @@ export default function BookChaptersTable({
     const PER_PAGE = 15;
     const [page, setPage] = useState(1);
 
+    // Mobile/Tablet full-screen modal state
+    const [selectedChapterForMobile, setSelectedChapterForMobile] = useState(null);
+    const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+
     const totalPages = useMemo(
         () => Math.max(1, Math.ceil(chapters.length / PER_PAGE)),
         [chapters.length]
@@ -65,10 +82,11 @@ export default function BookChaptersTable({
         return { start, end: start + PER_PAGE };
     }, [page]);
 
-    const displayedChapters = useMemo(
-        () => chapters.slice(pageSlice.start, pageSlice.end),
-        [chapters, pageSlice]
-    );
+    const displayedChapters = useMemo(() => {
+        const start = (page - 1) * PER_PAGE;
+        const end = start + PER_PAGE;
+        return chapters.slice(start, end);
+    }, [chapters, page]);
 
     // Reset page when chapters change
     React.useEffect(() => {
@@ -180,7 +198,7 @@ export default function BookChaptersTable({
                     <>
                         <div className="overflow-x-auto">
                             <table className="w-full bg-white">
-                                <thead className="bg-white-50 border-b border-blue-100">
+                                <thead className="bg-white-50 border-b border-blue-100 hidden md:table-header-group">
                                     <tr>
                                         <th className="py-4 px-4 text-left">
                                             <Checkbox
@@ -198,94 +216,112 @@ export default function BookChaptersTable({
                                         <th className="py-4 px-4 text-left font-semibold text-gray-900">
                                             Year / Index
                                         </th>
-                                        <th className="py-4 px-4 text-left font-semibold text-gray-900">
+                                        <th className="py-4 px-4 text-left font-semibold text-gray-900 hidden lg:table-cell">
                                             Actions
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-blue-100">
-                                    {displayedChapters.map((chapter, index) => (
-                                        <React.Fragment key={chapter._id}>
-                                            <tr className="hover:bg-blue-50/60 transition-colors">
-                                                <td className="py-4 px-4">
-                                                    <Checkbox
-                                                        checked={selectedChapters.has(chapter._id)}
-                                                        onCheckedChange={() => onToggleSelect(chapter._id)}
-                                                        className="border-blue-300"
-                                                    />
-                                                </td>
-                                                <td className="py-4 px-4 align-top">
-                                                    <div className="space-y-2">
-                                                        <h4 className="font-semibold text-gray-900 leading-tight">
-                                                            {chapter.chapterTitle}
-                                                        </h4>
-                                                        <p className="text-sm text-gray-600">
-                                                            <span className="font-medium">Book:</span>{" "}
-                                                            {chapter.bookTitle}
-                                                        </p>
-                                                        <p className="text-sm text-gray-600">
-                                                            <span className="font-medium">Authors:</span>{" "}
-                                                            {chapter.authors
-                                                                ?.slice(0, 3)
-                                                                .map((a) => a.name)
-                                                                .join(", ")}
-                                                            {chapter.authors?.length > 3 && (
-                                                                <span className="text-blue-700">
-                                                                    {" "}
-                                                                    +{chapter.authors.length - 3} more
-                                                                </span>
-                                                            )}
-                                                        </p>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
-                                                            >
-                                                                Ch. {chapter.chapterNumber || "N/A"}
-                                                            </Badge>
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
-                                                            >
-                                                                {chapter.subjectArea}
-                                                            </Badge>
+                                    {displayedChapters.map((chapter, index) => {
+                                        const handleRowClick = (e) => {
+                                            if (
+                                                e.target.closest('input[type="checkbox"]') ||
+                                                e.target.closest('button') ||
+                                                e.target.closest('[role="button"]')
+                                            ) {
+                                                return;
+                                            }
+                                            if (window.innerWidth < 1024) {
+                                                setSelectedChapterForMobile(chapter);
+                                                setIsMobileModalOpen(true);
+                                            }
+                                        };
+
+                                        return (
+                                            <React.Fragment key={chapter._id}>
+                                                <tr 
+                                                    className="hover:bg-blue-50/60 transition-colors lg:cursor-default cursor-pointer"
+                                                    onClick={handleRowClick}
+                                                >
+                                                    <td className="py-3 px-2 md:py-4 md:px-4">
+                                                        <Checkbox
+                                                            checked={selectedChapters.has(chapter._id)}
+                                                            onCheckedChange={() => onToggleSelect(chapter._id)}
+                                                            className="border-blue-300"
+                                                        />
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 align-top">
+                                                        <div className="space-y-2">
+                                                            <h4 className="font-semibold text-gray-900 leading-tight text-sm lg:text-base line-clamp-2">
+                                                                {chapter.chapterTitle}
+                                                            </h4>
+                                                            <p className="text-sm text-gray-600 hidden lg:block">
+                                                                <span className="font-medium">Book:</span>{" "}
+                                                                {chapter.bookTitle}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600 hidden lg:block">
+                                                                <span className="font-medium">Authors:</span>{" "}
+                                                                {chapter.authors
+                                                                    ?.slice(0, 3)
+                                                                    .map((a) => a.name)
+                                                                    .join(", ")}
+                                                                {chapter.authors?.length > 3 && (
+                                                                    <span className="text-blue-700">
+                                                                        {" "}
+                                                                        +{chapter.authors.length - 3} more
+                                                                    </span>
+                                                                )}
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                                                >
+                                                                    Ch. {chapter.chapterNumber || "N/A"}
+                                                                </Badge>
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                                                >
+                                                                    {chapter.subjectArea}
+                                                                </Badge>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-4 hidden md:table-cell align-top">
-                                                    <p className="font-medium text-gray-900">
-                                                        {chapter.publisher}
-                                                    </p>
-                                                    <p className="text-sm text-gray-600 font-mono">
-                                                        ISBN: {chapter.isbn}
-                                                    </p>
-                                                    {chapter.bookSeries && (
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            {chapter.bookSeries}
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 hidden md:table-cell align-top">
+                                                        <p className="font-medium text-gray-900">
+                                                            {chapter.publisher}
                                                         </p>
-                                                    )}
-                                                </td>
-                                                <td className="py-4 px-4 align-top">
-                                                    <div className="space-y-2">
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="bg-gray-100 text-gray-800 font-medium"
-                                                        >
-                                                            {chapter.year}
-                                                        </Badge>
-                                                        {chapter.indexedIn && (
-                                                            <Badge
-                                                                className={`block w-fit text-white font-medium ${chapter.indexedIn === "Scopus"
-                                                                        ? "bg-blue-700"
-                                                                        : "bg-green-600"
-                                                                    }`}
-                                                            >
-                                                                {chapter.indexedIn}
-                                                            </Badge>
+                                                        <p className="text-sm text-gray-600 font-mono">
+                                                            ISBN: {chapter.isbn}
+                                                        </p>
+                                                        {chapter.bookSeries && (
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                {chapter.bookSeries}
+                                                            </p>
                                                         )}
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-4 align-top">
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 align-top">
+                                                        <div className="flex flex-col sm:block space-y-1 sm:space-y-2">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="bg-gray-100 text-gray-800 font-medium w-fit"
+                                                            >
+                                                                {chapter.year}
+                                                            </Badge>
+                                                            {chapter.indexedIn && (
+                                                                <Badge
+                                                                    className={`w-fit text-white font-medium ${chapter.indexedIn === "Scopus"
+                                                                            ? "bg-blue-700"
+                                                                            : "bg-green-600"
+                                                                        }`}
+                                                                >
+                                                                    {chapter.indexedIn}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 align-top hidden lg:table-cell">
                                                     <div className="flex items-center gap-2">
                                                         <Button
                                                             onClick={() => onToggleExpand(index)}
@@ -491,8 +527,8 @@ export default function BookChaptersTable({
                         {/* Pagination Footer */}
                         <div className="flex items-center justify-between p-4 border-t border-blue-100 bg-white-50">
                             <p className="text-sm text-gray-600">
-                                Showing {pageSlice.start + 1}–
-                                {Math.min(pageSlice.end, chapters.length)} of {chapters.length}
+                                Showing {chapters.length === 0 ? 0 : (page - 1) * PER_PAGE + 1}–
+                                {Math.min(page * PER_PAGE, chapters.length)} of {chapters.length}
                             </p>
                             <PaginationControls />
                         </div>
@@ -500,5 +536,177 @@ export default function BookChaptersTable({
                 )}
             </CardContent>
         </Card>
+
+        {/* Mobile/Tablet Full-Screen Modal */}
+        <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
+            <DialogContent 
+                className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0"
+                showCloseButton={false}
+            >
+                {selectedChapterForMobile && (
+                    <>
+                        <DialogHeader className="relative">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsMobileModalOpen(false)}
+                                className="absolute left-0 top-0 -ml-2 -mt-1 p-2 hover:bg-gray-100"
+                            >
+                                <ArrowLeft className="h-5 w-5 text-gray-700" />
+                            </Button>
+                            <DialogTitle className="text-xl font-bold text-gray-900 pr-8">
+                                {selectedChapterForMobile.chapterTitle}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-6 mt-4">
+                            {/* Chapter Details */}
+                            <Card className="border border-gray-200 bg-white">
+                                <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                                    <CardTitle className="text-lg text-gray-900">
+                                        Chapter Details
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
+                                    <p>
+                                        <span className="font-semibold">Book Title:</span>{" "}
+                                        {selectedChapterForMobile.bookTitle || "N/A"}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Chapter Number:</span>{" "}
+                                        {selectedChapterForMobile.chapterNumber || "N/A"}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Publisher:</span>{" "}
+                                        {selectedChapterForMobile.publisher || "N/A"}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">ISBN:</span>{" "}
+                                        {selectedChapterForMobile.isbn || "N/A"}
+                                    </p>
+                                    {selectedChapterForMobile.bookSeries && (
+                                        <p>
+                                            <span className="font-semibold">Book Series:</span>{" "}
+                                            {selectedChapterForMobile.bookSeries}
+                                        </p>
+                                    )}
+                                    <p>
+                                        <span className="font-semibold">Year:</span>{" "}
+                                        {selectedChapterForMobile.year || "N/A"}
+                                    </p>
+                                    {selectedChapterForMobile.indexedIn && (
+                                        <p>
+                                            <span className="font-semibold">Indexed In:</span>{" "}
+                                            <Badge
+                                                className={`text-white font-medium ${
+                                                    selectedChapterForMobile.indexedIn === "Scopus"
+                                                        ? "bg-blue-700"
+                                                        : "bg-green-600"
+                                                }`}
+                                            >
+                                                {selectedChapterForMobile.indexedIn}
+                                            </Badge>
+                                        </p>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Author Information */}
+                            <Card className="border border-gray-200 bg-white">
+                                <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                                    <CardTitle className="text-lg text-gray-900">
+                                        Author Information
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
+                                    <p>
+                                        <span className="font-semibold">Authors:</span>{" "}
+                                        {selectedChapterForMobile.authors
+                                            ?.map((a) => a.name)
+                                            .join(", ") || "N/A"}
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            {/* Subject Classification */}
+                            <Card className="border border-gray-200 bg-white">
+                                <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                                    <CardTitle className="text-lg text-gray-900">
+                                        Subject Classification
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3 pt-4">
+                                    <div>
+                                        <span className="text-sm font-semibold text-gray-700">
+                                            Subject Area:
+                                        </span>
+                                        <Badge
+                                            variant="outline"
+                                            className="bg-blue-50 text-blue-700 border-blue-200 ml-2"
+                                        >
+                                            {selectedChapterForMobile.subjectArea}
+                                        </Badge>
+                                    </div>
+                                    {selectedChapterForMobile.subjectCategories?.length > 0 && (
+                                        <div>
+                                            <span className="text-sm font-semibold text-gray-700">
+                                                Categories:
+                                            </span>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {selectedChapterForMobile.subjectCategories.map(
+                                                    (category, i) => (
+                                                        <Badge
+                                                            key={i}
+                                                            variant="outline"
+                                                            className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                                        >
+                                                            {category}
+                                                        </Badge>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Actions */}
+                            <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-gray-200">
+                                <Button
+                                    onClick={() => {
+                                        setIsMobileModalOpen(false);
+                                        onEdit(selectedChapterForMobile);
+                                    }}
+                                    variant="outline"
+                                    className="flex-1 border-blue-200 hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Chapter
+                                </Button>
+                                <DeleteConfirmationDialog
+                                    trigger={
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1 border-red-200 hover:border-red-500 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                        </Button>
+                                    }
+                                    title="Delete Book Chapter"
+                                    description="This action cannot be undone."
+                                    itemName={selectedChapterForMobile.chapterTitle}
+                                    onConfirm={() => {
+                                        setIsMobileModalOpen(false);
+                                        onDelete(selectedChapterForMobile._id);
+                                    }}
+                                    isDeleting={deletingId === selectedChapterForMobile._id}
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -157,13 +157,24 @@ const ExportFieldsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="px-4 pt-4 pb-2 border-b border-gray-200 bg-white flex-shrink-0">
-          <div className="flex justify-between items-center flex-wrap gap-y-2">
+      <DialogContent 
+        className="max-w-none lg:max-w-4xl w-screen lg:w-full h-screen lg:h-[90vh] m-0 rounded-none lg:rounded-lg p-0 overflow-hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0 lg:top-auto lg:left-auto lg:right-auto lg:bottom-auto"
+        showCloseButton={false}
+      >
+        <DialogHeader className="px-4 pt-4 pb-2 border-b border-gray-200 bg-white flex-shrink-0 relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange?.(false)}
+            className="absolute left-0 top-4 -ml-2 p-2 hover:bg-gray-100 lg:hidden"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-700" />
+          </Button>
+          <div className="flex justify-between items-center flex-wrap gap-y-2 lg:pl-0 pl-8">
             <div className="flex items-center gap-3 min-w-0">
               <Download className="h-6 w-6 text-blue-600 flex-shrink-0" />
               <div className="min-w-0">
-                <DialogTitle className="text-lg font-semibold truncate">
+                <DialogTitle className="text-lg font-semibold truncate pr-8 lg:pr-0">
                   Export Publications
                 </DialogTitle>
                 <DialogDescription className="text-sm truncate">
