@@ -2,6 +2,7 @@ import express from 'express';
 import Paper from '../models/Paper.js';
 import User from '../models/User.js';
 import verifyToken from '../middleware/verifyToken.js';
+import { getPaginationParams, buildPaginatedResponse } from '../utils/pagination.js';
 
 const router = express.Router();
 
@@ -155,6 +156,7 @@ router.put('/:id', verifyToken, async (req, res) => {
 router.get('/institute', verifyToken, async (req, res) => {
   try {
     const { college, institute } = req.query;
+    const { page, limit, skip } = getPaginationParams(req.query);
 
     // Validate user permissions
     if (!canAccessInstitute(req.user, college, institute)) {
@@ -165,33 +167,40 @@ router.get('/institute', verifyToken, async (req, res) => {
     const facultyUsers = await User.find({
       college: college,
       institute: institute,
-      role: { $in: ['faculty', 'campus_admin'] }, // Include campus_admin papers too
+      role: { $in: ['faculty', 'campus_admin'] },
       isActive: true
-    }).select('facultyId fullName department email');
+    }).select('facultyId fullName department email').lean();
 
     if (!facultyUsers.length) {
-      return res.json([]);
+      return res.json(buildPaginatedResponse([], 0, { page, limit }));
     }
 
     const facultyIds = facultyUsers.map(user => user.facultyId);
+    const filter = { facultyId: { $in: facultyIds } };
 
-    // Get papers from these faculty members
-    const papers = await Paper.find({
-      facultyId: { $in: facultyIds }
-    }).sort({ createdAt: -1 });
+    // Get papers with pagination
+    const [papers, total] = await Promise.all([
+      Paper.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select('title journal publisher year qRating doi publicationType subjectArea subjectCategories facultyId claimedBy authors volume issue pageNo publicationId typeOfIssue authorNo isStudentScholar studentScholars createdAt')
+        .lean(),
+      Paper.countDocuments(filter)
+    ]);
 
     // Enhance papers with faculty information
     const enhancedPapers = papers.map(paper => {
       const faculty = facultyUsers.find(user => user.facultyId === paper.facultyId);
       return {
-        ...paper.toObject(),
+        ...paper,
         facultyName: faculty?.fullName || 'Unknown Faculty',
         facultyDepartment: faculty?.department || 'Unknown Department',
         facultyEmail: faculty?.email || ''
       };
     });
 
-    res.json(enhancedPapers);
+    res.json(buildPaginatedResponse(enhancedPapers, total, { page, limit }));
   } catch (err) {
     console.error('Institute papers fetch error:', err);
     res.status(500).json({ error: 'Server error while fetching institute papers' });
@@ -299,11 +308,19 @@ router.get('/my', verifyToken, async (req, res) => {
       return res.status(401).json({ error: 'Invalid token: facultyId missing' });
     }
 
-    const papers = await Paper.find({
-      facultyId: req.user.facultyId
-    }).sort({ createdAt: -1 });
+    const { page, limit, skip } = getPaginationParams(req.query);
+    const filter = { facultyId: req.user.facultyId };
 
-    res.json(papers);
+    const [papers, total] = await Promise.all([
+      Paper.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Paper.countDocuments(filter)
+    ]);
+
+    res.json(buildPaginatedResponse(papers, total, { page, limit }));
   } catch (e) {
     console.error('Error fetching user papers:', e);
     res.status(500).json({ error: 'Server error while fetching papers' });

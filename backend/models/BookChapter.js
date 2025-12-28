@@ -87,5 +87,9 @@ const BookChapterSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Indexes for pagination queries
+BookChapterSchema.index({ createdAt: -1 });
+BookChapterSchema.index({ facultyId: 1, createdAt: -1 });
+
 export default mongoose.model("BookChapter", BookChapterSchema);
 

@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 import UserLog from '../models/UserLog.js'; // <-- ADD THIS LINE
 import { sendUserWelcomeEmail } from '../utils/sendUserWelcomeMail.js';
+import { getPaginationParams, buildPaginatedResponse } from '../utils/pagination.js';
 
 // Centralized college / institute helpers
 import {
@@ -165,6 +166,7 @@ router.get('/download-template', authenticate, async (req, res) => {
 router.get('/users', authenticate, async (req, res) => {
   try {
     const { role, college, institute } = req.user;
+    const { page, limit, skip } = getPaginationParams(req.query);
 
     let filter = {};
     if (role === 'super_admin') {
@@ -189,11 +191,17 @@ router.get('/users', authenticate, async (req, res) => {
     if (req.query.institute && req.query.institute !== 'all') filter.institute = req.query.institute;
     if (req.query.department && req.query.department !== 'all') filter.department = req.query.department;
 
-    const users = await User.find(filter)
-      .select('-password -__v')
-      .sort({ createdAt: -1 });
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select('-password -__v')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(filter)
+    ]);
 
-    res.json(users);
+    res.json(buildPaginatedResponse(users, total, { page, limit }));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

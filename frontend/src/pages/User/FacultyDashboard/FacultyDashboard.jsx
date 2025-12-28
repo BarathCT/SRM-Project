@@ -3,6 +3,8 @@ import axios from "axios";
 import { useToast } from "@/components/Toast";
 import { BookOpen, Presentation, FileText } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
+import { Pagination } from "@/components/ui/pagination";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // Components
 import DashboardHeader from "../components/DashboardHeader";
@@ -34,6 +36,7 @@ const FacultyDashboard = () => {
   // Research Papers State
   const [papers, setPapers] = useState([]);
   const [loadingPapers, setLoadingPapers] = useState(true);
+  const [papersPagination, setPapersPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
   const [selectedPapers, setSelectedPapers] = useState(new Set());
   const [selectAllPapers, setSelectAllPapers] = useState(false);
   const [expandedPaper, setExpandedPaper] = useState(null);
@@ -42,6 +45,7 @@ const FacultyDashboard = () => {
   // Book Chapters State
   const [bookChapters, setBookChapters] = useState([]);
   const [loadingChapters, setLoadingChapters] = useState(true);
+  const [chaptersPagination, setChaptersPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
   const [selectedChapters, setSelectedChapters] = useState(new Set());
   const [selectAllChapters, setSelectAllChapters] = useState(false);
   const [expandedChapter, setExpandedChapter] = useState(null);
@@ -50,6 +54,7 @@ const FacultyDashboard = () => {
   // Conference Papers State
   const [conferencePapers, setConferencePapers] = useState([]);
   const [loadingConference, setLoadingConference] = useState(true);
+  const [conferencePagination, setConferencePagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
   const [selectedConference, setSelectedConference] = useState(new Set());
   const [selectAllConference, setSelectAllConference] = useState(false);
   const [expandedConference, setExpandedConference] = useState(null);
@@ -98,55 +103,77 @@ const FacultyDashboard = () => {
 
   const { toast } = useToast();
 
+  // Debounced search for server-side filtering
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
   // Fetch all data on mount
   useEffect(() => {
-    fetchPapers();
-    fetchBookChapters();
-    fetchConferencePapers();
+    fetchPapers(1);
+    fetchBookChapters(1);
+    fetchConferencePapers(1);
   }, []);
 
-  const fetchPapers = async () => {
+  const fetchPapers = async (page = 1) => {
     try {
       setLoadingPapers(true);
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: papersPagination.limit }
       });
-      setPapers(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setPapers(result.data || []);
+        setPapersPagination(result.pagination);
+      } else {
+        // Legacy response
+        setPapers(result || []);
+      }
     } catch (e) {
-      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch research papers:", e);
     } finally {
       setLoadingPapers(false);
     }
   };
 
-  const fetchBookChapters = async () => {
+  const fetchBookChapters = async (page = 1) => {
     try {
       setLoadingChapters(true);
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: chaptersPagination.limit }
       });
-      setBookChapters(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setBookChapters(result.data || []);
+        setChaptersPagination(result.pagination);
+      } else {
+        setBookChapters(result || []);
+      }
     } catch (e) {
-      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch book chapters:", e);
     } finally {
       setLoadingChapters(false);
     }
   };
 
-  const fetchConferencePapers = async () => {
+  const fetchConferencePapers = async (page = 1) => {
     try {
       setLoadingConference(true);
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: conferencePagination.limit }
       });
-      setConferencePapers(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setConferencePapers(result.data || []);
+        setConferencePagination(result.pagination);
+      } else {
+        setConferencePapers(result || []);
+      }
     } catch (e) {
-      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch conference papers:", e);
     } finally {
       setLoadingConference(false);
@@ -584,8 +611,8 @@ const FacultyDashboard = () => {
           </span>{" "}
           of{" "}
           <span className="font-semibold text-gray-900">
-            {activeTab === "papers" ? papers.length :
-              activeTab === "bookChapters" ? bookChapters.length : conferencePapers.length}
+            {activeTab === "papers" ? papersPagination.total :
+              activeTab === "bookChapters" ? chaptersPagination.total : conferencePagination.total}
           </span>
           {getSelectedCount() > 0 && (
             <span className="text-blue-600">
@@ -595,56 +622,104 @@ const FacultyDashboard = () => {
         </p>
       </div>
 
-      {/* Tables */}
+      {/* Tables with Pagination */}
       {activeTab === "papers" && (
-        <PublicationsTable
-          papers={filteredPapers}
-          selectedPapers={selectedPapers}
-          selectAll={selectAllPapers}
-          onToggleSelectAll={handleSelectAllPapers}
-          onToggleSelect={handleSelectPaper}
-          expandedIndex={expandedPaper}
-          onToggleExpand={(i) => setExpandedPaper(expandedPaper === i ? null : i)}
-          onEdit={startEditPaper}
-          onDelete={deletePaper}
-          deletingId={deletingPaperId}
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={clearFilters}
-        />
+        <>
+          <PublicationsTable
+            papers={filteredPapers}
+            selectedPapers={selectedPapers}
+            selectAll={selectAllPapers}
+            onToggleSelectAll={handleSelectAllPapers}
+            onToggleSelect={handleSelectPaper}
+            expandedIndex={expandedPaper}
+            onToggleExpand={(i) => setExpandedPaper(expandedPaper === i ? null : i)}
+            onEdit={startEditPaper}
+            onDelete={deletePaper}
+            deletingId={deletingPaperId}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilters}
+          />
+          <Pagination
+            page={papersPagination.page}
+            totalPages={papersPagination.totalPages}
+            total={papersPagination.total}
+            limit={papersPagination.limit}
+            hasNextPage={papersPagination.hasNextPage}
+            hasPrevPage={papersPagination.hasPrevPage}
+            onPageChange={(page) => fetchPapers(page)}
+            onLimitChange={(limit) => {
+              setPapersPagination(prev => ({ ...prev, limit }));
+              fetchPapers(1);
+            }}
+            loading={loadingPapers}
+          />
+        </>
       )}
 
       {activeTab === "bookChapters" && (
-        <BookChaptersTable
-          chapters={filteredChapters}
-          selectedChapters={selectedChapters}
-          selectAll={selectAllChapters}
-          onToggleSelectAll={handleSelectAllChapters}
-          onToggleSelect={handleSelectChapter}
-          expandedIndex={expandedChapter}
-          onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
-          onEdit={startEditChapter}
-          onDelete={deleteChapter}
-          deletingId={deletingChapterId}
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={clearFilters}
-        />
+        <>
+          <BookChaptersTable
+            chapters={filteredChapters}
+            selectedChapters={selectedChapters}
+            selectAll={selectAllChapters}
+            onToggleSelectAll={handleSelectAllChapters}
+            onToggleSelect={handleSelectChapter}
+            expandedIndex={expandedChapter}
+            onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
+            onEdit={startEditChapter}
+            onDelete={deleteChapter}
+            deletingId={deletingChapterId}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilters}
+          />
+          <Pagination
+            page={chaptersPagination.page}
+            totalPages={chaptersPagination.totalPages}
+            total={chaptersPagination.total}
+            limit={chaptersPagination.limit}
+            hasNextPage={chaptersPagination.hasNextPage}
+            hasPrevPage={chaptersPagination.hasPrevPage}
+            onPageChange={(page) => fetchBookChapters(page)}
+            onLimitChange={(limit) => {
+              setChaptersPagination(prev => ({ ...prev, limit }));
+              fetchBookChapters(1);
+            }}
+            loading={loadingChapters}
+          />
+        </>
       )}
 
       {activeTab === "conferencePapers" && (
-        <ConferencePapersTable
-          papers={filteredConference}
-          selectedPapers={selectedConference}
-          selectAll={selectAllConference}
-          onToggleSelectAll={handleSelectAllConference}
-          onToggleSelect={handleSelectConference}
-          expandedIndex={expandedConference}
-          onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
-          onEdit={startEditConference}
-          onDelete={deleteConferencePaper}
-          deletingId={deletingConferenceId}
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={clearFilters}
-        />
+        <>
+          <ConferencePapersTable
+            papers={filteredConference}
+            selectedPapers={selectedConference}
+            selectAll={selectAllConference}
+            onToggleSelectAll={handleSelectAllConference}
+            onToggleSelect={handleSelectConference}
+            expandedIndex={expandedConference}
+            onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
+            onEdit={startEditConference}
+            onDelete={deleteConferencePaper}
+            deletingId={deletingConferenceId}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilters}
+          />
+          <Pagination
+            page={conferencePagination.page}
+            totalPages={conferencePagination.totalPages}
+            total={conferencePagination.total}
+            limit={conferencePagination.limit}
+            hasNextPage={conferencePagination.hasNextPage}
+            hasPrevPage={conferencePagination.hasPrevPage}
+            onPageChange={(page) => fetchConferencePapers(page)}
+            onLimitChange={(limit) => {
+              setConferencePagination(prev => ({ ...prev, limit }));
+              fetchConferencePapers(1);
+            }}
+            loading={loadingConference}
+          />
+        </>
       )}
 
       {/* Edit Dialogs */}

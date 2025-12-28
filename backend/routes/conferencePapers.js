@@ -2,6 +2,7 @@ import express from "express";
 import ConferencePaper from "../models/ConferencePaper.js";
 import User from "../models/User.js";
 import verifyToken from "../middleware/verifyToken.js";
+import { getPaginationParams, buildPaginatedResponse } from '../utils/pagination.js';
 
 const router = express.Router();
 
@@ -33,11 +34,19 @@ router.post("/", verifyToken, async (req, res) => {
 // GET logged-in user's conference papers
 router.get("/my", verifyToken, async (req, res) => {
   try {
-    const papers = await ConferencePaper.find({
-      facultyId: req.user.facultyId
-    }).sort({ createdAt: -1 });
+    const { page, limit, skip } = getPaginationParams(req.query);
+    const filter = { facultyId: req.user.facultyId };
 
-    res.json(papers);
+    const [papers, total] = await Promise.all([
+      ConferencePaper.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ConferencePaper.countDocuments(filter)
+    ]);
+
+    res.json(buildPaginatedResponse(papers, total, { page, limit }));
   } catch (err) {
     console.error("Error fetching conference papers:", err);
     res.status(500).json({ error: "Server error while fetching conference papers" });
@@ -58,6 +67,7 @@ const canAccessInstitute = (user, college, institute) => {
 router.get("/institute", verifyToken, async (req, res) => {
   try {
     const { college, institute } = req.query;
+    const { page, limit, skip } = getPaginationParams(req.query);
 
     if (!canAccessInstitute(req.user, college, institute)) {
       return res.status(403).json({ error: "Access denied to institute data" });
@@ -69,31 +79,37 @@ router.get("/institute", verifyToken, async (req, res) => {
       institute: institute,
       role: { $in: ["faculty", "campus_admin"] },
       isActive: true
-    }).select("facultyId fullName department email");
+    }).select("facultyId fullName department email").lean();
 
     if (!facultyUsers.length) {
-      return res.json([]);
+      return res.json(buildPaginatedResponse([], 0, { page, limit }));
     }
 
     const facultyIds = facultyUsers.map(user => user.facultyId);
+    const filter = { facultyId: { $in: facultyIds } };
 
-    // Get papers from these faculty members
-    const papers = await ConferencePaper.find({
-      facultyId: { $in: facultyIds }
-    }).sort({ createdAt: -1 });
+    // Get papers with pagination
+    const [papers, total] = await Promise.all([
+      ConferencePaper.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ConferencePaper.countDocuments(filter)
+    ]);
 
     // Enhance papers with faculty information
     const enhancedPapers = papers.map(paper => {
       const faculty = facultyUsers.find(user => user.facultyId === paper.facultyId);
       return {
-        ...paper.toObject(),
+        ...paper,
         facultyName: faculty?.fullName || "Unknown Faculty",
         facultyDepartment: faculty?.department || "Unknown Department",
         facultyEmail: faculty?.email || ""
       };
     });
 
-    res.json(enhancedPapers);
+    res.json(buildPaginatedResponse(enhancedPapers, total, { page, limit }));
   } catch (err) {
     console.error("Institute conference papers fetch error:", err);
     res.status(500).json({ error: "Server error while fetching institute conference papers" });
