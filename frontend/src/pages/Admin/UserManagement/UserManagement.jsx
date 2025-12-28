@@ -153,9 +153,6 @@ export default function UserManagement() {
       let url = `${API_BASE_URL}/api/admin/users`;
       const params = new URLSearchParams();
 
-      // Add limit for pagination (fetch all for client-side filtering)
-      params.append('limit', '1000');
-
       // Add filters based on user role
       if (user.role === 'campus_admin') {
         params.append('college', user.college);
@@ -185,15 +182,14 @@ export default function UserManagement() {
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
 
-      // Handle both paginated and non-paginated responses
-      const usersData = data?.data || data || [];
-      if (!Array.isArray(usersData)) {
+      if (!Array.isArray(data)) {
         throw new Error('Invalid data format: Expected array of users');
       }
 
-      setUsers(usersData);
+      setUsers(data);
     } catch (err) {
       console.error('Fetch users error:', err);
+      // Error fetching - UI shows empty state, no need for toast
       console.error('Failed to fetch users:', err);
       setUsers([]);
     } finally {
