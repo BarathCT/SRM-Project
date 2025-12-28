@@ -11,6 +11,8 @@ import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
 import BulkUploadDialog from './components/BulkUpload/BulkUploadDialog';
 import LogDialog from './components/LogDialog';
+import { Pagination } from '@/components/ui/pagination';
+import { useDebounce } from '@/hooks/useDebounce';
 
 import {
   collegeOptions as COLLEGE_OPTIONS,
@@ -34,6 +36,14 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 15,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [form, setForm] = useState({
     fullName: '',
     facultyId: '',
@@ -62,6 +72,7 @@ export default function UserManagement() {
   const [userToDelete, setUserToDelete] = useState(null);
 
   const navigate = useNavigate();
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Always set form.college/institute for campus_admin on user/context load
   useEffect(() => {
@@ -103,11 +114,11 @@ export default function UserManagement() {
     // eslint-disable-next-line
   }, [navigate]);
 
-  // Apply user filters whenever users, filters, or search term changes
+  // Apply user filters whenever users, filters, or debounced search term changes
   useEffect(() => {
     applyFilters();
     // eslint-disable-next-line
-  }, [users, filters, searchTerm]);
+  }, [users, filters, debouncedSearchTerm]);
 
   const applyFilters = () => {
     let result = [...users];
@@ -146,23 +157,24 @@ export default function UserManagement() {
   };
 
   // Fetch users based on current user role
-  const fetchUsers = async (user) => {
+  const fetchUsers = async (user, page = 1) => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
       let url = `${API_BASE_URL}/api/admin/users`;
       const params = new URLSearchParams();
 
+      // Add pagination params
+      params.append('page', page);
+      params.append('limit', pagination.limit);
+
       // Add filters based on user role
       if (user.role === 'campus_admin') {
         params.append('college', user.college);
-        // For colleges with institutes, do not append institute filter
       }
 
-      // Append params to URL if any exist
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
+      // Append params to URL
+      url += `?${params.toString()}`;
 
       const res = await fetch(url, {
         method: 'GET',
@@ -182,14 +194,23 @@ export default function UserManagement() {
         throw new Error(`Server did not return JSON. Response: ${text}`);
       }
 
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid data format: Expected array of users');
+      // Handle paginated response
+      if (data.pagination) {
+        setUsers(data.data || []);
+        setPagination(data.pagination);
+      } else if (Array.isArray(data)) {
+        // Legacy response format
+        setUsers(data);
+        setPagination(prev => ({
+          ...prev,
+          total: data.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false
+        }));
       }
-
-      setUsers(data);
     } catch (err) {
       console.error('Fetch users error:', err);
-      // Error fetching - UI shows empty state, no need for toast
       console.error('Failed to fetch users:', err);
       setUsers([]);
     } finally {
@@ -524,6 +545,22 @@ export default function UserManagement() {
         searchTerm={searchTerm}
         resetFilters={resetFilters}
         setOpenDialog={setOpenDialog}
+      />
+
+      {/* Pagination */}
+      <Pagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
+        hasNextPage={pagination.hasNextPage}
+        hasPrevPage={pagination.hasPrevPage}
+        onPageChange={(page) => fetchUsers(currentUser, page)}
+        onLimitChange={(limit) => {
+          setPagination(prev => ({ ...prev, limit }));
+          fetchUsers(currentUser, 1);
+        }}
+        loading={isLoading}
       />
 
       {/* Add/Edit User Dialog */}

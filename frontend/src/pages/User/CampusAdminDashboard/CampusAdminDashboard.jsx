@@ -30,6 +30,7 @@ import UserFinderSidebar from "../components/UserFinderSidebar";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 import api from '@/lib/api';
 import { PageLoader } from '@/components/ui/loading';
+import { Pagination } from '@/components/ui/pagination';
 
 /* Local debounce hook to reduce filtering cost while typing */
 function useDebouncedValue(value, delay = 250) {
@@ -57,6 +58,14 @@ const CampusAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState("institute");
+
+  // Pagination state for institute data
+  const [institutePapersPagination, setInstitutePapersPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
+  const [instituteChaptersPagination, setInstituteChaptersPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
+  const [instituteConferencePagination, setInstituteConferencePagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
+  const [myPapersPagination, setMyPapersPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
+  const [myChaptersPagination, setMyChaptersPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
+  const [myConferencePagination, setMyConferencePagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false });
 
   // Publication type tab (Research Papers vs Book Chapters vs Conference Papers)
   const [activePublicationType, setActivePublicationType] = useState("papers");
@@ -193,78 +202,117 @@ const CampusAdminDashboard = () => {
     }
   };
 
-  const fetchInstitutePapers = async (user) => {
+  const fetchInstitutePapers = async (user, page = 1) => {
     try {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute },
+        params: { college: user.college, institute: user.institute, page, limit: institutePapersPagination.limit },
       });
-      setInstitutePapers(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setInstitutePapers(result.data || []);
+        setInstitutePapersPagination(result.pagination);
+      } else {
+        setInstitutePapers(result || []);
+      }
     } catch (error) {
       console.error("Fetch institute papers error:", error);
       setInstitutePapers([]);
     }
   };
 
-  const fetchMyPapers = async () => {
+  const fetchMyPapers = async (page = 1) => {
     try {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: myPapersPagination.limit },
       });
-      setMyPapers(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setMyPapers(result.data || []);
+        setMyPapersPagination(result.pagination);
+      } else {
+        setMyPapers(result || []);
+      }
     } catch (error) {
       console.error("Fetch my papers error:", error);
       setMyPapers([]);
     }
   };
 
-  const fetchInstituteBookChapters = async (user) => {
+  const fetchInstituteBookChapters = async (user, page = 1) => {
     try {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute },
+        params: { college: user.college, institute: user.institute, page, limit: instituteChaptersPagination.limit },
       });
-      setInstituteBookChapters(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setInstituteBookChapters(result.data || []);
+        setInstituteChaptersPagination(result.pagination);
+      } else {
+        setInstituteBookChapters(result || []);
+      }
     } catch {
       setInstituteBookChapters([]);
     }
   };
 
-  const fetchMyBookChapters = async () => {
+  const fetchMyBookChapters = async (page = 1) => {
     try {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: myChaptersPagination.limit },
       });
-      setMyBookChapters(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setMyBookChapters(result.data || []);
+        setMyChaptersPagination(result.pagination);
+      } else {
+        setMyBookChapters(result || []);
+      }
     } catch {
       setMyBookChapters([]);
     }
   };
 
-  const fetchInstituteConference = async (user) => {
+  const fetchInstituteConference = async (user, page = 1) => {
     try {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute },
+        params: { college: user.college, institute: user.institute, page, limit: instituteConferencePagination.limit },
       });
-      setInstituteConference(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setInstituteConference(result.data || []);
+        setInstituteConferencePagination(result.pagination);
+      } else {
+        setInstituteConference(result || []);
+      }
     } catch {
       setInstituteConference([]);
     }
   };
 
-  const fetchMyConference = async () => {
+  const fetchMyConference = async (page = 1) => {
     try {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: myConferencePagination.limit },
       });
-      setMyConference(response.data || []);
+      const result = response.data;
+      if (result.pagination) {
+        setMyConference(result.data || []);
+        setMyConferencePagination(result.pagination);
+      } else {
+        setMyConference(result || []);
+      }
     } catch {
       setMyConference([]);
     }
@@ -277,7 +325,13 @@ const CampusAdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute, role: "faculty" },
       });
-      setUsers(response.data || []);
+      // Handle paginated response for users
+      const result = response.data;
+      if (result.pagination) {
+        setUsers(result.data || []);
+      } else {
+        setUsers(result || []);
+      }
     } catch (error) {
       console.error("Fetch users error:", error);
       setUsers([]);
@@ -1241,6 +1295,20 @@ const CampusAdminDashboard = () => {
                       canEditPaper={canEditPaper}
                       canDeletePaper={canDeletePaper}
                     />
+                    <Pagination
+                      page={institutePapersPagination.page}
+                      totalPages={institutePapersPagination.totalPages}
+                      total={institutePapersPagination.total}
+                      limit={institutePapersPagination.limit}
+                      hasNextPage={institutePapersPagination.hasNextPage}
+                      hasPrevPage={institutePapersPagination.hasPrevPage}
+                      onPageChange={(page) => fetchInstitutePapers(currentUser, page)}
+                      onLimitChange={(limit) => {
+                        setInstitutePapersPagination(prev => ({ ...prev, limit }));
+                        fetchInstitutePapers(currentUser, 1);
+                      }}
+                      loading={loading}
+                    />
                   </>
                 )}
               </div>
@@ -1313,6 +1381,20 @@ const CampusAdminDashboard = () => {
                 currentUser={currentUser}
                 canEditPaper={canEditPaper}
                 canDeletePaper={canDeletePaper}
+              />
+              <Pagination
+                page={myPapersPagination.page}
+                totalPages={myPapersPagination.totalPages}
+                total={myPapersPagination.total}
+                limit={myPapersPagination.limit}
+                hasNextPage={myPapersPagination.hasNextPage}
+                hasPrevPage={myPapersPagination.hasPrevPage}
+                onPageChange={(page) => fetchMyPapers(page)}
+                onLimitChange={(limit) => {
+                  setMyPapersPagination(prev => ({ ...prev, limit }));
+                  fetchMyPapers(1);
+                }}
+                loading={loading}
               />
             </TabsContent>
           </Tabs>

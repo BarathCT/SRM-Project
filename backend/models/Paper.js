@@ -266,5 +266,7 @@ const PaperSchema = new mongoose.Schema({
 
 // Index for better query performance
 PaperSchema.index({ subjectArea: 1, subjectCategories: 1 });
+PaperSchema.index({ createdAt: -1 });
+PaperSchema.index({ facultyId: 1, createdAt: -1 });
 
 export default mongoose.model('Paper', PaperSchema);

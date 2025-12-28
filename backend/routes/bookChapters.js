@@ -2,6 +2,7 @@ import express from "express";
 import BookChapter from "../models/BookChapter.js";
 import User from "../models/User.js";
 import verifyToken from "../middleware/verifyToken.js";
+import { getPaginationParams, buildPaginatedResponse } from '../utils/pagination.js';
 
 const router = express.Router();
 
@@ -33,11 +34,19 @@ router.post("/", verifyToken, async (req, res) => {
 // GET logged-in user's book chapters
 router.get("/my", verifyToken, async (req, res) => {
   try {
-    const chapters = await BookChapter.find({
-      facultyId: req.user.facultyId
-    }).sort({ createdAt: -1 });
+    const { page, limit, skip } = getPaginationParams(req.query);
+    const filter = { facultyId: req.user.facultyId };
 
-    res.json(chapters);
+    const [chapters, total] = await Promise.all([
+      BookChapter.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      BookChapter.countDocuments(filter)
+    ]);
+
+    res.json(buildPaginatedResponse(chapters, total, { page, limit }));
   } catch (err) {
     console.error("Error fetching book chapters:", err);
     res.status(500).json({ error: "Server error while fetching book chapters" });
@@ -58,6 +67,7 @@ const canAccessInstitute = (user, college, institute) => {
 router.get("/institute", verifyToken, async (req, res) => {
   try {
     const { college, institute } = req.query;
+    const { page, limit, skip } = getPaginationParams(req.query);
 
     if (!canAccessInstitute(req.user, college, institute)) {
       return res.status(403).json({ error: "Access denied to institute data" });
@@ -69,31 +79,37 @@ router.get("/institute", verifyToken, async (req, res) => {
       institute: institute,
       role: { $in: ["faculty", "campus_admin"] },
       isActive: true
-    }).select("facultyId fullName department email");
+    }).select("facultyId fullName department email").lean();
 
     if (!facultyUsers.length) {
-      return res.json([]);
+      return res.json(buildPaginatedResponse([], 0, { page, limit }));
     }
 
     const facultyIds = facultyUsers.map(user => user.facultyId);
+    const filter = { facultyId: { $in: facultyIds } };
 
-    // Get chapters from these faculty members
-    const chapters = await BookChapter.find({
-      facultyId: { $in: facultyIds }
-    }).sort({ createdAt: -1 });
+    // Get chapters with pagination
+    const [chapters, total] = await Promise.all([
+      BookChapter.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      BookChapter.countDocuments(filter)
+    ]);
 
     // Enhance chapters with faculty information
     const enhancedChapters = chapters.map(chapter => {
       const faculty = facultyUsers.find(user => user.facultyId === chapter.facultyId);
       return {
-        ...chapter.toObject(),
+        ...chapter,
         facultyName: faculty?.fullName || "Unknown Faculty",
         facultyDepartment: faculty?.department || "Unknown Department",
         facultyEmail: faculty?.email || ""
       };
     });
 
-    res.json(enhancedChapters);
+    res.json(buildPaginatedResponse(enhancedChapters, total, { page, limit }));
   } catch (err) {
     console.error("Institute book chapters fetch error:", err);
     res.status(500).json({ error: "Server error while fetching institute book chapters" });
