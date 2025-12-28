@@ -322,7 +322,7 @@ export default function PublicationsTable({
             <>
               <div className="overflow-x-auto">
                 <table className="w-full bg-white">
-                  <thead className="bg-white-50 border-b border-blue-100">
+                  <thead className="bg-white-50 border-b border-blue-100 hidden md:table-header-group">
                     <tr>
                       <th className="py-4 px-4 text-left"></th>
                       <th className="py-4 px-4 text-left font-semibold text-gray-900">
@@ -383,7 +383,7 @@ export default function PublicationsTable({
                             className={`hover:bg-blue-50/60 transition-colors lg:cursor-default cursor-pointer`}
                             onClick={handleRowClick}
                           >
-                            <td className="py-4 px-4">
+                            <td className="py-3 px-2 md:py-4 md:px-4">
                               <Checkbox
                                 checked={selectedPapers.has(paper._id)}
                                 onCheckedChange={() => onToggleSelect(paper._id)}
@@ -391,13 +391,13 @@ export default function PublicationsTable({
                                 disabled={false}
                               />
                             </td>
-                            <td className="py-4 px-4 align-top">
+                            <td className="py-3 px-2 md:py-4 md:px-4 align-top">
                               <div className="space-y-2">
                                 <div className="flex items-start gap-2">
-                                  <h4 className="font-semibold text-gray-900 leading-tight flex-1 text-sm lg:text-base">
+                                  <h4 className="font-semibold text-gray-900 leading-tight flex-1 text-sm lg:text-base line-clamp-2">
                                     {paper.title}
                                   </h4>
-                                  <span className="hidden lg:inline-block">
+                                  <span className="hidden lg:inline-block flex-shrink-0">
                                     {getOwnershipBadge(paper)}
                                   </span>
                                 </div>
@@ -484,16 +484,16 @@ export default function PublicationsTable({
                                 {paper.doi}
                               </a>
                             </td>
-                            <td className="py-4 px-4 align-top">
-                              <div className="space-y-2">
+                            <td className="py-3 px-2 md:py-4 md:px-4 align-top">
+                              <div className="flex flex-col sm:block space-y-1 sm:space-y-2">
                                 <Badge
                                   variant="secondary"
-                                  className="bg-gray-100 text-gray-800 font-medium"
+                                  className="bg-gray-100 text-gray-800 font-medium w-fit"
                                 >
                                   {paper.year}
                                 </Badge>
                                 <Badge
-                                  className={`block w-fit text-white font-medium ${
+                                  className={`w-fit text-white font-medium ${
                                     paper.qRating === "Q1"
                                       ? "bg-blue-700"
                                       : paper.qRating === "Q2"
@@ -870,7 +870,10 @@ export default function PublicationsTable({
 
       {/* Mobile/Tablet Full-Screen Modal */}
       <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
-        <DialogContent className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0">
+        <DialogContent 
+          className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0"
+          showCloseButton={false}
+        >
           {selectedPaperForMobile && mobileModalPermissions && (
             <>
               <DialogHeader className="relative">
@@ -888,71 +891,7 @@ export default function PublicationsTable({
               </DialogHeader>
 
               <div className="space-y-6 mt-4">
-                {/* Publication Details */}
-                <Card className="border border-gray-200 bg-white">
-                  <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
-                    <CardTitle className="text-lg text-gray-900">
-                      Publication Details
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
-                    <p>
-                      <span className="font-semibold">DOI:</span>{" "}
-                      <a
-                        href={`https://doi.org/${selectedPaperForMobile.doi}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 font-mono break-all hover:underline"
-                      >
-                        {selectedPaperForMobile.doi}
-                      </a>
-                    </p>
-                    <p>
-                      <span className="font-semibold">Journal:</span>{" "}
-                      {selectedPaperForMobile.journal || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Publisher:</span>{" "}
-                      {selectedPaperForMobile.publisher || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Volume:</span>{" "}
-                      {selectedPaperForMobile.volume || "N/A"}
-                      <span className="font-semibold ml-2">Issue:</span>{" "}
-                      {selectedPaperForMobile.issue || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Pages:</span>{" "}
-                      {selectedPaperForMobile.pageNo || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Publication ID:</span>{" "}
-                      {selectedPaperForMobile.publicationId || "N/A"}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Issue Type:</span>{" "}
-                      {selectedPaperForMobile.typeOfIssue || "N/A"}
-                    </p>
-                    {showAuthorInfo && (
-                      <>
-                        <p>
-                          <span className="font-semibold">Faculty ID:</span>{" "}
-                          {selectedPaperForMobile.facultyId}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Uploaded By:</span>{" "}
-                          {getFacultyInfo(selectedPaperForMobile.facultyId).fullName}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Department:</span>{" "}
-                          {getFacultyInfo(selectedPaperForMobile.facultyId).department}
-                        </p>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Author Information */}
+                {/* Author Information - First */}
                 <Card className="border border-gray-200 bg-white">
                   <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                     <CardTitle className="text-lg text-gray-900">
@@ -1002,7 +941,7 @@ export default function PublicationsTable({
                   </CardContent>
                 </Card>
 
-                {/* Metrics & Classification */}
+                {/* Metrics & Classification - Second */}
                 <Card className="border border-gray-200 bg-white">
                   <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
                     <CardTitle className="text-lg text-gray-900">
@@ -1069,6 +1008,70 @@ export default function PublicationsTable({
                           )}
                         </div>
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Publication Details - Third */}
+                <Card className="border border-gray-200 bg-white">
+                  <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                    <CardTitle className="text-lg text-gray-900">
+                      Publication Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
+                    <p>
+                      <span className="font-semibold">DOI:</span>{" "}
+                      <a
+                        href={`https://doi.org/${selectedPaperForMobile.doi}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 font-mono break-all hover:underline"
+                      >
+                        {selectedPaperForMobile.doi}
+                      </a>
+                    </p>
+                    <p>
+                      <span className="font-semibold">Journal:</span>{" "}
+                      {selectedPaperForMobile.journal || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Publisher:</span>{" "}
+                      {selectedPaperForMobile.publisher || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Volume:</span>{" "}
+                      {selectedPaperForMobile.volume || "N/A"}
+                      <span className="font-semibold ml-2">Issue:</span>{" "}
+                      {selectedPaperForMobile.issue || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Pages:</span>{" "}
+                      {selectedPaperForMobile.pageNo || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Publication ID:</span>{" "}
+                      {selectedPaperForMobile.publicationId || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Issue Type:</span>{" "}
+                      {selectedPaperForMobile.typeOfIssue || "N/A"}
+                    </p>
+                    {showAuthorInfo && (
+                      <>
+                        <p>
+                          <span className="font-semibold">Faculty ID:</span>{" "}
+                          {selectedPaperForMobile.facultyId}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Uploaded By:</span>{" "}
+                          {getFacultyInfo(selectedPaperForMobile.facultyId).fullName}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Department:</span>{" "}
+                          {getFacultyInfo(selectedPaperForMobile.facultyId).department}
+                        </p>
+                      </>
                     )}
                   </CardContent>
                 </Card>

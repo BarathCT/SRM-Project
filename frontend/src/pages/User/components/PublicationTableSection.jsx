@@ -111,13 +111,15 @@ export default function PublicationTableSection({
   return (
     <>
       {/* Content summary */}
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-gray-700 flex items-center gap-2">
-          {Icon && <Icon className={`h-4 w-4 ${iconColor}`} />}
-          Showing <span className="font-semibold text-gray-900">{showing}</span> of{" "}
-          <span className="font-semibold text-gray-900">{total}</span>
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <p className="text-sm text-gray-700 flex items-center gap-2 flex-wrap">
+          {Icon && <Icon className={`h-4 w-4 ${iconColor} flex-shrink-0`} />}
+          <span className="whitespace-nowrap">
+            Showing <span className="font-semibold text-gray-900">{showing}</span> of{" "}
+            <span className="font-semibold text-gray-900">{total}</span>
+          </span>
           {selectedCount > 0 && (
-            <span className="text-blue-600">
+            <span className="text-blue-600 whitespace-nowrap">
               {" "}• <span className="font-semibold">{selectedCount}</span> selected
             </span>
           )}
