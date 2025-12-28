@@ -6,6 +6,7 @@ import {
   ALL_COLLEGE_NAMES,
   getAllInstituteNames,
   getAllDepartmentNames,
+  collegeOptions as COLLEGE_OPTIONS,
 } from "@/utils/collegeData";
 
 const colorPalette = [
@@ -106,10 +107,24 @@ export default function SuperAdminAnalyticsCard({
     const map = {};
     for (const p of papers) {
       const f = facultyMap.get(p.facultyId);
-      const college = f?.college || p.college || "N/A";
-      // If filtering, only count that college
-      if (collegeBarFilter === "all" || college === collegeBarFilter) {
-        map[college] = (map[college] || 0) + 1;
+      let college = f?.college || p.college;
+      // If college is "N/A" or empty, try to find it from institute
+      if (!college || college === "N/A") {
+        const institute = f?.institute || p.institute;
+        if (institute && institute !== "N/A") {
+          // Find college from institute
+          const collegeOption = COLLEGE_OPTIONS?.find(c =>
+            c.institutes && c.institutes.some(i => i.name === institute)
+          );
+          college = collegeOption?.name || college;
+        }
+      }
+      // Only count valid colleges (not N/A or empty)
+      if (college && college !== "N/A" && ALL_COLLEGE_NAMES.includes(college)) {
+        // If filtering, only count that college
+        if (collegeBarFilter === "all" || college === collegeBarFilter) {
+          map[college] = (map[college] || 0) + 1;
+        }
       }
     }
     return map;
@@ -146,10 +161,20 @@ export default function SuperAdminAnalyticsCard({
       data: collegeLabels.map((c) =>
         papers.filter(p => {
           const f = facultyMap.get(p.facultyId);
-          const college = f?.college || p.college || "N/A";
+          let college = f?.college || p.college;
+          // If college is "N/A" or empty, try to find it from institute
+          if (!college || college === "N/A") {
+            const institute = f?.institute || p.institute;
+            if (institute && institute !== "N/A") {
+              const collegeOption = COLLEGE_OPTIONS?.find(col =>
+                col.institutes && col.institutes.some(i => i.name === institute)
+              );
+              college = collegeOption?.name || college;
+            }
+          }
           // Filter by q-rating if set
           const matchQ = qRatingBarFilter === "all" ? p.qRating === q : p.qRating === q && p.qRating === qRatingBarFilter;
-          return college === c && matchQ;
+          return college === c && college !== "N/A" && matchQ;
         }).length
       ),
       backgroundColor: qColors[i],
@@ -162,8 +187,18 @@ export default function SuperAdminAnalyticsCard({
   const filteredPapers = useMemo(() => {
     return papers.filter(p => {
       const f = facultyMap.get(p.facultyId);
-      const college = f?.college || p.college || "N/A";
-      return collegeFilter === "all" || college === collegeFilter;
+      let college = f?.college || p.college;
+      // If college is "N/A" or empty, try to find it from institute
+      if (!college || college === "N/A") {
+        const institute = f?.institute || p.institute;
+        if (institute && institute !== "N/A") {
+          const collegeOption = COLLEGE_OPTIONS?.find(col =>
+            col.institutes && col.institutes.some(i => i.name === institute)
+          );
+          college = collegeOption?.name || college;
+        }
+      }
+      return collegeFilter === "all" || (college && college !== "N/A" && college === collegeFilter);
     });
   }, [papers, facultyMap, collegeFilter]);
 
@@ -173,8 +208,11 @@ export default function SuperAdminAnalyticsCard({
     const map = {};
     for (const p of filteredPapers) {
       const f = facultyMap.get(p.facultyId);
-      const inst = f?.institute || p.institute || "N/A";
-      map[inst] = (map[inst] || 0) + 1;
+      const inst = f?.institute || p.institute;
+      // Only count valid institutes (not N/A or empty)
+      if (inst && inst !== "N/A") {
+        map[inst] = (map[inst] || 0) + 1;
+      }
     }
     return map;
   }, [filteredPapers, facultyMap]);
@@ -197,8 +235,11 @@ export default function SuperAdminAnalyticsCard({
     const map = {};
     for (const p of filteredPapers) {
       const f = facultyMap.get(p.facultyId);
-      const dept = f?.department || p.department || "N/A";
-      map[dept] = (map[dept] || 0) + 1;
+      const dept = f?.department || p.department;
+      // Only count valid departments (not N/A or empty)
+      if (dept && dept !== "N/A") {
+        map[dept] = (map[dept] || 0) + 1;
+      }
     }
     return map;
   }, [filteredPapers, facultyMap]);
@@ -219,11 +260,24 @@ export default function SuperAdminAnalyticsCard({
     const byCollege = {};
     filteredPapers.forEach(p => {
       const f = facultyMap.get(p.facultyId);
-      const college = f?.college || p.college || "N/A";
-      const year = Number(p.year) || 0;
-      yearSet.add(year);
-      if (!byCollege[college]) byCollege[college] = {};
-      byCollege[college][year] = (byCollege[college][year] || 0) + 1;
+      let college = f?.college || p.college;
+      // If college is "N/A" or empty, try to find it from institute
+      if (!college || college === "N/A") {
+        const institute = f?.institute || p.institute;
+        if (institute && institute !== "N/A") {
+          const collegeOption = COLLEGE_OPTIONS?.find(col =>
+            col.institutes && col.institutes.some(i => i.name === institute)
+          );
+          college = collegeOption?.name || college;
+        }
+      }
+      // Only process valid colleges
+      if (college && college !== "N/A") {
+        const year = Number(p.year) || 0;
+        yearSet.add(year);
+        if (!byCollege[college]) byCollege[college] = {};
+        byCollege[college][year] = (byCollege[college][year] || 0) + 1;
+      }
     });
     const years = Array.from(yearSet).filter(Boolean).sort((a, b) => a - b);
     const topColleges = collegeLabels.slice(0, 5);
