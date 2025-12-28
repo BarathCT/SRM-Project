@@ -608,7 +608,7 @@ function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   );
 }
 
-export default function UploadPage({ embedded = false } = {}) {
+export default function UploadPage({ embedded = false, editMode = false, initialData = null } = {}) {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -681,6 +681,43 @@ export default function UploadPage({ embedded = false } = {}) {
       }
     })();
   }, [form, navigate]);
+
+  // Populate form with initialData when in edit mode
+  useEffect(() => {
+    if (editMode && initialData) {
+      // Map the publication data to form fields
+      form.reset({
+        authors: initialData.authors?.map(a => ({
+          name: a.name || "",
+          isCorresponding: a.isCorresponding || false
+        })) || [{ name: "", isCorresponding: false }],
+        title: initialData.title || "",
+        journalName: initialData.journal || "",
+        publisherName: initialData.publisher || "",
+        volume: initialData.volume || "",
+        issue: initialData.issue || "",
+        pageNo: initialData.pageNo || "",
+        doi: initialData.doi || "",
+        facultyId: initialData.facultyId || "",
+        publicationId: initialData.publicationId || "",
+        year: initialData.year?.toString() || "",
+        qRating: initialData.qRating || "",
+        issueType: initialData.typeOfIssue || "",
+        studentScholars: initialData.studentScholars?.map(s => 
+          typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }
+        ) || [],
+        publication: initialData.publicationType || undefined,
+        claimedBy: initialData.claimedBy || "",
+        authorNo: initialData.authorNo || "",
+        isStudentScholar: initialData.isStudentScholar || "no",
+        subjectAreas: initialData.subjectArea ? [{
+          area: initialData.subjectArea,
+          categories: initialData.subjectCategories || []
+        }] : [{ area: "", categories: [] }]
+      });
+    }
+  }, [editMode, initialData, form]);
+
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const publicationType = form.watch("publication");
@@ -802,13 +839,16 @@ useEffect(() => {
   );
 
   async function onSubmit(values) {
-    if (doiStatus.isDuplicate) {
-      toast.error("This DOI is already registered.");
-      return;
-    }
-    if (!doiStatus.validOnCrossref) {
-      toast.error("Please enter a valid DOI before submitting.");
-      return;
+    if (!editMode) {
+      // Only check DOI for new submissions
+      if (doiStatus.isDuplicate) {
+        toast.error("This DOI is already registered.");
+        return;
+      }
+      if (!doiStatus.validOnCrossref) {
+        toast.error("Please enter a valid DOI before submitting.");
+        return;
+      }
     }
 
     const token = localStorage.getItem('token');
@@ -829,8 +869,13 @@ useEffect(() => {
     try {
       const data = await toast.promise(
         (async () => {
-          const res = await fetch(`${API_BASE_URL}/api/papers`, {
-            method: 'POST',
+          const url = editMode && initialData?._id 
+            ? `${API_BASE_URL}/api/papers/${initialData._id}`
+            : `${API_BASE_URL}/api/papers`;
+          const method = editMode ? 'PUT' : 'POST';
+          
+          const res = await fetch(url, {
+            method: method,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -858,42 +903,48 @@ useEffect(() => {
           return resJson || { success: true };
         })(),
         {
-          loading: 'Saving paper...',
-          success: 'Paper uploaded successfully.',
-          error: (err) => err.message || 'Submission failed',
+          loading: editMode ? 'Updating paper...' : 'Saving paper...',
+          success: editMode ? 'Paper updated successfully.' : 'Paper uploaded successfully.',
+          error: (err) => err.message || (editMode ? 'Update failed' : 'Submission failed'),
         }
       );
 
       // success -> show SweetAlert and reset after user clicks OK
       await Swal.fire({
         icon: 'success',
-        title: 'Successfully Submitted!',
-        text: 'Your paper has been uploaded.',
+        title: editMode ? 'Successfully Updated!' : 'Successfully Submitted!',
+        text: editMode ? 'Your paper has been updated.' : 'Your paper has been uploaded.',
         confirmButtonColor: '#2563eb',
       });
 
-      form.reset({
-        authors: [{ name: "", isCorresponding: false }],
-        title: "",
-        journalName: "",
-        publisherName: "",
-        volume: "",
-        issue: "",
-        pageNo: "",
-        doi: "",
-        facultyId: form.getValues('facultyId'),
-        publicationId: "",
-        year: "",
-        qRating: "",
-        issueType: "",
-        studentScholars: [],
-        publication: undefined,
-        claimedBy: "",
-        authorNo: "",
-        isStudentScholar: "no",
-        subjectAreas: [{ area: "", categories: [] }]
-      });
-      setDoiStatus({ isDuplicate: null, validOnCrossref: false, message: "" });
+      if (editMode) {
+        // In edit mode, navigate back after successful update
+        navigate(-1);
+      } else {
+        // In create mode, reset the form
+        form.reset({
+          authors: [{ name: "", isCorresponding: false }],
+          title: "",
+          journalName: "",
+          publisherName: "",
+          volume: "",
+          issue: "",
+          pageNo: "",
+          doi: "",
+          facultyId: form.getValues('facultyId'),
+          publicationId: "",
+          year: "",
+          qRating: "",
+          issueType: "",
+          studentScholars: [],
+          publication: undefined,
+          claimedBy: "",
+          authorNo: "",
+          isStudentScholar: "no",
+          subjectAreas: [{ area: "", categories: [] }]
+        });
+        setDoiStatus({ isDuplicate: null, validOnCrossref: false, message: "" });
+      }
 
     } catch (err) {
       console.error("Submission error:", err);
@@ -1639,11 +1690,11 @@ useEffect(() => {
                   <div className="flex flex-col sm:flex-row gap-4">
                     <Button
                       type="submit"
-                      disabled={isPending || doiStatus.isDuplicate || !doiStatus.validOnCrossref}
+                      disabled={isPending || (!editMode && (doiStatus.isDuplicate || !doiStatus.validOnCrossref))}
                       className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 text-white"
                     >
                       {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Paper
+                      {editMode ? 'Update Paper' : 'Submit Paper'}
                     </Button>
 
                     <Button

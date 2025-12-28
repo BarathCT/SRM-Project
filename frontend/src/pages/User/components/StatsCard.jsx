@@ -26,24 +26,24 @@ export default function StatsCard({
 }) {
   return (
     <Card className={cn("border border-gray-200 bg-white", className)}>
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
+      <CardContent className="p-3 sm:p-4 lg:p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3">
+          <div className="min-w-0 flex-1 text-center md:text-left">
             <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{title}</p>
 
             {loading ? (
-              <Skeleton className="mt-2 h-6 sm:h-8 w-16 sm:w-24" />
+              <Skeleton className="mt-2 h-6 sm:h-8 w-16 sm:w-24 mx-auto md:mx-0" />
             ) : (
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{value}</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-1">{value}</p>
             )}
 
             {subtitle && (
-              <p className="text-blue-600 text-xs mt-1 truncate">{subtitle}</p>
+              <p className="text-blue-600 text-xs mt-1 truncate hidden md:block">{subtitle}</p>
             )}
           </div>
 
           {icon ? (
-            <div className="p-2 sm:p-3 bg-blue-50 rounded-lg shrink-0">
+            <div className="hidden lg:block p-2 sm:p-3 bg-blue-50 rounded-lg shrink-0">
               {React.cloneElement(icon, {
                 className: cn(icon.props?.className, "h-6 w-6 sm:h-8 sm:w-8")
               })}

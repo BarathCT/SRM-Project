@@ -479,39 +479,60 @@ const CampusAdminDashboard = () => {
   }, [institutePapers, selectedFacultyId]);
 
   // Stats
+  // Dynamic stats based on activePublicationType
   const campusStats = useMemo(() => {
-    const safeInstitutePapers = Array.isArray(institutePapers) ? institutePapers : [];
-    const safeMyPapers = Array.isArray(myPapers) ? myPapers : [];
+    let safeInstituteItems = [];
+    let safeMyItems = [];
+    let institutePagination = null;
+    let myPagination = null;
+
+    if (activePublicationType === "papers") {
+      safeInstituteItems = Array.isArray(institutePapers) ? institutePapers : [];
+      safeMyItems = Array.isArray(myPapers) ? myPapers : [];
+      institutePagination = institutePapersPagination;
+      myPagination = myPapersPagination;
+    } else if (activePublicationType === "bookChapters") {
+      safeInstituteItems = Array.isArray(instituteBookChapters) ? instituteBookChapters : [];
+      safeMyItems = Array.isArray(myBookChapters) ? myBookChapters : [];
+      institutePagination = instituteChaptersPagination;
+      myPagination = myChaptersPagination;
+    } else if (activePublicationType === "conferencePapers") {
+      safeInstituteItems = Array.isArray(instituteConference) ? instituteConference : [];
+      safeMyItems = Array.isArray(myConference) ? myConference : [];
+      institutePagination = instituteConferencePagination;
+      myPagination = myConferencePagination;
+    }
+
     const safeUsers = Array.isArray(users) ? users : [];
 
     // Use pagination total if available, otherwise fall back to array length
-    const totalPapers = institutePapersPagination?.total ?? safeInstitutePapers.length;
-    const myTotalPapers = myPapersPagination?.total ?? safeMyPapers.length;
+    const totalPapers = institutePagination?.total ?? safeInstituteItems.length;
+    const myTotalPapers = myPagination?.total ?? safeMyItems.length;
     const totalFaculty = safeUsers.length;
-    const activeFaculty = safeUsers.filter((u) => safeInstitutePapers.some((p) => p.facultyId === u.facultyId)).length;
+    const activeFaculty = safeUsers.filter((u) => safeInstituteItems.some((p) => p.facultyId === u.facultyId)).length;
 
-    const qDistribution = safeInstitutePapers.reduce((acc, paper) => {
+    const qDistribution = safeInstituteItems.reduce((acc, paper) => {
       acc[paper.qRating] = (acc[paper.qRating] || 0) + 1;
       return acc;
     }, {});
 
-    const myQDistribution = safeMyPapers.reduce((acc, paper) => {
+    const myQDistribution = safeMyItems.reduce((acc, paper) => {
       acc[paper.qRating] = (acc[paper.qRating] || 0) + 1;
       return acc;
     }, {});
 
-    const yearlyTrend = safeInstitutePapers.reduce((acc, paper) => {
+    const yearlyTrend = safeInstituteItems.reduce((acc, paper) => {
       acc[paper.year] = (acc[paper.year] || 0) + 1;
       return acc;
     }, {});
 
-    const subjectDistribution = safeInstitutePapers.reduce((acc, paper) => {
+    const subjectDistribution = safeInstituteItems.reduce((acc, paper) => {
       acc[paper.subjectArea] = (acc[paper.subjectArea] || 0) + 1;
       return acc;
     }, {});
 
     const departmentStats = safeUsers.reduce((acc, user) => {
-      const userPapers = safeInstitutePapers.filter((p) => p.facultyId === user.facultyId);
+      const userPapers = safeInstituteItems.filter((p) => p.facultyId === user.facultyId);
       const dep = user.department || "—";
       if (!acc[dep]) {
         acc[dep] = { faculty: 0, papers: 0, q1Papers: 0, recentPapers: 0 };
@@ -524,8 +545,8 @@ const CampusAdminDashboard = () => {
     }, {});
 
     // Calculate Q1 count from pagination total if available, otherwise use distribution
-    const q1Count = institutePapersPagination?.total 
-      ? Math.round((totalPapers * ((qDistribution || {}).Q1 || 0)) / Math.max(safeInstitutePapers.length, 1))
+    const q1Count = institutePagination?.total 
+      ? Math.round((totalPapers * ((qDistribution || {}).Q1 || 0)) / Math.max(safeInstituteItems.length, 1))
       : ((qDistribution || {}).Q1 || 0);
 
     return {
@@ -542,7 +563,7 @@ const CampusAdminDashboard = () => {
       q1Percentage: totalPapers > 0 ? (((qDistribution || {}).Q1 || 0) / totalPapers * 100).toFixed(1) : 0,
       myQ1Percentage: myTotalPapers > 0 ? (((myQDistribution || {}).Q1 || 0) / myTotalPapers * 100).toFixed(1) : 0,
     };
-  }, [institutePapers, myPapers, users, institutePapersPagination, myPapersPagination]);
+  }, [activePublicationType, institutePapers, myPapers, instituteBookChapters, myBookChapters, instituteConference, myConference, users, institutePapersPagination, myPapersPagination, instituteChaptersPagination, myChaptersPagination, instituteConferencePagination, myConferencePagination]);
 
   const myStats = useMemo(() => {
     // Use pagination total if available, otherwise fall back to array length
@@ -995,7 +1016,7 @@ const CampusAdminDashboard = () => {
           </div>
         ) : (
           !selectedFacultyId && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
               <StatsCard
                 title="Institute Publications"
                 value={campusStats.totalPapers}
@@ -1014,12 +1035,24 @@ const CampusAdminDashboard = () => {
                 title="Q1 Publications"
                 value={(() => {
                   // Use pagination total to calculate Q1 count accurately
-                  const totalPapers = institutePapersPagination?.total ?? 0;
-                  const currentQ1Count = (campusStats.qDistribution || {}).Q1 || 0;
-                  const currentPageCount = institutePapers.length || 1;
+                  let totalItems = 0;
+                  let currentQ1Count = (campusStats.qDistribution || {}).Q1 || 0;
+                  let currentPageCount = 0;
+                  
+                  if (activePublicationType === "papers") {
+                    totalItems = institutePapersPagination?.total ?? 0;
+                    currentPageCount = institutePapers.length || 1;
+                  } else if (activePublicationType === "bookChapters") {
+                    totalItems = instituteChaptersPagination?.total ?? 0;
+                    currentPageCount = instituteBookChapters.length || 1;
+                  } else if (activePublicationType === "conferencePapers") {
+                    totalItems = instituteConferencePagination?.total ?? 0;
+                    currentPageCount = instituteConference.length || 1;
+                  }
+                  
                   // Estimate Q1 count based on current page ratio
-                  return totalPapers > 0 && currentPageCount > 0
-                    ? Math.round((totalPapers * currentQ1Count) / currentPageCount)
+                  return totalItems > 0 && currentPageCount > 0
+                    ? Math.round((totalItems * currentQ1Count) / currentPageCount)
                     : currentQ1Count;
                 })()}
                 subtitle={`${campusStats.q1Percentage}% of total`}

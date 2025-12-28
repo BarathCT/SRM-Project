@@ -10,7 +10,6 @@ import {
     CardContent,
     CardHeader,
     CardTitle,
-    CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,9 +162,6 @@ export default function BookChaptersTable({
                             <BookOpen className="h-5 w-5 text-blue-600" />
                             Book Chapters
                         </CardTitle>
-                        <CardDescription className="text-gray-600">
-                            Your book chapter publications
-                        </CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -265,6 +261,18 @@ export default function BookChaptersTable({
                                             // Don't trigger click if it was a long press selection
                                             if (longPressTarget === chapter._id) {
                                                 return;
+                                            }
+                                            // On mobile/tablet, if selection mode is active (any row is selected), allow single click to select
+                                            if (window.innerWidth < 1024 && selectedChapters.size > 0) {
+                                                // If any row is selected, treat click as selection toggle
+                                                if (
+                                                    !e.target.closest('input[type="checkbox"]') &&
+                                                    !e.target.closest('button') &&
+                                                    !e.target.closest('[role="button"]')
+                                                ) {
+                                                    onToggleSelect(chapter._id);
+                                                    return;
+                                                }
                                             }
                                             if (
                                                 e.target.closest('input[type="checkbox"]') ||
@@ -591,7 +599,7 @@ export default function BookChaptersTable({
         {/* Mobile/Tablet Full-Screen Modal */}
         <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
             <DialogContent 
-                className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0"
+                className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto overflow-x-hidden lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0"
                 showCloseButton={false}
             >
                 {selectedChapterForMobile && (
@@ -605,7 +613,48 @@ export default function BookChaptersTable({
                             >
                                 <ArrowLeft className="h-5 w-5 text-gray-700" />
                             </Button>
-                            <DialogTitle className="text-xl font-bold text-gray-900 pr-8 pl-10 break-words">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="absolute right-0 top-0 -mr-2 -mt-1 p-2 hover:bg-gray-100 z-10"
+                                    >
+                                        <MoreHorizontal className="h-5 w-5 text-gray-700" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-white border-blue-200">
+                                    <DropdownMenuLabel className="text-gray-900">Actions</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className="bg-blue-100" />
+                                    <button
+                                        onClick={() => {
+                                            setIsMobileModalOpen(false);
+                                            onEdit(selectedChapterForMobile);
+                                        }}
+                                        className="w-full text-left px-2 py-1.5 text-sm text-blue-700 hover:bg-blue-50 rounded flex items-center"
+                                    >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit Chapter
+                                    </button>
+                                    <DeleteConfirmationDialog
+                                        trigger={
+                                            <button className="w-full text-left px-2 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded flex items-center">
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Delete
+                                            </button>
+                                        }
+                                        title="Delete Book Chapter"
+                                        description="This action cannot be undone."
+                                        itemName={selectedChapterForMobile.chapterTitle}
+                                        onConfirm={() => {
+                                            setIsMobileModalOpen(false);
+                                            onDelete(selectedChapterForMobile._id);
+                                        }}
+                                        isDeleting={deletingId === selectedChapterForMobile._id}
+                                    />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <DialogTitle className="text-xl font-bold text-gray-900 pr-8 pl-10 break-words text-left">
                                 {selectedChapterForMobile.chapterTitle}
                             </DialogTitle>
                         </DialogHeader>
@@ -619,34 +668,34 @@ export default function BookChaptersTable({
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
-                                    <p>
+                                    <p className="text-left">
                                         <span className="font-semibold">Book Title:</span>{" "}
                                         {selectedChapterForMobile.bookTitle || "N/A"}
                                     </p>
-                                    <p>
+                                    <p className="text-left">
                                         <span className="font-semibold">Chapter Number:</span>{" "}
                                         {selectedChapterForMobile.chapterNumber || "N/A"}
                                     </p>
-                                    <p>
+                                    <p className="text-left">
                                         <span className="font-semibold">Publisher:</span>{" "}
                                         {selectedChapterForMobile.publisher || "N/A"}
                                     </p>
-                                    <p>
+                                    <p className="text-left">
                                         <span className="font-semibold">ISBN:</span>{" "}
                                         {selectedChapterForMobile.isbn || "N/A"}
                                     </p>
                                     {selectedChapterForMobile.bookSeries && (
-                                        <p>
+                                        <p className="text-left">
                                             <span className="font-semibold">Book Series:</span>{" "}
                                             {selectedChapterForMobile.bookSeries}
                                         </p>
                                     )}
-                                    <p>
+                                    <p className="text-left">
                                         <span className="font-semibold">Year:</span>{" "}
                                         {selectedChapterForMobile.year || "N/A"}
                                     </p>
                                     {selectedChapterForMobile.indexedIn && (
-                                        <p>
+                                        <p className="text-left">
                                             <span className="font-semibold">Indexed In:</span>{" "}
                                             <Badge
                                                 className={`text-white font-medium ${
@@ -670,7 +719,7 @@ export default function BookChaptersTable({
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
-                                    <p>
+                                    <p className="text-left">
                                         <span className="font-semibold">Authors:</span>{" "}
                                         {selectedChapterForMobile.authors
                                             ?.map((a) => a.name)
@@ -687,7 +736,7 @@ export default function BookChaptersTable({
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3 pt-4">
-                                    <div>
+                                    <div className="text-left">
                                         <span className="text-sm font-semibold text-gray-700">
                                             Subject Area:
                                         </span>
@@ -699,7 +748,7 @@ export default function BookChaptersTable({
                                         </Badge>
                                     </div>
                                     {selectedChapterForMobile.subjectCategories?.length > 0 && (
-                                        <div>
+                                        <div className="text-left">
                                             <span className="text-sm font-semibold text-gray-700">
                                                 Categories:
                                             </span>
@@ -721,39 +770,6 @@ export default function BookChaptersTable({
                                 </CardContent>
                             </Card>
 
-                            {/* Actions */}
-                            <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-gray-200">
-                                <Button
-                                    onClick={() => {
-                                        setIsMobileModalOpen(false);
-                                        onEdit(selectedChapterForMobile);
-                                    }}
-                                    variant="outline"
-                                    className="flex-1 border-blue-200 hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                                >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit Chapter
-                                </Button>
-                                <DeleteConfirmationDialog
-                                    trigger={
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1 border-red-200 hover:border-red-500 hover:text-red-700 hover:bg-red-50"
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete
-                                        </Button>
-                                    }
-                                    title="Delete Book Chapter"
-                                    description="This action cannot be undone."
-                                    itemName={selectedChapterForMobile.chapterTitle}
-                                    onConfirm={() => {
-                                        setIsMobileModalOpen(false);
-                                        onDelete(selectedChapterForMobile._id);
-                                    }}
-                                    isDeleting={deletingId === selectedChapterForMobile._id}
-                                />
-                            </div>
                         </div>
                     </>
                 )}

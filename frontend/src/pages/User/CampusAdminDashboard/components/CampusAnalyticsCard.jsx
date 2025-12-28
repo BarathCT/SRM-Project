@@ -474,10 +474,6 @@ export default function CampusAnalyticsCard({ stats, loading }) {
           <TabsContent value="overview" className="space-y-4 sm:space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <div className="relative">
-                <BadgeCard
-                  label={qRatingFilter === "all" ? "All Q Ratings" : qRatingFilter}
-                  count={qRatingTotal}
-                />
                 <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 text-center">
                   Q-Rating Distribution
                 </h4>

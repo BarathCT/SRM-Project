@@ -470,28 +470,6 @@ export default function UserStatsCard({
     return map;
   }, [statistics.departmentDistribution]);
 
-  if (parentLoading || statsLoading) {
-    return (
-      <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
-        <Card className="border border-gray-200 bg-white overflow-hidden">
-          <StatSkeleton />
-        </Card>
-      </div>
-    );
-  }
-
-  // Super Admin Notice: show only if role filter is super_admin and user is super_admin
-  if (
-    currentUserRole === 'super_admin' &&
-    filters.role === 'super_admin'
-  ) {
-    return (
-      <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
-        <SuperAdminNotice superAdminCount={statistics.roleStats.super_admin} />
-      </div>
-    );
-  }
-
   // College Hierarchical Tree
   const collegeHierarchyData = useMemo(() => {
     const tree = {};
@@ -535,6 +513,28 @@ export default function UserStatsCard({
       />
     ))
     : [];
+
+  if (parentLoading || statsLoading) {
+    return (
+      <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
+        <Card className="border border-gray-200 bg-white overflow-hidden">
+          <StatSkeleton />
+        </Card>
+      </div>
+    );
+  }
+
+  // Super Admin Notice: show only if role filter is super_admin and user is super_admin
+  if (
+    currentUserRole === 'super_admin' &&
+    filters.role === 'super_admin'
+  ) {
+    return (
+      <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
+        <SuperAdminNotice superAdminCount={statistics.roleStats.super_admin} />
+      </div>
+    );
+  }
 
   return (
     <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
