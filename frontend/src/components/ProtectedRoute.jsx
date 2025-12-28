@@ -20,11 +20,7 @@ export default function ProtectedRoute({ allowedRoles }) {
     const checkAuth = () => {
       try {
         const token = localStorage.getItem('token');
-        const user = localStorage.getItem('user') 
-          ? JSON.parse(localStorage.getItem('user')) 
-          : null;
-
-        if (!token || !user) {
+        if (!token) {
           setStatus('unauthorized');
           setUserRole(null);
           return;
@@ -49,7 +45,8 @@ export default function ProtectedRoute({ allowedRoles }) {
           return;
         }
 
-        // Role check
+        // Role check - user data can be cached, so we don't require it to be in localStorage
+        // The token itself contains the role information
         if (!allowedRoles || allowedRoles.includes(decoded.role)) {
           setStatus('authorized');
           setUserRole(decoded.role);
@@ -58,8 +55,12 @@ export default function ProtectedRoute({ allowedRoles }) {
           setUserRole(decoded.role);
         }
       } catch (err) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        console.error('Auth check error:', err);
+        // Only clear on actual errors, not missing user data
+        if (err.message?.includes('Invalid token') || err.message?.includes('jwt')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
         setStatus('unauthorized');
         setUserRole(null);
       }

@@ -40,6 +40,33 @@ export default function Navbar() {
         return;
       }
 
+      // Immediately use cached user data if available (for instant UI on refresh)
+      const cachedUser = localStorage.getItem('user');
+      if (cachedUser) {
+        try {
+          const userData = JSON.parse(cachedUser);
+          const decoded = jwtDecode(token);
+          
+          // Check if token is expired
+          const currentTime = Date.now() / 1000;
+          if (decoded.exp < currentTime) {
+            console.warn('Token expired');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+            return;
+          }
+
+          // Set cached user immediately for instant UI
+          setUser({
+            ...decoded,
+            ...userData
+          });
+        } catch (parseErr) {
+          console.error('Failed to parse cached user data:', parseErr);
+        }
+      }
+
       try {
         const decoded = jwtDecode(token);
         
@@ -53,6 +80,7 @@ export default function Navbar() {
           return;
         }
 
+        // Fetch fresh user data from API
         const response = await api.get('/settings');
         const responseData = response.data;
 
@@ -90,39 +118,18 @@ export default function Navbar() {
           // Token is invalid or expired
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          setUser(null);
           navigate('/login');
         } else {
-          // For timeout/network errors, use cached user data from localStorage
-          const cachedUser = localStorage.getItem('user');
-          if (cachedUser) {
-            try {
-              const userData = JSON.parse(cachedUser);
-              const decoded = jwtDecode(token);
-              setUser({
-                ...decoded,
-                ...userData
-              });
-              if (isTimeoutError) {
-                console.warn('API timeout - using cached user data. Backend may be starting up.');
-              } else {
-                console.warn('Using cached user data due to API error:', err.message);
-              }
-            } catch (parseErr) {
-              console.error('Failed to parse cached user data:', parseErr);
-              // If we can't parse cached data and it's a timeout, just keep trying in background
-              if (!isTimeoutError) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                navigate('/login');
-              }
-            }
-          } else if (isTimeoutError || isNetworkError) {
-            // Timeout/network error but no cached data - backend might be starting
-            // Don't remove token, user might be able to retry
-            console.warn('API timeout/network error. Backend may be starting up. Token preserved.');
+          // For timeout/network errors, keep using cached user data (already set above)
+          if (isTimeoutError) {
+            console.warn('API timeout - using cached user data. Backend may be starting up.');
           } else {
-            // Other errors - log but don't remove token
-            console.warn('Error fetching user data, but token preserved:', err.message);
+            console.warn('Using cached user data due to API error:', err.message);
+          }
+          // If no cached user and it's a timeout/network error, preserve token for retry
+          if (!cachedUser && (isTimeoutError || isNetworkError)) {
+            console.warn('API timeout/network error. Backend may be starting up. Token preserved.');
           }
         }
       }
