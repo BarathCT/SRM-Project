@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { jwtDecode } from 'jwt-decode';
@@ -115,12 +115,7 @@ export default function UserManagement() {
   }, [navigate]);
 
   // Apply user filters whenever users, filters, or debounced search term changes
-  useEffect(() => {
-    applyFilters();
-    // eslint-disable-next-line
-  }, [users, filters, debouncedSearchTerm]);
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     const safeUsers = Array.isArray(users) ? users : [];
     let result = [...safeUsers];
 
@@ -144,9 +139,9 @@ export default function UserManagement() {
       result = result.filter(user => user.department === filters.department);
     }
 
-    // Apply search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    // Apply search term - use debouncedSearchTerm instead of searchTerm
+    if (debouncedSearchTerm) {
+      const term = debouncedSearchTerm.toLowerCase();
       result = result.filter(user =>
         user.fullName?.toLowerCase().includes(term) ||
         (user.facultyId && user.facultyId.toLowerCase().includes(term)) ||
@@ -155,7 +150,11 @@ export default function UserManagement() {
     }
 
     setFilteredUsers(result);
-  };
+  }, [users, filters, debouncedSearchTerm]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   // Fetch users based on current user role
   const fetchUsers = async (user, page = 1) => {
