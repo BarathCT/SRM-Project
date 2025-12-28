@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   Building2,
@@ -42,6 +43,7 @@ const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
 
 export default function SuperAdminDashboard() {
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Publication type tab
@@ -153,7 +155,6 @@ export default function SuperAdminDashboard() {
   const [editData, setEditData] = useState(null);
 
   // Analytics modal state
-  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // --- Effects ---
 
@@ -764,7 +765,19 @@ export default function SuperAdminDashboard() {
           subtitle="Global publications analysis across all colleges and institutes"
           icon={null}
           showTabSwitch={false}
-          onShowAnalytics={() => setShowAnalytics(true)}
+          onShowAnalytics={() => {
+            navigate('/super-admin/analytics', { 
+              state: { 
+                stats,
+                papers: filteredPapers,
+                users,
+                selectedCollege: pubFilters.selectedCollege,
+                selectedInstitute: pubFilters.selectedInstitute,
+                loading,
+                scopeLoading
+              } 
+            });
+          }}
           facultyFinderOpen={finderOpen}
           onFacultyFinderOpenChange={setFinderOpen}
           role="super-admin"
@@ -793,43 +806,6 @@ export default function SuperAdminDashboard() {
           title="Find Faculty/Admin"
         />
 
-        {/* Analytics Modal */}
-        {showAnalytics && (
-          <section className="max-w-7xl mx-auto mb-4 sm:mb-8">
-            <div className="relative border border-gray-200 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
-              <header className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 border-b border-gray-200 bg-white/80 rounded-t-xl sm:rounded-t-2xl">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-blue-600" />
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
-                    Analytics Overview
-                  </h2>
-                </div>
-                <button
-                  className="p-1.5 sm:p-2 rounded-full hover:bg-blue-100 transition"
-                  onClick={() => setShowAnalytics(false)}
-                  aria-label="Close analytics"
-                >
-                  <X className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500" />
-                </button>
-              </header>
-              <main className="p-4 sm:p-6 lg:p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-xl sm:rounded-b-2xl">
-                <div className="grid grid-cols-1 gap-y-8">
-                  <CampusAnalyticsCard
-                    stats={stats}
-                    loading={loading}
-                  />
-                  <SuperAdminAnalyticsCard
-                    papers={filteredPapers}
-                    users={users}
-                    selectedCollege={pubFilters.selectedCollege}
-                    selectedInstitute={pubFilters.selectedInstitute}
-                    loading={scopeLoading}
-                  />
-                </div>
-              </main>
-            </div>
-          </section>
-        )}
 
         {/* Publications filter (hidden when viewing a user) */}
         {!selectedUser && (
@@ -887,7 +863,7 @@ export default function SuperAdminDashboard() {
 
         {/* Summary cards */}
         {!selectedUser && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
             <StatsCard
               title="Total Publications"
               value={stats.totalPapers}
