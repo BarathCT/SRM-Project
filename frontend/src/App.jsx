@@ -6,6 +6,7 @@ import UploadSelector from "./pages/User/Upload/index";
 import UploadResearchPage from "./pages/User/Upload/UploadResearchPage";
 import UploadConferencePage from "./pages/User/Upload/UploadConferencePage";
 import UploadBookChapterPage from "./pages/User/Upload/UploadBookChapterPage";
+import EditSelector from "./pages/User/Edit/index";
 
 import SuperAdminDashboard from './pages/User/SuperAdminDashboard/SuperAdminDashboard';
 import CampusAdminDashboard from './pages/User/CampusAdminDashboard/CampusAdminDashboard';
@@ -27,6 +28,7 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
             <Route path="/super-admin" element={<SuperAdminDashboard />} />
             <Route path="/super-admin/users" element={<UserManagement />} />
+            <Route path="/super-admin/edit/:type/:id" element={<EditSelector />} />
           </Route>
 
           {/* Campus Admin routes */}
@@ -37,6 +39,7 @@ export default function App() {
   <Route path="/campus-admin/upload/research" element={<UploadResearchPage />} />
   <Route path="/campus-admin/upload/conference" element={<UploadConferencePage />} />
   <Route path="/campus-admin/upload/book-chapter" element={<UploadBookChapterPage />} />
+            <Route path="/campus-admin/edit/:type/:id" element={<EditSelector />} />
             </Route>
 
 
@@ -47,6 +50,7 @@ export default function App() {
               <Route path="/faculty/upload/research" element={<UploadResearchPage />} />
               <Route path="/faculty/upload/conference" element={<UploadConferencePage />} />
               <Route path="/faculty/upload/book-chapter" element={<UploadBookChapterPage />} />
+              <Route path="/faculty/edit/:type/:id" element={<EditSelector />} />
           </Route>
 
           {/* Common routes accessible to all authenticated users */}

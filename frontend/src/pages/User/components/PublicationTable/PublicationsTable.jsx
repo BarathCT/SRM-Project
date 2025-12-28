@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -46,7 +47,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
-import EditPublicationDialog from "./EditPublicationDialog";
 
 /**
  * PublicationsTable
@@ -73,46 +73,56 @@ export default function PublicationsTable({
   onUpdatePaper = () => {},
   isUpdatingPaper = false,
 }) {
+  const navigate = useNavigate();
   const noResults = papers.length === 0;
 
   // Pagination
   const PER_PAGE = 15;
   const [page, setPage] = useState(1);
 
-  // Local edit dialog state
-  const [editingPaper, setEditingPaper] = useState(null);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-
   // Mobile/Tablet full-screen modal state
   const [selectedPaperForMobile, setSelectedPaperForMobile] = useState(null);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
+  // Long press state for mobile/tablet selection
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [longPressTarget, setLongPressTarget] = useState(null);
+
+  // Long press state for mobile/tablet selection
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [longPressTarget, setLongPressTarget] = useState(null);
+
+  // Helper to determine publication type for routing
+  const getPublicationTypeRoute = (publicationType) => {
+    const typeMap = {
+      'scopus': 'research',
+      'sci': 'research',
+      'webOfScience': 'research',
+      'research': 'research',
+      'conference': 'conference',
+      'book-chapter': 'book-chapter',
+    };
+    return typeMap[publicationType] || 'research';
+  };
+
+  // Helper to get current user role for route prefix
+  const getRoutePrefix = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const role = user?.role;
+    if (role === 'super_admin') return '/super-admin';
+    if (role === 'campus_admin') return '/campus-admin';
+    if (role === 'faculty') return '/faculty';
+    return '/faculty'; // default
+  };
+
   const openEditDialog = useCallback((paper) => {
-    setEditingPaper(paper);
-    setIsEditOpen(true);
-  }, []);
+    const type = getPublicationTypeRoute(paper.publicationType);
+    const routePrefix = getRoutePrefix();
+    navigate(`${routePrefix}/edit/${type}/${paper._id}`, {
+      state: { publication: paper }
+    });
+  }, [navigate]);
 
-  const closeEditDialog = useCallback(() => {
-    if (!isUpdatingPaper) {
-      setIsEditOpen(false);
-      setEditingPaper(null);
-    }
-  }, [isUpdatingPaper]);
-
-  const handleSaveEdit = useCallback(
-    async (updatedPaper) => {
-      const result = onUpdatePaper(updatedPaper);
-      try {
-        if (result && typeof result.then === "function") {
-          await result;
-        }
-        closeEditDialog();
-      } catch (err) {
-        console.error("Failed to update publication:", err);
-      }
-    },
-    [onUpdatePaper, closeEditDialog]
-  );
 
   useEffect(() => {
     setPage(1);
@@ -359,8 +369,45 @@ export default function PublicationsTable({
                       const isSelectable = true;
 
                       const showDropdownMenu = !showAuthorInfo || isOwn;
+                      const isSelected = selectedPapers.has(paper._id);
+
+                      // Long press handler for mobile/tablet selection
+                      const handleTouchStart = (e) => {
+                        if (window.innerWidth >= 1024) return; // Only on mobile/tablet
+                        const timer = setTimeout(() => {
+                          // Long press detected - toggle selection
+                          onToggleSelect(paper._id);
+                          setLongPressTarget(paper._id);
+                          // Add haptic feedback if available
+                          if (navigator.vibrate) {
+                            navigator.vibrate(50);
+                          }
+                        }, 500); // 500ms for long press
+                        setLongPressTimer(timer);
+                      };
+
+                      const handleTouchEnd = () => {
+                        if (longPressTimer) {
+                          clearTimeout(longPressTimer);
+                          setLongPressTimer(null);
+                        }
+                        // Reset target after a short delay
+                        setTimeout(() => setLongPressTarget(null), 200);
+                      };
+
+                      const handleTouchCancel = () => {
+                        if (longPressTimer) {
+                          clearTimeout(longPressTimer);
+                          setLongPressTimer(null);
+                        }
+                        setLongPressTarget(null);
+                      };
 
                       const handleRowClick = (e) => {
+                        // Don't trigger click if it was a long press selection
+                        if (longPressTarget === paper._id) {
+                          return;
+                        }
                         // Only handle row click on mobile/tablet (below lg breakpoint)
                         // Prevent if clicking on checkbox or button
                         if (
@@ -380,12 +427,20 @@ export default function PublicationsTable({
                       return (
                         <React.Fragment key={paper._id}>
                           <tr
-                            className={`hover:bg-blue-50/60 transition-colors lg:cursor-default cursor-pointer`}
+                            className={`transition-colors lg:cursor-default cursor-pointer ${
+                              isSelected 
+                                ? 'bg-blue-100 lg:bg-blue-50/60' 
+                                : 'hover:bg-blue-50/60'
+                            }`}
                             onClick={handleRowClick}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
+                            onTouchCancel={handleTouchCancel}
+                            style={{ userSelect: 'none' }}
                           >
-                            <td className="py-3 px-2 md:py-4 md:px-4">
+                            <td className="py-3 px-2 md:py-4 md:px-4 hidden lg:table-cell">
                               <Checkbox
-                                checked={selectedPapers.has(paper._id)}
+                                checked={isSelected}
                                 onCheckedChange={() => onToggleSelect(paper._id)}
                                 className="border-blue-300"
                                 disabled={false}
@@ -859,15 +914,6 @@ export default function PublicationsTable({
         </CardContent>
       </Card>
 
-      {/* Integrated Edit Publication Dialog */}
-      <EditPublicationDialog
-        paper={editingPaper}
-        isOpen={isEditOpen}
-        onClose={closeEditDialog}
-        onSave={handleSaveEdit}
-        isSaving={isUpdatingPaper}
-      />
-
       {/* Mobile/Tablet Full-Screen Modal */}
       <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
         <DialogContent 
@@ -881,11 +927,14 @@ export default function PublicationsTable({
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsMobileModalOpen(false)}
-                  className="absolute left-0 top-0 -ml-2 -mt-1 p-2 hover:bg-gray-100"
+                  className="absolute left-0 top-0 -ml-2 -mt-1 p-2 hover:bg-gray-100 z-10"
                 >
                   <ArrowLeft className="h-5 w-5 text-gray-700" />
                 </Button>
-                <DialogTitle className="text-xl font-bold text-gray-900 pr-8">
+                <div className="absolute right-0 top-0 -mr-2 -mt-1 z-10">
+                  {getOwnershipBadge(selectedPaperForMobile)}
+                </div>
+                <DialogTitle className="text-xl font-bold text-gray-900 pr-8 pl-10 break-words">
                   {selectedPaperForMobile.title}
                 </DialogTitle>
               </DialogHeader>
@@ -1078,9 +1127,6 @@ export default function PublicationsTable({
 
                 {/* Actions */}
                 <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
-                  <div className="flex items-center gap-2">
-                    {getOwnershipBadge(selectedPaperForMobile)}
-                  </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     {mobileModalPermissions.showDropdownMenuValue && (
                       <>

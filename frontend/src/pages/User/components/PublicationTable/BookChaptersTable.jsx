@@ -66,6 +66,10 @@ export default function BookChaptersTable({
     const [selectedChapterForMobile, setSelectedChapterForMobile] = useState(null);
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
+    // Long press state for mobile/tablet selection
+    const [longPressTimer, setLongPressTimer] = useState(null);
+    const [longPressTarget, setLongPressTarget] = useState(null);
+
     const totalPages = useMemo(
         () => Math.max(1, Math.ceil(chapters.length / PER_PAGE)),
         [chapters.length]
@@ -150,6 +154,7 @@ export default function BookChaptersTable({
     };
 
     return (
+        <>
         <Card className="border border-gray-200 bg-white">
             <CardHeader className="bg-white-50 border-b border-blue-100">
                 <div className="flex items-center justify-between">
@@ -217,7 +222,45 @@ export default function BookChaptersTable({
                                 </thead>
                                 <tbody className="divide-y divide-blue-100">
                                     {displayedChapters.map((chapter, index) => {
+                                        const isSelected = selectedChapters.has(chapter._id);
+
+                                        // Long press handler for mobile/tablet selection
+                                        const handleTouchStart = (e) => {
+                                            if (window.innerWidth >= 1024) return; // Only on mobile/tablet
+                                            const timer = setTimeout(() => {
+                                                // Long press detected - toggle selection
+                                                onToggleSelect(chapter._id);
+                                                setLongPressTarget(chapter._id);
+                                                // Add haptic feedback if available
+                                                if (navigator.vibrate) {
+                                                    navigator.vibrate(50);
+                                                }
+                                            }, 500); // 500ms for long press
+                                            setLongPressTimer(timer);
+                                        };
+
+                                        const handleTouchEnd = () => {
+                                            if (longPressTimer) {
+                                                clearTimeout(longPressTimer);
+                                                setLongPressTimer(null);
+                                            }
+                                            // Reset target after a short delay
+                                            setTimeout(() => setLongPressTarget(null), 200);
+                                        };
+
+                                        const handleTouchCancel = () => {
+                                            if (longPressTimer) {
+                                                clearTimeout(longPressTimer);
+                                                setLongPressTimer(null);
+                                            }
+                                            setLongPressTarget(null);
+                                        };
+
                                         const handleRowClick = (e) => {
+                                            // Don't trigger click if it was a long press selection
+                                            if (longPressTarget === chapter._id) {
+                                                return;
+                                            }
                                             if (
                                                 e.target.closest('input[type="checkbox"]') ||
                                                 e.target.closest('button') ||
@@ -234,12 +277,20 @@ export default function BookChaptersTable({
                                         return (
                                             <React.Fragment key={chapter._id}>
                                                 <tr 
-                                                    className="hover:bg-blue-50/60 transition-colors lg:cursor-default cursor-pointer"
+                                                    className={`transition-colors lg:cursor-default cursor-pointer ${
+                                                        isSelected 
+                                                            ? 'bg-blue-100 lg:bg-blue-50/60' 
+                                                            : 'hover:bg-blue-50/60'
+                                                    }`}
                                                     onClick={handleRowClick}
+                                                    onTouchStart={handleTouchStart}
+                                                    onTouchEnd={handleTouchEnd}
+                                                    onTouchCancel={handleTouchCancel}
+                                                    style={{ userSelect: 'none' }}
                                                 >
-                                                    <td className="py-3 px-2 md:py-4 md:px-4">
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 hidden lg:table-cell">
                                                         <Checkbox
-                                                            checked={selectedChapters.has(chapter._id)}
+                                                            checked={isSelected}
                                                             onCheckedChange={() => onToggleSelect(chapter._id)}
                                                             className="border-blue-300"
                                                         />
@@ -545,11 +596,11 @@ export default function BookChaptersTable({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setIsMobileModalOpen(false)}
-                                className="absolute left-0 top-0 -ml-2 -mt-1 p-2 hover:bg-gray-100"
+                                className="absolute left-0 top-0 -ml-2 -mt-1 p-2 hover:bg-gray-100 z-10"
                             >
                                 <ArrowLeft className="h-5 w-5 text-gray-700" />
                             </Button>
-                            <DialogTitle className="text-xl font-bold text-gray-900 pr-8">
+                            <DialogTitle className="text-xl font-bold text-gray-900 pr-8 pl-10 break-words">
                                 {selectedChapterForMobile.chapterTitle}
                             </DialogTitle>
                         </DialogHeader>
@@ -703,5 +754,6 @@ export default function BookChaptersTable({
                 )}
             </DialogContent>
         </Dialog>
+        </>
     );
 }

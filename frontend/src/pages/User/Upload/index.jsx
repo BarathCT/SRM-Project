@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileText, Users, BookOpen, ArrowLeft } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -103,91 +102,65 @@ export default function UploadSelector() {
         {/* Premium Header Section */}
         <div className="mb-8">
           <div className="mb-6">
-            <div className="flex items-center gap-4 mb-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="h-9 w-9 hover:bg-gray-100 text-gray-700"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                  Upload Publication
-                </h1>
-                <p className="text-gray-600 text-sm mt-1">
-                  Submit your research publications to the system
-                </p>
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(-1)}
+                  className="h-9 w-9 hover:bg-gray-100 text-gray-700 flex-shrink-0"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+                    Upload {selectedOption?.label || "Publication"}
+                  </h1>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Submit your research publications to the system
+                  </p>
+                </div>
+              </div>
+              <div className="flex-shrink-0">
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger className="h-12 text-base border-gray-300 focus:border-gray-400 focus:ring-0 focus:ring-offset-0 bg-white hover:border-gray-400 transition-colors min-w-[200px]">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={`p-1.5 rounded-md ${colors.iconBg}`}>
+                        <SelectedIcon className={`h-5 w-5 ${colors.iconColor}`} />
+                      </div>
+                      <span className="text-gray-900 font-medium">
+                        {selectedOption?.label || 'Select publication type'}
+                      </span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-200">
+                    {PUBLICATION_TYPES.map((type) => {
+                      const Icon = type.icon;
+                      const typeColors = getColorClasses(type.color);
+                      return (
+                        <SelectItem
+                          key={type.value}
+                          value={type.value}
+                          className="py-3 cursor-pointer hover:bg-gray-50 focus:bg-gray-50 focus:ring-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-1.5 rounded-md ${typeColors.iconBg}`}>
+                              <Icon className={`h-4 w-4 ${typeColors.iconColor}`} />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-gray-900">{type.label}</span>
+                              <span className="text-xs text-gray-500">{type.description}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
-
-          {/* Premium Publication Type Selector */}
-          <Card className="border border-gray-200 bg-white">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row lg:items-end gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Select Publication Type
-                  </label>
-                  <Select value={selectedType} onValueChange={setSelectedType}>
-                    <SelectTrigger className="h-12 text-base border-gray-300 focus:border-gray-400 focus:ring-0 focus:ring-offset-0 bg-white hover:border-gray-400 transition-colors">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className={`p-1.5 rounded-md ${colors.iconBg}`}>
-                          <SelectedIcon className={`h-5 w-5 ${colors.iconColor}`} />
-                        </div>
-                        <span className="text-gray-900 font-medium">
-                          {selectedOption?.label || 'Select publication type'}
-                        </span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-200">
-                      {PUBLICATION_TYPES.map((type) => {
-                        const Icon = type.icon;
-                        const typeColors = getColorClasses(type.color);
-                        return (
-                          <SelectItem
-                            key={type.value}
-                            value={type.value}
-                            className="py-3 cursor-pointer hover:bg-gray-50 focus:bg-gray-50 focus:ring-0"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={`p-1.5 rounded-md ${typeColors.iconBg}`}>
-                                <Icon className={`h-4 w-4 ${typeColors.iconColor}`} />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-medium text-gray-900">{type.label}</span>
-                                <span className="text-xs text-gray-500">{type.description}</span>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {selectedOption && (
-                  <div
-                    className={`px-5 py-4 rounded-lg border ${colors.bg} ${colors.border} flex items-center gap-4 min-w-[280px]`}
-                  >
-                    <div className={`p-2.5 rounded-lg ${colors.iconBg} flex-shrink-0`}>
-                      <SelectedIcon className={`h-6 w-6 ${colors.iconColor}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {selectedOption.label}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
-                        {selectedOption.description}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Form Content with smooth transition */}
