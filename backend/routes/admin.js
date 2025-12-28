@@ -439,7 +439,7 @@ router.post('/users', authenticate, async (req, res) => {
           collegeName: finalCollege,
           institute: finalInstitute,
           department: finalDepartment,
-          appUrl: process.env.APP_URL || 'https://scholarsync.example.com'
+          appUrl: process.env.APP_URL || 'https://srm-project-eight.vercel.app/'
         });
       } catch (mailErr) {
         console.error('Email sending failed:', mailErr);
