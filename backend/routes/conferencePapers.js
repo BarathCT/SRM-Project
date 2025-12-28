@@ -2,6 +2,12 @@ import express from "express";
 import ConferencePaper from "../models/ConferencePaper.js";
 import User from "../models/User.js";
 import verifyToken from "../middleware/verifyToken.js";
+import {
+  parsePaginationParams,
+  parseSortParams,
+  parsePublicationFilters,
+  buildPaginatedResponse
+} from '../utils/paginationHelper.js';
 
 const router = express.Router();
 
@@ -31,13 +37,29 @@ router.post("/", verifyToken, async (req, res) => {
 });
 
 // GET logged-in user's conference papers
+// Supports pagination: ?page=1&limit=15&sortBy=createdAt&sortOrder=desc
+// Supports filtering: ?year=2024&subjectArea=...&search=...
 router.get("/my", verifyToken, async (req, res) => {
   try {
-    const papers = await ConferencePaper.find({
-      facultyId: req.user.facultyId
-    }).sort({ createdAt: -1 });
+    // Parse pagination and filter parameters
+    const paginationParams = parsePaginationParams(req.query);
+    const sortParams = parseSortParams(req.query);
+    const filters = parsePublicationFilters(req.query);
 
-    res.json(papers);
+    // Add user's facultyId filter
+    filters.facultyId = req.user.facultyId;
+
+    // Get total count for pagination
+    const total = await ConferencePaper.countDocuments(filters);
+
+    // Get paginated papers
+    const papers = await ConferencePaper.find(filters)
+      .sort(sortParams)
+      .skip(paginationParams.skip)
+      .limit(paginationParams.limit)
+      .lean();
+
+    res.json(buildPaginatedResponse(papers, total, paginationParams));
   } catch (err) {
     console.error("Error fetching conference papers:", err);
     res.status(500).json({ error: "Server error while fetching conference papers" });
@@ -55,6 +77,8 @@ const canAccessInstitute = (user, college, institute) => {
 };
 
 // GET /api/conference-papers/institute - Get conference papers for specific college/institute
+// Supports pagination: ?page=1&limit=15&sortBy=createdAt&sortOrder=desc
+// Supports filtering: ?year=2024&subjectArea=...&search=...
 router.get("/institute", verifyToken, async (req, res) => {
   try {
     const { college, institute } = req.query;
@@ -69,31 +93,54 @@ router.get("/institute", verifyToken, async (req, res) => {
       institute: institute,
       role: { $in: ["faculty", "campus_admin"] },
       isActive: true
-    }).select("facultyId fullName department email");
+    }).select("facultyId fullName department email").lean();
 
     if (!facultyUsers.length) {
-      return res.json([]);
+      return res.json(buildPaginatedResponse([], 0, { page: 1, limit: 15 }));
     }
 
+    // Create faculty lookup map for O(1) access
+    const facultyMap = new Map(facultyUsers.map(u => [u.facultyId, u]));
     const facultyIds = facultyUsers.map(user => user.facultyId);
 
-    // Get papers from these faculty members
-    const papers = await ConferencePaper.find({
-      facultyId: { $in: facultyIds }
-    }).sort({ createdAt: -1 });
+    // Parse pagination and filter parameters
+    const paginationParams = parsePaginationParams(req.query);
+    const sortParams = parseSortParams(req.query);
+    const filters = parsePublicationFilters(req.query);
+
+    // Add facultyId filter
+    filters.facultyId = { $in: facultyIds };
+
+    // Department filter
+    if (req.query.department && req.query.department !== 'all') {
+      const deptFacultyIds = facultyUsers
+        .filter(u => u.department === req.query.department)
+        .map(u => u.facultyId);
+      filters.facultyId = { $in: deptFacultyIds };
+    }
+
+    // Get total count for pagination
+    const total = await ConferencePaper.countDocuments(filters);
+
+    // Get paginated papers
+    const papers = await ConferencePaper.find(filters)
+      .sort(sortParams)
+      .skip(paginationParams.skip)
+      .limit(paginationParams.limit)
+      .lean();
 
     // Enhance papers with faculty information
     const enhancedPapers = papers.map(paper => {
-      const faculty = facultyUsers.find(user => user.facultyId === paper.facultyId);
+      const faculty = facultyMap.get(paper.facultyId);
       return {
-        ...paper.toObject(),
+        ...paper,
         facultyName: faculty?.fullName || "Unknown Faculty",
         facultyDepartment: faculty?.department || "Unknown Department",
         facultyEmail: faculty?.email || ""
       };
     });
 
-    res.json(enhancedPapers);
+    res.json(buildPaginatedResponse(enhancedPapers, total, paginationParams));
   } catch (err) {
     console.error("Institute conference papers fetch error:", err);
     res.status(500).json({ error: "Server error while fetching institute conference papers" });

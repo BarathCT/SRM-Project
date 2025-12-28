@@ -40,7 +40,7 @@ function useDebouncedValue(value, delay = 250) {
   }, [value, delay]);
   return debounced;
 }
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
@@ -198,9 +198,10 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute },
+        params: { college: user.college, institute: user.institute, limit: 1000 },
       });
-      setInstitutePapers(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setInstitutePapers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Fetch institute papers error:", error);
       setInstitutePapers([]);
@@ -212,8 +213,10 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 1000 },
       });
-      setMyPapers(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setMyPapers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Fetch my papers error:", error);
       setMyPapers([]);
@@ -225,9 +228,10 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute },
+        params: { college: user.college, institute: user.institute, limit: 1000 },
       });
-      setInstituteBookChapters(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setInstituteBookChapters(Array.isArray(data) ? data : []);
     } catch {
       setInstituteBookChapters([]);
     }
@@ -238,8 +242,10 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 1000 },
       });
-      setMyBookChapters(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setMyBookChapters(Array.isArray(data) ? data : []);
     } catch {
       setMyBookChapters([]);
     }
@@ -250,9 +256,10 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute },
+        params: { college: user.college, institute: user.institute, limit: 1000 },
       });
-      setInstituteConference(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setInstituteConference(Array.isArray(data) ? data : []);
     } catch {
       setInstituteConference([]);
     }
@@ -263,8 +270,10 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 1000 },
       });
-      setMyConference(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setMyConference(Array.isArray(data) ? data : []);
     } catch {
       setMyConference([]);
     }
@@ -275,9 +284,10 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/admin/users', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, role: "faculty" },
+        params: { college: user.college, institute: user.institute, role: "faculty", limit: 1000 },
       });
-      setUsers(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Fetch users error:", error);
       setUsers([]);

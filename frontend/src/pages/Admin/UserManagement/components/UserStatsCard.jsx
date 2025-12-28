@@ -621,11 +621,7 @@ export default function UserStatsCard({
           <div className="flex flex-col space-y-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600">
-                    <BarChart3 className="h-6 w-6 text-white" />
-                  </div>
-                </div>
+                <BarChart3 className="h-6 w-6 text-blue-600" />
                 <div>
                   <CardTitle className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                     Advanced User Analytics Dashboard

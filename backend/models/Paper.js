@@ -7,7 +7,7 @@ const AuthorSchema = new mongoose.Schema({
 
 const StudentScholarSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
-  id:   { type: String, required: true, trim: true }
+  id: { type: String, required: true, trim: true }
 }, { _id: false });
 
 const PaperSchema = new mongoose.Schema({
@@ -19,12 +19,12 @@ const PaperSchema = new mongoose.Schema({
   journal: { type: String, required: true, trim: true },
   publisher: { type: String, required: true, trim: true },
   volume: { type: String, default: '' },
-  issue:  { type: String, default: '' },
+  issue: { type: String, default: '' },
   pageNo: { type: String, default: '' },
   doi: { type: String, required: true, trim: true, unique: true, index: true },
-  publicationType: { 
-    type: String, 
-    enum: ['scopus','sci','webOfScience'],
+  publicationType: {
+    type: String,
+    enum: ['scopus', 'sci', 'webOfScience'],
     required: true
   },
   facultyId: { type: String, required: true, index: true },
@@ -32,7 +32,7 @@ const PaperSchema = new mongoose.Schema({
   year: { type: Number, required: true, min: 1900, max: 3000 },
   claimedBy: { type: String, required: true, trim: true },
   authorNo: { type: String, required: true, trim: true }, // keep string to allow "C"
-  isStudentScholar: { type: String, enum: ['yes','no'], required: true },
+  isStudentScholar: { type: String, enum: ['yes', 'no'], required: true },
   studentScholars: {
     type: [StudentScholarSchema],
     default: [],
@@ -44,9 +44,9 @@ const PaperSchema = new mongoose.Schema({
       message: 'At least one student scholar must be added.'
     }
   },
-  qRating: { type: String, enum: ['Q1','Q2','Q3','Q4'], required: true },
-  typeOfIssue: { type: String, enum: ['Regular Issue','Special Issue'], required: true },
-  
+  qRating: { type: String, enum: ['Q1', 'Q2', 'Q3', 'Q4'], required: true },
+  typeOfIssue: { type: String, enum: ['Regular Issue', 'Special Issue'], required: true },
+
   // Subject Area and Categories
   subjectArea: {
     type: String,
@@ -81,16 +81,16 @@ const PaperSchema = new mongoose.Schema({
     ],
     required: true
   },
-  
+
   subjectCategories: {
     type: [String],
     validate: {
-      validator: function(categories) {
+      validator: function (categories) {
         // Check if at least one category is selected
         if (!Array.isArray(categories) || categories.length === 0) {
           return false;
         }
-        
+
         // Define valid categories for each subject area
         const validCategories = {
           'Agricultural and Biological Sciences': [
@@ -251,10 +251,10 @@ const PaperSchema = new mongoose.Schema({
           ],
           'Multidisciplinary': ['Multidisciplinary']
         };
-        
+
         // Get valid categories for the selected subject area
         const allowedCategories = validCategories[this.subjectArea] || [];
-        
+
         // Check if all selected categories are valid for the subject area
         return categories.every(category => allowedCategories.includes(category));
       },
@@ -264,7 +264,12 @@ const PaperSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Index for better query performance
+// Indexes for better query performance (pagination and filtering)
 PaperSchema.index({ subjectArea: 1, subjectCategories: 1 });
+PaperSchema.index({ facultyId: 1, createdAt: -1 });
+PaperSchema.index({ year: 1 });
+PaperSchema.index({ publicationType: 1 });
+PaperSchema.index({ qRating: 1 });
+PaperSchema.index({ createdAt: -1 });
 
 export default mongoose.model('Paper', PaperSchema);
