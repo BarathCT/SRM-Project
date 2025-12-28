@@ -37,6 +37,7 @@ import {
 
 import api from '@/lib/api';
 import { PageLoader } from '@/components/ui/loading';
+import { Pagination } from '@/components/ui/pagination';
 
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
@@ -87,6 +88,9 @@ export default function SuperAdminDashboard() {
   // Book Chapters state
   const [scopeBookChapters, setScopeBookChapters] = useState([]);
   const [scopeChaptersLoading, setScopeChaptersLoading] = useState(false);
+  const [scopeChaptersTotal, setScopeChaptersTotal] = useState(0);
+  const [chaptersPage, setChaptersPage] = useState(1);
+  const [chaptersLimit] = useState(15);
   const [selectedChapters, setSelectedChapters] = useState(new Set());
   const [selectAllChapters, setSelectAllChapters] = useState(false);
   const [expandedChapter, setExpandedChapter] = useState(null);
@@ -97,6 +101,9 @@ export default function SuperAdminDashboard() {
   // Conference Papers state
   const [scopeConference, setScopeConference] = useState([]);
   const [scopeConferenceLoading, setScopeConferenceLoading] = useState(false);
+  const [scopeConferenceTotal, setScopeConferenceTotal] = useState(0);
+  const [conferencePage, setConferencePage] = useState(1);
+  const [conferenceLimit] = useState(15);
   const [selectedConference, setSelectedConference] = useState(new Set());
   const [selectAllConference, setSelectAllConference] = useState(false);
   const [expandedConference, setExpandedConference] = useState(null);
@@ -186,13 +193,16 @@ export default function SuperAdminDashboard() {
   // Load scope papers whenever *publication* filters change (college/institute)
   useEffect(() => {
     if (!users.length) return;
-      const fetchScopePapers = async () => {
+    const fetchScopePapers = async () => {
       setScopeLoading(true);
       setScopePapers([]);
       setScopePapersTotal(0);
       setExpanded(null);
       setSelectedPapers(new Set());
       setSelectAll(false);
+      // Reset pagination for other types when switching
+      setChaptersPage(1);
+      setConferencePage(1);
       try {
         const token = localStorage.getItem("token");
         // Build (college,institute) pairs
@@ -244,7 +254,7 @@ export default function SuperAdminDashboard() {
         );
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         setScopePapersTotal(totalCount);
-      } catch {
+      } catch (error) {
         // Error loading - UI shows loading state, no need for toast
         console.error("Failed to load publications for scope:", error);
       } finally {
@@ -258,9 +268,11 @@ export default function SuperAdminDashboard() {
   // Load scope book chapters
   useEffect(() => {
     if (!users.length) return;
-    const fetchScopeChapters = async () => {
+      const fetchScopeChapters = async () => {
       setScopeChaptersLoading(true);
       setScopeBookChapters([]);
+      setScopeChaptersTotal(0);
+      setChaptersPage(1);
       setExpandedChapter(null);
       setSelectedChapters(new Set());
       setSelectAllChapters(false);
@@ -291,6 +303,7 @@ export default function SuperAdminDashboard() {
           pairs = [{ college: pubFilters.selectedCollege, institute: pubFilters.selectedInstitute }];
         }
         const all = [];
+        let totalCount = 0;
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/book-chapters/institute', {
@@ -301,12 +314,17 @@ export default function SuperAdminDashboard() {
             const result = res.data;
             if (result.pagination) {
               all.push(...(result.data || []));
+              // Sum up total counts from each pair
+              totalCount += result.pagination.total || 0;
             } else {
               all.push(...(result || []));
+              // If no pagination, count the items
+              totalCount += Array.isArray(result) ? result.length : 0;
             }
           })
         );
         setScopeBookChapters(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+        setScopeChaptersTotal(totalCount);
       } catch {
         // Silently fail - book chapters may not exist
       } finally {
@@ -319,9 +337,11 @@ export default function SuperAdminDashboard() {
   // Load scope conference papers
   useEffect(() => {
     if (!users.length) return;
-    const fetchScopeConference = async () => {
+      const fetchScopeConference = async () => {
       setScopeConferenceLoading(true);
       setScopeConference([]);
+      setScopeConferenceTotal(0);
+      setConferencePage(1);
       setExpandedConference(null);
       setSelectedConference(new Set());
       setSelectAllConference(false);
@@ -352,6 +372,7 @@ export default function SuperAdminDashboard() {
           pairs = [{ college: pubFilters.selectedCollege, institute: pubFilters.selectedInstitute }];
         }
         const all = [];
+        let totalCount = 0;
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/conference-papers/institute', {
@@ -362,12 +383,17 @@ export default function SuperAdminDashboard() {
             const result = res.data;
             if (result.pagination) {
               all.push(...(result.data || []));
+              // Sum up total counts from each pair
+              totalCount += result.pagination.total || 0;
             } else {
               all.push(...(result || []));
+              // If no pagination, count the items
+              totalCount += Array.isArray(result) ? result.length : 0;
             }
           })
         );
         setScopeConference(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+        setScopeConferenceTotal(totalCount);
       } catch {
         // Silently fail - conference papers may not exist
       } finally {
@@ -601,7 +627,7 @@ export default function SuperAdminDashboard() {
       const papers = data.filter((p) => p.facultyId === user.facultyId);
       setSelectedUserPapers(papers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       // toast.academic(`Loaded ${papers.length} publications for ${user.fullName}`, { duration: 2200 });
-    } catch {
+    } catch (error) {
       // Error loading - UI shows loading state, no need for toast
       console.error("Failed to load user publications:", error);
     } finally {
@@ -614,6 +640,36 @@ export default function SuperAdminDashboard() {
     [users, selectedUserId]
   );
   const tablePapers = selectedUser ? selectedUserPapers : filteredPapers;
+
+  // Client-side pagination for Book Chapters
+  const filteredChapters = useMemo(() => {
+    return Array.isArray(scopeBookChapters) ? scopeBookChapters : [];
+  }, [scopeBookChapters]);
+
+  const paginatedChapters = useMemo(() => {
+    const start = (chaptersPage - 1) * chaptersLimit;
+    const end = start + chaptersLimit;
+    return filteredChapters.slice(start, end);
+  }, [filteredChapters, chaptersPage, chaptersLimit]);
+
+  const chaptersTotalPages = Math.ceil(filteredChapters.length / chaptersLimit);
+  const chaptersHasNextPage = chaptersPage < chaptersTotalPages;
+  const chaptersHasPrevPage = chaptersPage > 1;
+
+  // Client-side pagination for Conference Papers
+  const filteredConference = useMemo(() => {
+    return Array.isArray(scopeConference) ? scopeConference : [];
+  }, [scopeConference]);
+
+  const paginatedConference = useMemo(() => {
+    const start = (conferencePage - 1) * conferenceLimit;
+    const end = start + conferenceLimit;
+    return filteredConference.slice(start, end);
+  }, [filteredConference, conferencePage, conferenceLimit]);
+
+  const conferenceTotalPages = Math.ceil(filteredConference.length / conferenceLimit);
+  const conferenceHasNextPage = conferencePage < conferenceTotalPages;
+  const conferenceHasPrevPage = conferencePage > 1;
 
   // --- EXPORT HANDLER ---
   const handleExport = useCallback(
@@ -883,9 +939,9 @@ export default function SuperAdminDashboard() {
             <nav className="flex gap-4">
               {PUB_TABS.map((tab) => {
                 const Icon = tab.icon;
-                const count = tab.id === "papers" ? scopePapers.length :
-                  tab.id === "bookChapters" ? scopeBookChapters.length :
-                    scopeConference.length;
+                const count = tab.id === "papers" ? (scopePapersTotal > 0 ? scopePapersTotal : scopePapers.length) :
+                  tab.id === "bookChapters" ? (scopeChaptersTotal > 0 ? scopeChaptersTotal : scopeBookChapters.length) :
+                    (scopeConferenceTotal > 0 ? scopeConferenceTotal : scopeConference.length);
                 return (
                   <button
                     key={tab.id}
@@ -922,13 +978,13 @@ export default function SuperAdminDashboard() {
               <>
                 Showing <span className="font-semibold text-gray-900">
                   {activePublicationType === "papers" ? filteredPapers.length :
-                    activePublicationType === "bookChapters" ? scopeBookChapters.length :
-                      scopeConference.length}
+                    activePublicationType === "bookChapters" ? paginatedChapters.length :
+                      paginatedConference.length}
                 </span> of{" "}
                 <span className="font-semibold text-gray-900">
-                  {activePublicationType === "papers" ? scopePapers.length :
-                    activePublicationType === "bookChapters" ? scopeBookChapters.length :
-                      scopeConference.length}
+                  {activePublicationType === "papers" ? (scopePapersTotal > 0 ? scopePapersTotal : scopePapers.length) :
+                    activePublicationType === "bookChapters" ? (scopeChaptersTotal > 0 ? scopeChaptersTotal : filteredChapters.length) :
+                      (scopeConferenceTotal > 0 ? scopeConferenceTotal : filteredConference.length)}
                 </span> {activePublicationType === "papers" ? "research papers" :
                   activePublicationType === "bookChapters" ? "book chapters" :
                     "conference papers"} in scope
@@ -1045,8 +1101,9 @@ export default function SuperAdminDashboard() {
         )}
 
         {activePublicationType === "bookChapters" && (
+          <>
           <BookChaptersTable
-            chapters={scopeBookChapters}
+            chapters={paginatedChapters}
             selectedChapters={selectedChapters}
             selectAll={selectAllChapters}
             onToggleSelectAll={() => {
@@ -1054,7 +1111,7 @@ export default function SuperAdminDashboard() {
                 setSelectedChapters(new Set());
                 setSelectAllChapters(false);
               } else {
-                setSelectedChapters(new Set(scopeBookChapters.map((c) => c._id)));
+                setSelectedChapters(new Set(paginatedChapters.map((c) => c._id)));
                 setSelectAllChapters(true);
               }
             }}
@@ -1063,7 +1120,7 @@ export default function SuperAdminDashboard() {
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedChapters(next);
-              setSelectAllChapters(next.size === scopeBookChapters.length);
+              setSelectAllChapters(next.size === paginatedChapters.length && paginatedChapters.length > 0);
             }}
             expandedIndex={expandedChapter}
             onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
@@ -1091,11 +1148,23 @@ export default function SuperAdminDashboard() {
             hasActiveFilters={false}
             onClearFilters={() => { }}
           />
+          <Pagination
+            page={chaptersPage}
+            totalPages={chaptersTotalPages}
+            total={scopeChaptersTotal > 0 ? scopeChaptersTotal : filteredChapters.length}
+            limit={chaptersLimit}
+            hasNextPage={chaptersHasNextPage}
+            hasPrevPage={chaptersHasPrevPage}
+            onPageChange={(page) => setChaptersPage(page)}
+            loading={scopeChaptersLoading}
+          />
+          </>
         )}
 
         {activePublicationType === "conferencePapers" && (
+          <>
           <ConferencePapersTable
-            papers={scopeConference}
+            papers={paginatedConference}
             selectedPapers={selectedConference}
             selectAll={selectAllConference}
             onToggleSelectAll={() => {
@@ -1103,7 +1172,7 @@ export default function SuperAdminDashboard() {
                 setSelectedConference(new Set());
                 setSelectAllConference(false);
               } else {
-                setSelectedConference(new Set(scopeConference.map((p) => p._id)));
+                setSelectedConference(new Set(paginatedConference.map((p) => p._id)));
                 setSelectAllConference(true);
               }
             }}
@@ -1112,7 +1181,7 @@ export default function SuperAdminDashboard() {
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedConference(next);
-              setSelectAllConference(next.size === scopeConference.length);
+              setSelectAllConference(next.size === paginatedConference.length && paginatedConference.length > 0);
             }}
             expandedIndex={expandedConference}
             onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
@@ -1140,6 +1209,17 @@ export default function SuperAdminDashboard() {
             hasActiveFilters={false}
             onClearFilters={() => { }}
           />
+          <Pagination
+            page={conferencePage}
+            totalPages={conferenceTotalPages}
+            total={scopeConferenceTotal > 0 ? scopeConferenceTotal : filteredConference.length}
+            limit={conferenceLimit}
+            hasNextPage={conferenceHasNextPage}
+            hasPrevPage={conferenceHasPrevPage}
+            onPageChange={(page) => setConferencePage(page)}
+            loading={scopeConferenceLoading}
+          />
+          </>
         )}
       </div>
 
