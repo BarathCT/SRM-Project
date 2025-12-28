@@ -604,7 +604,7 @@ function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   );
 }
 
-export default function UploadBookChapterPage({ embedded = false } = {}) {
+export default function UploadBookChapterPage({ embedded = false, editMode = false, initialData = null } = {}) {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -651,6 +651,36 @@ export default function UploadBookChapterPage({ embedded = false } = {}) {
     }
     setIsAuthenticated(true);
   }, [navigate]);
+
+  // Populate form with initialData when in edit mode
+  useEffect(() => {
+    if (editMode && initialData) {
+      form.reset({
+        chapterTitle: initialData.chapterTitle || "",
+        bookTitle: initialData.bookTitle || "",
+        authors: initialData.authors?.map(a => ({
+          name: a.name || "",
+          isCorresponding: a.isCorresponding || false
+        })) || [{ name: "" }],
+        editors: initialData.editors || [""],
+        year: initialData.year?.toString() || "",
+        chapterNumber: initialData.chapterNumber || "",
+        pageRange: initialData.pageRange || "",
+        publisher: initialData.publisher || "",
+        isbn: initialData.isbn || "",
+        doi: initialData.doi || "",
+        bookSeries: initialData.bookSeries || "",
+        claimedBy: initialData.claimedBy || "",
+        authorNo: initialData.authorNo || "",
+        isStudentScholar: initialData.isStudentScholar || "no",
+        studentScholars: initialData.studentScholars?.map(s => 
+          typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }
+        ) || [],
+        subjectArea: initialData.subjectArea || "",
+        subjectCategories: initialData.subjectCategories || []
+      });
+    }
+  }, [editMode, initialData, form]);
 
   const { fields: authorFields, append: appendAuthor, remove: removeAuthor } = useFieldArray({ control: form.control, name: "authors" });
   const { fields: editorFields, append: appendEditor, remove: removeEditor } = useFieldArray({ control: form.control, name: "editors" });
@@ -759,16 +789,17 @@ export default function UploadBookChapterPage({ embedded = false } = {}) {
   );
 
   async function onSubmit(values) {
-    // Check DOI if provided
-    if (values.doi && !doiStatus.validOnCrossref) {
-      toast.error("Please enter a valid DOI or remove it.");
-      return;
-    }
+    if (!editMode) {
+      // Only check DOI/ISBN for new submissions
+      if (values.doi && !doiStatus.validOnCrossref) {
+        toast.error("Please enter a valid DOI or remove it.");
+        return;
+      }
 
-    // Check ISBN if provided (ISBN is required for book chapters)
-    if (values.isbn && !isbnStatus.validOnOpenLibrary) {
-      toast.error("Please enter a valid ISBN.");
-      return;
+      if (values.isbn && !isbnStatus.validOnOpenLibrary) {
+        toast.error("Please enter a valid ISBN.");
+        return;
+      }
     }
 
     const token = localStorage.getItem('token');
@@ -787,8 +818,13 @@ export default function UploadBookChapterPage({ embedded = false } = {}) {
     try {
       const data = await toast.promise(
         (async () => {
-          const res = await fetch(`${API_BASE_URL}/api/book-chapters`, {
-            method: 'POST',
+          const url = editMode && initialData?._id 
+            ? `${API_BASE_URL}/api/book-chapters/${initialData._id}`
+            : `${API_BASE_URL}/api/book-chapters`;
+          const method = editMode ? 'PUT' : 'POST';
+          
+          const res = await fetch(url, {
+            method: method,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -813,20 +849,25 @@ export default function UploadBookChapterPage({ embedded = false } = {}) {
           return resJson || { success: true };
         })(),
         {
-          loading: 'Saving book chapter...',
-          success: 'Book chapter uploaded successfully.',
-          error: (err) => err.message || 'Submission failed',
+          loading: editMode ? 'Updating book chapter...' : 'Saving book chapter...',
+          success: editMode ? 'Book chapter updated successfully.' : 'Book chapter uploaded successfully.',
+          error: (err) => err.message || (editMode ? 'Update failed' : 'Submission failed'),
         }
       );
 
       await Swal.fire({
         icon: 'success',
-        title: 'Successfully Submitted!',
-        text: 'Your book chapter has been uploaded.',
+        title: editMode ? 'Successfully Updated!' : 'Successfully Submitted!',
+        text: editMode ? 'Your book chapter has been updated.' : 'Your book chapter has been uploaded.',
         confirmButtonColor: '#2563eb',
       });
 
-      form.reset({
+      if (editMode) {
+        // In edit mode, navigate back after successful update
+        navigate(-1);
+      } else {
+        // In create mode, reset the form
+        form.reset({
         chapterTitle: "",
         bookTitle: "",
         authors: [{ name: "" }],
@@ -847,7 +888,7 @@ export default function UploadBookChapterPage({ embedded = false } = {}) {
       });
       setDoiStatus({ validOnCrossref: false, message: "" });
       setIsbnStatus({ validOnOpenLibrary: false, message: "" });
-
+      }
     } catch (err) {
       console.error("Submission error:", err);
     } finally {
@@ -1508,13 +1549,15 @@ export default function UploadBookChapterPage({ embedded = false } = {}) {
                     <Button
                       type="submit"
                       disabled={isPending || 
-                        (form.watch("doi") && !doiStatus.validOnCrossref) ||
-                        !isbnStatus.validOnOpenLibrary
+                        (!editMode && (
+                          (form.watch("doi") && !doiStatus.validOnCrossref) ||
+                          !isbnStatus.validOnOpenLibrary
+                        ))
                       }
                       className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 text-white"
                     >
                       {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Book Chapter
+                      {editMode ? 'Update Book Chapter' : 'Submit Book Chapter'}
                     </Button>
 
                     <Button

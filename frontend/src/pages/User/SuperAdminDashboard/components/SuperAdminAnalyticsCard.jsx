@@ -343,9 +343,6 @@ export default function SuperAdminAnalyticsCard({
             options={stackedBarOptions}
             title=""
             icon={Building2}
-            badgeText={qRatingBarFilter === "all"
-              ? Object.values(qRatingCounts).reduce((sum, v) => sum + v, 0)
-              : qRatingCounts[qRatingBarFilter] || 0}
           >
             <FilterButtonGroup
               filters={qKeys}

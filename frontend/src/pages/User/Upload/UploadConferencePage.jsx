@@ -615,7 +615,7 @@ function SubjectCategoriesSelect({ value, onChange, subjectArea, error }) {
   );
 }
 
-export default function UploadConferencePage({ embedded = false } = {}) {
+export default function UploadConferencePage({ embedded = false, editMode = false, initialData = null } = {}) {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -671,6 +671,44 @@ export default function UploadConferencePage({ embedded = false } = {}) {
     }
     setIsAuthenticated(true);
   }, [navigate]);
+
+  // Populate form with initialData when in edit mode
+  useEffect(() => {
+    if (editMode && initialData) {
+      form.reset({
+        title: initialData.title || "",
+        authors: initialData.authors?.map(a => ({
+          name: a.name || "",
+          isCorresponding: a.isCorresponding || false
+        })) || [{ name: "" }],
+        year: initialData.year?.toString() || "",
+        conferenceName: initialData.conferenceName || "",
+        conferenceShortName: initialData.conferenceShortName || "",
+        conferenceType: initialData.conferenceType || "International",
+        conferenceMode: initialData.conferenceMode || "Offline",
+        conferenceLocation: initialData.conferenceLocation || { city: "", country: "" },
+        conferenceStartDate: initialData.conferenceStartDate ? new Date(initialData.conferenceStartDate).toISOString().split('T')[0] : "",
+        conferenceEndDate: initialData.conferenceEndDate ? new Date(initialData.conferenceEndDate).toISOString().split('T')[0] : "",
+        organizer: initialData.organizer || "",
+        proceedingsTitle: initialData.proceedingsTitle || "",
+        proceedingsPublisher: initialData.proceedingsPublisher || "",
+        isbn: initialData.isbn || "",
+        doi: initialData.doi || "",
+        pageNo: initialData.pageNo || "",
+        acceptanceRate: initialData.acceptanceRate || "",
+        presentationType: initialData.presentationType || "",
+        indexedIn: initialData.indexedIn || "",
+        claimedBy: initialData.claimedBy || "",
+        authorNo: initialData.authorNo || "",
+        isStudentScholar: initialData.isStudentScholar || "no",
+        studentScholars: initialData.studentScholars?.map(s => 
+          typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }
+        ) || [],
+        subjectArea: initialData.subjectArea || "",
+        subjectCategories: initialData.subjectCategories || []
+      });
+    }
+  }, [editMode, initialData, form]);
 
   const { fields: authorFields, append: appendAuthor, remove: removeAuthor } = useFieldArray({ control: form.control, name: "authors" });
   const { fields: studentFields, append: appendStudent, remove: removeStudent } = useFieldArray({ control: form.control, name: "studentScholars" });
@@ -775,16 +813,17 @@ export default function UploadConferencePage({ embedded = false } = {}) {
   );
 
   async function onSubmit(values) {
-    // Check DOI if provided
-    if (values.doi && !doiStatus.validOnCrossref) {
-      toast.error("Please enter a valid DOI or remove it.");
-      return;
-    }
+    if (!editMode) {
+      // Only check DOI/ISBN for new submissions
+      if (values.doi && !doiStatus.validOnCrossref) {
+        toast.error("Please enter a valid DOI or remove it.");
+        return;
+      }
 
-    // Check ISBN if provided
-    if (values.isbn && !isbnStatus.validOnOpenLibrary) {
-      toast.error("Please enter a valid ISBN or remove it.");
-      return;
+      if (values.isbn && !isbnStatus.validOnOpenLibrary) {
+        toast.error("Please enter a valid ISBN or remove it.");
+        return;
+      }
     }
 
     const token = localStorage.getItem('token');
@@ -803,8 +842,13 @@ export default function UploadConferencePage({ embedded = false } = {}) {
     try {
       const data = await toast.promise(
         (async () => {
-          const res = await fetch(`${API_BASE_URL}/api/conference-papers`, {
-            method: 'POST',
+          const url = editMode && initialData?._id 
+            ? `${API_BASE_URL}/api/conference-papers/${initialData._id}`
+            : `${API_BASE_URL}/api/conference-papers`;
+          const method = editMode ? 'PUT' : 'POST';
+          
+          const res = await fetch(url, {
+            method: method,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -829,20 +873,25 @@ export default function UploadConferencePage({ embedded = false } = {}) {
           return resJson || { success: true };
         })(),
         {
-          loading: 'Saving conference paper...',
-          success: 'Conference paper uploaded successfully.',
-          error: (err) => err.message || 'Submission failed',
+          loading: editMode ? 'Updating conference paper...' : 'Saving conference paper...',
+          success: editMode ? 'Conference paper updated successfully.' : 'Conference paper uploaded successfully.',
+          error: (err) => err.message || (editMode ? 'Update failed' : 'Submission failed'),
         }
       );
 
       await Swal.fire({
         icon: 'success',
-        title: 'Successfully Submitted!',
-        text: 'Your conference paper has been uploaded.',
+        title: editMode ? 'Successfully Updated!' : 'Successfully Submitted!',
+        text: editMode ? 'Your conference paper has been updated.' : 'Your conference paper has been uploaded.',
         confirmButtonColor: '#2563eb',
       });
 
-      form.reset({
+      if (editMode) {
+        // In edit mode, navigate back after successful update
+        navigate(-1);
+      } else {
+        // In create mode, reset the form
+        form.reset({
         title: "",
         authors: [{ name: "" }],
         year: "",
@@ -871,7 +920,7 @@ export default function UploadConferencePage({ embedded = false } = {}) {
       });
       setDoiStatus({ validOnCrossref: false, message: "" });
       setIsbnStatus({ validOnOpenLibrary: false, message: "" });
-
+      }
     } catch (err) {
       console.error("Submission error:", err);
     } finally {
@@ -1637,13 +1686,15 @@ export default function UploadConferencePage({ embedded = false } = {}) {
                     <Button
                       type="submit"
                       disabled={isPending || 
-                        (form.watch("doi") && !doiStatus.validOnCrossref) ||
-                        (form.watch("isbn") && !isbnStatus.validOnOpenLibrary)
+                        (!editMode && (
+                          (form.watch("doi") && !doiStatus.validOnCrossref) ||
+                          (form.watch("isbn") && !isbnStatus.validOnOpenLibrary)
+                        ))
                       }
                       className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 text-white"
                     >
                       {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Conference Paper
+                      {editMode ? 'Update Conference Paper' : 'Submit Conference Paper'}
                     </Button>
 
                     <Button
