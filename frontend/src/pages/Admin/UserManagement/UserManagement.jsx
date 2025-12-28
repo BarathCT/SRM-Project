@@ -121,7 +121,8 @@ export default function UserManagement() {
   }, [users, filters, debouncedSearchTerm]);
 
   const applyFilters = () => {
-    let result = [...users];
+    const safeUsers = Array.isArray(users) ? users : [];
+    let result = [...safeUsers];
 
     // Apply role filter
     if (filters.role !== 'all') {
@@ -147,7 +148,7 @@ export default function UserManagement() {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(user =>
-        user.fullName.toLowerCase().includes(term) ||
+        user.fullName?.toLowerCase().includes(term) ||
         (user.facultyId && user.facultyId.toLowerCase().includes(term)) ||
         (user.email && user.email.toLowerCase().includes(term))
       );
@@ -477,7 +478,7 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
 
       {/* Header Section */}
       <UserHeader
@@ -508,6 +509,7 @@ export default function UserManagement() {
       {/* Stats Card */}
       <UserStatsCard
         users={users}
+        totalUsers={pagination.total}
         filteredUsers={filteredUsers}
         roleOptions={ROLE_OPTIONS}
         loading={isLoading}

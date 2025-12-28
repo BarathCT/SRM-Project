@@ -201,8 +201,124 @@ router.get('/users', authenticate, async (req, res) => {
       User.countDocuments(filter)
     ]);
 
+
     res.json(buildPaginatedResponse(users, total, { page, limit }));
   } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+/* ----------------------------- GET /admin/stats --------------------------- */
+router.get('/stats', authenticate, async (req, res) => {
+  try {
+    const { role, college, institute } = req.user;
+
+    // Base filter based on role
+    let matchStage = {};
+    if (role === 'campus_admin') {
+      matchStage.college = college;
+      if (collegeRequiresInstitute(college)) {
+        matchStage.institute = institute;
+      }
+    } else if (role !== 'super_admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Apply Query Filters
+    if (req.query.role && req.query.role !== 'all') matchStage.role = req.query.role;
+    if (role === 'super_admin' && req.query.college && req.query.college !== 'all') {
+      matchStage.college = req.query.college;
+    }
+    if (req.query.institute && req.query.institute !== 'all') matchStage.institute = req.query.institute;
+    if (req.query.department && req.query.department !== 'all') matchStage.department = req.query.department;
+    if (req.query.search) {
+      const regex = new RegExp(req.query.search, 'i');
+      matchStage.$or = [{ fullName: regex }, { facultyId: regex }, { email: regex }];
+    }
+
+    const [
+      totalUsers,
+      activeUsers,
+      roleStats,
+      collegeStats,
+      instituteStats,
+      departmentStats,
+      rolesByDeptData,
+      rolesByCollegeData,
+      rolesByInstituteData
+    ] = await Promise.all([
+      User.countDocuments(matchStage),
+      User.countDocuments({ ...matchStage, isActive: true }),
+      // Role distribution
+      User.aggregate([
+        { $match: matchStage },
+        { $group: { _id: "$role", count: { $sum: 1 } } }
+      ]),
+      // College distribution
+      User.aggregate([
+        { $match: matchStage },
+        { $group: { _id: "$college", count: { $sum: 1 } } }
+      ]),
+      // Institute distribution
+      User.aggregate([
+        { $match: matchStage },
+        { $group: { _id: "$institute", count: { $sum: 1 } } }
+      ]),
+      // Department distribution
+      User.aggregate([
+        { $match: matchStage },
+        { $group: { _id: "$department", count: { $sum: 1 } } }
+      ]),
+      // Roles by Department
+      User.aggregate([
+        { $match: matchStage },
+        { $group: { _id: { department: "$department", role: "$role" }, count: { $sum: 1 } } }
+      ]),
+      // Roles by College
+      User.aggregate([
+        { $match: matchStage },
+        { $group: { _id: { college: "$college", role: "$role" }, count: { $sum: 1 } } }
+      ]),
+      // Roles by Institute
+      User.aggregate([
+        { $match: matchStage },
+        { $group: { _id: { institute: "$institute", role: "$role" }, count: { $sum: 1 } } }
+      ])
+    ]);
+
+    // Format distributions
+    const formatDist = (data) => data.map(item => ({ label: item._id || 'N/A', value: item.count }));
+    const formatRoleStats = (data) => {
+      const stats = { super_admin: 0, campus_admin: 0, faculty: 0, total: totalUsers };
+      data.forEach(item => { if (stats.hasOwnProperty(item._id)) stats[item._id] = item.count; });
+      return stats;
+    };
+
+    // Format Cross-Tabs
+    const formatCrossTab = (data, keyField) => {
+      const result = {};
+      data.forEach(item => {
+        const key = item._id[keyField] || 'N/A';
+        const role = item._id.role;
+        if (!result[key]) result[key] = { campus_admin: 0, faculty: 0, super_admin: 0 };
+        result[key][role] = item.count;
+      });
+      return result;
+    };
+
+    res.json({
+      totalUsers,
+      activeUsers,
+      roleStats: formatRoleStats(roleStats),
+      collegeDistribution: formatDist(collegeStats),
+      instituteDistribution: formatDist(instituteStats),
+      departmentDistribution: formatDist(departmentStats),
+      rolesByDepartment: formatCrossTab(rolesByDeptData, 'department'),
+      rolesByCollege: formatCrossTab(rolesByCollegeData, 'college'),
+      rolesByInstitute: formatCrossTab(rolesByInstituteData, 'institute')
+    });
+  } catch (err) {
+    console.error('Stats error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });

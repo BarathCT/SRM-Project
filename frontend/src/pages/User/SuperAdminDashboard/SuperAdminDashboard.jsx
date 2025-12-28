@@ -166,7 +166,13 @@ export default function SuperAdminDashboard() {
           headers: { Authorization: `Bearer ${token}` },
           params: { role: "all" },
         });
-        setUsers(res.data || []);
+        // Handle paginated response
+        const result = res.data;
+        if (result.pagination) {
+          setUsers(result.data || []);
+        } else {
+          setUsers(result || []);
+        }
       } catch {
       } finally {
         setLoading(false);
@@ -220,7 +226,13 @@ export default function SuperAdminDashboard() {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
-            all.push(...(res.data || []));
+            // Handle paginated response
+            const result = res.data;
+            if (result.pagination) {
+              all.push(...(result.data || []));
+            } else {
+              all.push(...(result || []));
+            }
           })
         );
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -277,7 +289,13 @@ export default function SuperAdminDashboard() {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
-            all.push(...(res.data || []));
+            // Handle paginated response
+            const result = res.data;
+            if (result.pagination) {
+              all.push(...(result.data || []));
+            } else {
+              all.push(...(result || []));
+            }
           })
         );
         setScopeBookChapters(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -332,7 +350,13 @@ export default function SuperAdminDashboard() {
               headers: { Authorization: `Bearer ${token}` },
               params: { college, institute },
             });
-            all.push(...(res.data || []));
+            // Handle paginated response
+            const result = res.data;
+            if (result.pagination) {
+              all.push(...(result.data || []));
+            } else {
+              all.push(...(result || []));
+            }
           })
         );
         setScopeConference(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -348,13 +372,15 @@ export default function SuperAdminDashboard() {
   // Publications filtered by publication filter (for main table)
   // --- DECOUPLED: Only publication filters (pubFilters) are used here! ---
   const filteredPapers = useMemo(() => {
-    let data = scopePapers;
+    const safeScopePapers = Array.isArray(scopePapers) ? scopePapers : [];
+    const safeUsers = Array.isArray(users) ? users : [];
+    let data = safeScopePapers;
     if (
       pubFilters.selectedCollege !== "all" ||
       pubFilters.selectedInstitute !== "all" ||
       pubFilters.selectedDepartment !== "all"
     ) {
-      const filteredUsers = users.filter((u) => {
+      const filteredUsers = safeUsers.filter((u) => {
         if (pubFilters.selectedCollege !== "all" && u.college !== pubFilters.selectedCollege) return false;
         if (pubFilters.selectedInstitute !== "all" && u.institute !== pubFilters.selectedInstitute) return false;
         if (pubFilters.selectedDepartment !== "all" && u.department !== pubFilters.selectedDepartment) return false;
@@ -383,8 +409,9 @@ export default function SuperAdminDashboard() {
 
   // --- DECOUPLED: Sidebar users filtered only by sidebar filters (never pubFilters!) ---
   const userFinderSidebarUsers = useMemo(() => {
+    const safeUsers = Array.isArray(users) ? users : [];
     const term = userFinderFilters.searchTerm.trim().toLowerCase();
-    let filtered = users;
+    let filtered = safeUsers;
     if (userFinderFilters.roleFilter !== "all") filtered = filtered.filter((u) => u.role === userFinderFilters.roleFilter);
     if (userFinderFilters.collegeFilter !== "all") filtered = filtered.filter((u) => u.college === userFinderFilters.collegeFilter);
     if (
@@ -408,11 +435,13 @@ export default function SuperAdminDashboard() {
 
   // For the sidebar: show pubCount for each user = number of their publications in current publication filter result
   const usersWithPubCount = useMemo(() => {
+    const safeFilteredPapers = Array.isArray(filteredPapers) ? filteredPapers : [];
+    const safeUserFinderSidebarUsers = Array.isArray(userFinderSidebarUsers) ? userFinderSidebarUsers : [];
     const map = new Map();
-    for (const p of filteredPapers) {
+    for (const p of safeFilteredPapers) {
       if (p.facultyId) map.set(p.facultyId, (map.get(p.facultyId) || 0) + 1);
     }
-    return userFinderSidebarUsers.map(u => ({
+    return safeUserFinderSidebarUsers.map(u => ({
       ...u,
       pubCount: map.get(u.facultyId) || 0,
     }));
@@ -436,11 +465,12 @@ export default function SuperAdminDashboard() {
 
   // Filter options for PublicationsFilterCard
   const filterOptions = useMemo(() => {
-    const years = [...new Set(scopePapers.map((p) => Number(p.year)).filter(Boolean))].sort((a, b) => b - a);
-    const qRatings = [...new Set(scopePapers.map((p) => p.qRating).filter(Boolean))].sort();
-    const publicationTypes = [...new Set(scopePapers.map((p) => p.publicationType).filter(Boolean))].sort();
-    const subjectAreas = [...new Set(scopePapers.map((p) => p.subjectArea).filter(Boolean))].sort();
-    const authors = [...new Set(scopePapers.map((p) => p.claimedBy).filter(Boolean))].sort();
+    const safeScopePapers = Array.isArray(scopePapers) ? scopePapers : [];
+    const years = [...new Set(safeScopePapers.map((p) => Number(p.year)).filter(Boolean))].sort((a, b) => b - a);
+    const qRatings = [...new Set(safeScopePapers.map((p) => p.qRating).filter(Boolean))].sort();
+    const publicationTypes = [...new Set(safeScopePapers.map((p) => p.publicationType).filter(Boolean))].sort();
+    const subjectAreas = [...new Set(safeScopePapers.map((p) => p.subjectArea).filter(Boolean))].sort();
+    const authors = [...new Set(safeScopePapers.map((p) => p.claimedBy).filter(Boolean))].sort();
     return {
       years,
       qRatings,
@@ -468,8 +498,9 @@ export default function SuperAdminDashboard() {
 
   const subjectCategoryDistribution = useMemo(() => {
     // Compute: { [subjectArea]: { [category]: count } }
+    const safeScopePapers = Array.isArray(scopePapers) ? scopePapers : [];
     const map = {};
-    for (const paper of scopePapers) {
+    for (const paper of safeScopePapers) {
       if (!paper.subjectArea || !Array.isArray(paper.subjectCategories)) continue;
       if (!map[paper.subjectArea]) map[paper.subjectArea] = {};
       for (const cat of paper.subjectCategories) {
@@ -481,8 +512,9 @@ export default function SuperAdminDashboard() {
 
   // Stats (using filteredPapers)
   const stats = useMemo(() => {
-    const papers = filteredPapers;
-    const filteredFaculty = users.filter(u =>
+    const papers = Array.isArray(filteredPapers) ? filteredPapers : [];
+    const safeUsers = Array.isArray(users) ? users : [];
+    const filteredFaculty = safeUsers.filter(u =>
       papers.some(p => p.facultyId === u.facultyId)
     );
     const total = papers.length;
@@ -498,7 +530,7 @@ export default function SuperAdminDashboard() {
       acc[p.subjectArea] = (acc[p.subjectArea] || 0) + 1;
       return acc;
     }, {});
-    const departmentStats = users.reduce((acc, u) => {
+    const departmentStats = safeUsers.reduce((acc, u) => {
       if (
         (pubFilters.selectedCollege !== "all" && u.college !== pubFilters.selectedCollege) ||
         (pubFilters.selectedInstitute !== "all" && u.institute !== pubFilters.selectedInstitute) ||
@@ -526,7 +558,7 @@ export default function SuperAdminDashboard() {
       subjectDistribution,
       departmentStats,
       q1Percentage: total ? (((qDist.Q1 || 0) / total) * 100).toFixed(1) : 0,
-      avgPapersPerFaculty: filteredFaculty.length ? (total / users.length).toFixed(1) : 0,
+      avgPapersPerFaculty: filteredFaculty.length ? (total / safeUsers.length).toFixed(1) : 0,
       subjectCategoryDistribution, // <- add this to stats object
     };
   }, [filteredPapers, users, pubFilters, subjectCategoryDistribution]);
@@ -545,7 +577,10 @@ export default function SuperAdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
         params: { college: user.college, institute: user.institute },
       });
-      const papers = (res.data || []).filter((p) => p.facultyId === user.facultyId);
+      // Handle paginated response
+      const result = res.data;
+      const data = result.pagination ? (result.data || []) : (result || []);
+      const papers = data.filter((p) => p.facultyId === user.facultyId);
       setSelectedUserPapers(papers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       // toast.academic(`Loaded ${papers.length} publications for ${user.fullName}`, { duration: 2200 });
     } catch {
