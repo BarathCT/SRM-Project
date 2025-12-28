@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login/Login';
 import Navbar from './components/Navbar';
 import UserManagement from './pages/Admin/UserManagement/UserManagement';
@@ -15,12 +15,14 @@ import FacultyDashboard from './pages/User/FacultyDashboard/FacultyDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
 
-export default function App() {
+function AppContent() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
+
   return (
-    <ToastProvider>
-      <Router>
-        <Navbar />
-        <Routes>
+    <>
+      {!isLoginPage && <Navbar />}
+      <Routes>
           {/* Public route */}
           <Route path="/login" element={<Login />} />
 
@@ -87,7 +89,16 @@ export default function App() {
               <Navigate to="/login" />
             )
           } />
-        </Routes>
+      </Routes>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <Router>
+        <AppContent />
       </Router>
     </ToastProvider>
   );

@@ -20,7 +20,8 @@ import {
   Eye,
   EyeOff,
   Shield,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from "lucide-react";
 
 const DEFAULT_LABELS = {
