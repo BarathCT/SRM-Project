@@ -5,21 +5,15 @@ import User from '../models/User.js';
 import { body, validationResult } from 'express-validator';
 import dotenv from 'dotenv';
 import OTP from '../models/Otp.js';
-import nodemailer from 'nodemailer';
 import cookieParser from 'cookie-parser';
+import fetch from 'node-fetch'; // Add this import
 
 dotenv.config();
 
 const router = express.Router();
 router.use(cookieParser());
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Remove the nodemailer transporter entirely
 
 // Helper function to validate institutional email
 const validateInstitutionalEmail = (email) => {
@@ -31,6 +25,57 @@ const validateInstitutionalEmail = (email) => {
   ];
   const domain = email.split('@')[1];
   return institutionalDomains.includes(domain);
+};
+
+// Helper function to send email via Brevo API
+const sendEmailViaBrevo = async (to, subject, html, toName = '') => {
+  try {
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+
+    if (!brevoApiKey) {
+      throw new Error('BREVO_API_KEY environment variable is not set');
+    }
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': brevoApiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'ScholarSync',
+          email: brevoSenderEmail
+        },
+        to: [{
+          email: to,
+          name: toName
+        }],
+        subject: subject,
+        htmlContent: html,
+        replyTo: {
+          email: brevoSenderEmail,
+          name: 'ScholarSync Support'
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Brevo API Error Response:', data);
+      throw new Error(`Brevo API error: ${data.message || JSON.stringify(data)}`);
+    }
+
+    console.log('✅ Email sent successfully via Brevo API. Message ID:', data.messageId);
+    return { success: true, messageId: data.messageId };
+    
+  } catch (error) {
+    console.error('❌ Failed to send email via Brevo API:', error.message);
+    throw error;
+  }
 };
 
 // ------------------------- LOGIN -------------------------
@@ -77,12 +122,11 @@ router.post('/login', [
     );
 
     res.cookie('token', token, {
-    httpOnly: true,
-  secure: true,
-  sameSite: 'none',
-  maxAge: 24 * 60 * 60 * 1000
-});
-
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000
+    });
 
     const userData = user.toObject();
     delete userData.password;
@@ -177,21 +221,32 @@ router.post('/forgot-password', [
     const otpDoc = await OTP.createOTP(email);
     const otp = otpDoc.otp;
 
-    const mailOptions = {
-      from: `"ScholarSync" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: 'Password Reset OTP',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Password Reset Request</h2>
-          <p>Your OTP code is: <strong>${otp}</strong></p>
-          <p>This code expires in 10 minutes.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-        </div>
-      `
-    };
+    // Get user's name for email personalization
+    const user = await User.findOne({ email });
+    const userName = user ? user.fullName : 'User';
 
-    await transporter.sendMail(mailOptions);
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <h2 style="color: #2563eb; text-align: center; margin-bottom: 24px;">Password Reset Request</h2>
+          <p style="color: #475569; font-size: 16px; line-height: 1.5;">Hello ${userName},</p>
+          <p style="color: #475569; font-size: 16px; line-height: 1.5;">You requested to reset your password. Use the OTP below:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="display: inline-block; background: linear-gradient(135deg, #60a5fa, #3b82f6); color: white; font-size: 28px; font-weight: bold; padding: 15px 40px; border-radius: 10px; letter-spacing: 5px;">
+              ${otp}
+            </div>
+          </div>
+          <p style="color: #64748b; font-size: 14px; text-align: center;">
+            This OTP is valid for 10 minutes.
+          </p>
+          <p style="color: #ef4444; font-size: 14px; text-align: center; background: #fef2f2; padding: 12px; border-radius: 8px; border-left: 4px solid #ef4444;">
+            <strong>Security Notice:</strong> If you didn't request this password reset, please ignore this email and contact support immediately.
+          </p>
+        </div>
+      </div>
+    `;
+
+    await sendEmailViaBrevo(email, 'Password Reset OTP - ScholarSync', html, userName);
 
     return res.json({ success: true, message: 'OTP sent to your email' });
 
@@ -262,6 +317,27 @@ router.post('/reset-password', [
     await user.save();
 
     await OTP.deleteMany({ email });
+
+    // Send confirmation email
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center;">
+          <h2 style="color: #10b981; margin-bottom: 20px;">✅ Password Reset Successful</h2>
+          <p style="color: #475569; font-size: 16px; line-height: 1.5;">Hello ${user.fullName},</p>
+          <p style="color: #475569; font-size: 16px; line-height: 1.5;">Your ScholarSync account password has been successfully reset.</p>
+          <div style="background: #ecfdf5; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <p style="color: #047857; margin: 0;">
+              <strong>Security Tip:</strong> For added security, consider enabling two-factor authentication in your account settings.
+            </p>
+          </div>
+          <p style="color: #64748b; font-size: 14px;">
+            If you didn't make this change, please contact support immediately.
+          </p>
+        </div>
+      </div>
+    `;
+
+    await sendEmailViaBrevo(email, 'Password Reset Confirmation - ScholarSync', html, user.fullName);
 
     return res.json({ success: true, message: 'Password reset successfully' });
 
