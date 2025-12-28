@@ -478,21 +478,30 @@ export default function UserStatsCard({
 
     // Process Institutes
     Object.entries(rolesByInstitute || {}).forEach(([institute, roles]) => {
+      // Skip if institute is "N/A" or empty
+      if (!institute || institute === "N/A") return;
+      
       // Find college for this institute
       const collegeOption = COLLEGE_OPTIONS.find(c =>
         c.institutes && c.institutes.some(i => i.name === institute)
       );
-      const collegeName = collegeOption ? collegeOption.name : 'Unknown';
-
-      if (!tree[collegeName]) tree[collegeName] = {};
-      tree[collegeName][institute] = roles;
+      const collegeName = collegeOption ? collegeOption.name : null;
+      
+      // Only add if we found a valid college
+      if (collegeName) {
+        if (!tree[collegeName]) tree[collegeName] = {};
+        tree[collegeName][institute] = roles || {};
+      }
     });
 
     // Process non-institute colleges
     Object.entries(rolesByCollege || {}).forEach(([college, roles]) => {
+      // Skip if college is "N/A" or empty
+      if (!college || college === "N/A") return;
+      
       if (collegesWithoutInstitutes.includes(college)) {
         if (!tree[college]) tree[college] = {};
-        tree[college][college] = roles;
+        tree[college][college] = roles || {};
       }
     });
 
@@ -504,15 +513,21 @@ export default function UserStatsCard({
     currentUserRole === 'super_admin' && filters.role !== 'super_admin';
 
   const collegeSummaries = statistics.rolesByCollege
-    ? Object.keys(statistics.rolesByCollege).map(college => (
-      <SummaryCard
-        key={college}
-        location={college}
-        roles={statistics.rolesByCollege[college] || { campus_admin: 0, faculty: 0 }}
-        onClick={handleLocationClick}
-        isSelected={selectedLocation === college}
-      />
-    ))
+    ? Object.keys(statistics.rolesByCollege).map(college => {
+        const roles = statistics.rolesByCollege[college] || {};
+        return (
+          <SummaryCard
+            key={college}
+            location={college}
+            roles={{
+              campus_admin: roles.campus_admin || 0,
+              faculty: roles.faculty || 0
+            }}
+            onClick={handleLocationClick}
+            isSelected={selectedLocation === college}
+          />
+        );
+      })
     : [];
 
   if (parentLoading || statsLoading) {

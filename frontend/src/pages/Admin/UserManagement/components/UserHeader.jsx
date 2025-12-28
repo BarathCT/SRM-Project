@@ -119,15 +119,17 @@ export default function UserHeader({
           <Badge variant="outline" className="text-gray-600">
             {role.replace('_', ' ')}
           </Badge>
-          <Badge variant="outline" className="text-gray-600">
-            {college || 'All colleges'}
-          </Badge>
-          {shouldShowInstitute && (
+          {college && college !== 'N/A' && (
+            <Badge variant="outline" className="text-gray-600">
+              {college}
+            </Badge>
+          )}
+          {shouldShowInstitute && institute && institute !== 'N/A' && (
             <Badge variant="outline" className="text-gray-600">
               {institute}
             </Badge>
           )}
-          {shouldShowDepartment && (
+          {shouldShowDepartment && department && department !== 'N/A' && (
             <Badge variant="outline" className="text-gray-600">
               {department}
             </Badge>
