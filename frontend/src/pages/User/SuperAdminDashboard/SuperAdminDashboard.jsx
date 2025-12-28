@@ -82,6 +82,7 @@ export default function SuperAdminDashboard() {
   // Papers loaded for current *publication* scope
   const [scopePapers, setScopePapers] = useState([]);
   const [scopeLoading, setScopeLoading] = useState(false);
+  const [scopePapersTotal, setScopePapersTotal] = useState(0);
 
   // Book Chapters state
   const [scopeBookChapters, setScopeBookChapters] = useState([]);
@@ -185,9 +186,10 @@ export default function SuperAdminDashboard() {
   // Load scope papers whenever *publication* filters change (college/institute)
   useEffect(() => {
     if (!users.length) return;
-    const fetchScopePapers = async () => {
+      const fetchScopePapers = async () => {
       setScopeLoading(true);
       setScopePapers([]);
+      setScopePapersTotal(0);
       setExpanded(null);
       setSelectedPapers(new Set());
       setSelectAll(false);
@@ -220,6 +222,7 @@ export default function SuperAdminDashboard() {
         }
         // Fetch for each pair
         const all = [];
+        let totalCount = 0;
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/papers/institute', {
@@ -230,12 +233,17 @@ export default function SuperAdminDashboard() {
             const result = res.data;
             if (result.pagination) {
               all.push(...(result.data || []));
+              // Sum up total counts from each pair
+              totalCount += result.pagination.total || 0;
             } else {
               all.push(...(result || []));
+              // If no pagination, count the items
+              totalCount += Array.isArray(result) ? result.length : 0;
             }
           })
         );
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+        setScopePapersTotal(totalCount);
       } catch {
         // Error loading - UI shows loading state, no need for toast
         console.error("Failed to load publications for scope:", error);
@@ -517,7 +525,17 @@ export default function SuperAdminDashboard() {
     const filteredFaculty = safeUsers.filter(u =>
       papers.some(p => p.facultyId === u.facultyId)
     );
-    const total = papers.length;
+    // Use scopePapersTotal when no text/search filters are active
+    // Scope filters (college/institute/dept) change what's fetched, so scopePapersTotal is already for current scope
+    // Text/search filters are client-side, so we use filteredPapers.length
+    const hasTextFilters = pubFilters.searchTerm !== "" ||
+                           pubFilters.selectedYear !== "all" ||
+                           pubFilters.selectedQRating !== "all" ||
+                           pubFilters.selectedPublicationType !== "all" ||
+                           pubFilters.selectedSubjectArea !== "all" ||
+                           pubFilters.selectedSubjectCategory !== "all";
+    // If text/search filters active, use filtered count; otherwise use total from API
+    const total = hasTextFilters ? papers.length : (scopePapersTotal > 0 ? scopePapersTotal : papers.length);
     const qDist = papers.reduce((acc, p) => {
       acc[p.qRating] = (acc[p.qRating] || 0) + 1;
       return acc;
@@ -561,7 +579,7 @@ export default function SuperAdminDashboard() {
       avgPapersPerFaculty: filteredFaculty.length ? (total / safeUsers.length).toFixed(1) : 0,
       subjectCategoryDistribution, // <- add this to stats object
     };
-  }, [filteredPapers, users, pubFilters, subjectCategoryDistribution]);
+  }, [filteredPapers, users, pubFilters, subjectCategoryDistribution, scopePapersTotal]);
 
   // User selection (UserFinderSidebar)
   const onSelectUser = useCallback(async (user) => {

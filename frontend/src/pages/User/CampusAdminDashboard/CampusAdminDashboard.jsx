@@ -490,8 +490,9 @@ const CampusAdminDashboard = () => {
     const safeMyPapers = Array.isArray(myPapers) ? myPapers : [];
     const safeUsers = Array.isArray(users) ? users : [];
 
-    const totalPapers = safeInstitutePapers.length;
-    const myTotalPapers = safeMyPapers.length;
+    // Use pagination total if available, otherwise fall back to array length
+    const totalPapers = institutePapersPagination?.total ?? safeInstitutePapers.length;
+    const myTotalPapers = myPapersPagination?.total ?? safeMyPapers.length;
     const totalFaculty = safeUsers.length;
     const activeFaculty = safeUsers.filter((u) => safeInstitutePapers.some((p) => p.facultyId === u.facultyId)).length;
 
@@ -528,6 +529,11 @@ const CampusAdminDashboard = () => {
       return acc;
     }, {});
 
+    // Calculate Q1 count from pagination total if available, otherwise use distribution
+    const q1Count = institutePapersPagination?.total 
+      ? Math.round((totalPapers * ((qDistribution || {}).Q1 || 0)) / Math.max(safeInstitutePapers.length, 1))
+      : ((qDistribution || {}).Q1 || 0);
+
     return {
       totalPapers,
       myTotalPapers,
@@ -542,12 +548,13 @@ const CampusAdminDashboard = () => {
       q1Percentage: totalPapers > 0 ? (((qDistribution || {}).Q1 || 0) / totalPapers * 100).toFixed(1) : 0,
       myQ1Percentage: myTotalPapers > 0 ? (((myQDistribution || {}).Q1 || 0) / myTotalPapers * 100).toFixed(1) : 0,
     };
-  }, [institutePapers, myPapers, users]);
+  }, [institutePapers, myPapers, users, institutePapersPagination, myPapersPagination]);
 
   const myStats = useMemo(() => {
-    const safeMyPapers = Array.isArray(myPapers) ? myPapers : [];
-    return { total: safeMyPapers.length };
-  }, [myPapers]);
+    // Use pagination total if available, otherwise fall back to array length
+    const total = myPapersPagination?.total ?? (Array.isArray(myPapers) ? myPapers.length : 0);
+    return { total };
+  }, [myPapers, myPapersPagination]);
 
   // Selections
   const handleInstituteSelectAll = useCallback(() => {
@@ -1011,7 +1018,16 @@ const CampusAdminDashboard = () => {
               />
               <StatsCard
                 title="Q1 Publications"
-                value={(campusStats.qDistribution || {}).Q1 || 0}
+                value={(() => {
+                  // Use pagination total to calculate Q1 count accurately
+                  const totalPapers = institutePapersPagination?.total ?? 0;
+                  const currentQ1Count = (campusStats.qDistribution || {}).Q1 || 0;
+                  const currentPageCount = institutePapers.length || 1;
+                  // Estimate Q1 count based on current page ratio
+                  return totalPapers > 0 && currentPageCount > 0
+                    ? Math.round((totalPapers * currentQ1Count) / currentPageCount)
+                    : currentQ1Count;
+                })()}
                 subtitle={`${campusStats.q1Percentage}% of total`}
                 icon={<Award className="h-8 w-8 text-blue-600" />}
                 loading={loading}
@@ -1026,12 +1042,12 @@ const CampusAdminDashboard = () => {
             {PUB_TABS.map((tab) => {
               const Icon = tab.icon;
               const count = activeTab === "institute"
-                ? (tab.id === "papers" ? institutePapers.length :
-                  tab.id === "bookChapters" ? instituteBookChapters.length :
-                    instituteConference.length)
-                : (tab.id === "papers" ? myPapers.length :
-                  tab.id === "bookChapters" ? myBookChapters.length :
-                    myConference.length);
+                ? (tab.id === "papers" ? (institutePapersPagination?.total ?? institutePapers.length) :
+                  tab.id === "bookChapters" ? (instituteChaptersPagination?.total ?? instituteBookChapters.length) :
+                    (instituteConferencePagination?.total ?? instituteConference.length))
+                : (tab.id === "papers" ? (myPapersPagination?.total ?? myPapers.length) :
+                  tab.id === "bookChapters" ? (myChaptersPagination?.total ?? myBookChapters.length) :
+                    (myConferencePagination?.total ?? myConference.length));
               return (
                 <button
                   key={tab.id}
