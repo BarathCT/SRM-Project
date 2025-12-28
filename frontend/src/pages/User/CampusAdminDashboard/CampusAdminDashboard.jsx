@@ -18,11 +18,9 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
 import PublicationsTable from "../components/PublicationTable/PublicationsTable";
-import BookChaptersTable from "../components/PublicationTable/BookChaptersTable";
-import ConferencePapersTable from "../components/PublicationTable/ConferencePapersTable";
-import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
-import EditBookChapterDialog from "../components/PublicationTable/EditBookChapterDialog";
-import EditConferencePaperDialog from "../components/PublicationTable/EditConferencePaperDialog";
+import PublicationTabs from "../components/PublicationTabs";
+import PublicationTableSection from "../components/PublicationTableSection";
+import PublicationEditDialogs from "../components/PublicationEditDialogs";
 import StatsCard from "../components/StatsCard";
 import CampusAnalyticsCard from "./components/CampusAnalyticsCard";
 import FacultyDetailsCard from "./components/FacultyDetailsCard";
@@ -45,11 +43,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
-const PUB_TABS = [
-  { id: "papers", label: "Research Papers", icon: FileText },
-  { id: "bookChapters", label: "Book Chapters", icon: BookOpen },
-  { id: "conferencePapers", label: "Conference Papers", icon: Presentation },
-];
 
 const CampusAdminDashboard = () => {
   const [institutePapers, setInstitutePapers] = useState([]);
@@ -1038,46 +1031,31 @@ const CampusAdminDashboard = () => {
         )}
 
         {/* Publication Type Tab Navigation */}
-        <div className="mb-6 border-b border-gray-200">
-          <nav className="flex gap-4">
-            {PUB_TABS.map((tab) => {
-              const Icon = tab.icon;
-              const count = activeTab === "institute"
-                ? (tab.id === "papers" ? (institutePapersPagination?.total ?? institutePapers.length) :
-                  tab.id === "bookChapters" ? (instituteChaptersPagination?.total ?? instituteBookChapters.length) :
-                    (instituteConferencePagination?.total ?? instituteConference.length))
-                : (tab.id === "papers" ? (myPapersPagination?.total ?? myPapers.length) :
-                  tab.id === "bookChapters" ? (myChaptersPagination?.total ?? myBookChapters.length) :
-                    (myConferencePagination?.total ?? myConference.length));
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActivePublicationType(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${activePublicationType === tab.id
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${activePublicationType === tab.id ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                    }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+        <PublicationTabs
+          activeTab={activePublicationType}
+          onTabChange={setActivePublicationType}
+          counts={{
+            papers: activeTab === "institute"
+              ? (institutePapersPagination?.total ?? institutePapers.length)
+              : (myPapersPagination?.total ?? myPapers.length),
+            bookChapters: activeTab === "institute"
+              ? (instituteChaptersPagination?.total ?? instituteBookChapters.length)
+              : (myChaptersPagination?.total ?? myBookChapters.length),
+            conferencePapers: activeTab === "institute"
+              ? (instituteConferencePagination?.total ?? instituteConference.length)
+              : (myConferencePagination?.total ?? myConference.length),
+          }}
+        />
 
         {/* Show Book Chapters or Conference Papers when their tab is active */}
-        {activePublicationType === "bookChapters" && (
-          <>
-          <BookChaptersTable
+        {(activePublicationType === "bookChapters" || activePublicationType === "conferencePapers") && (
+          <PublicationTableSection
+            activeTab={activePublicationType}
+            // Chapters props
             chapters={activeTab === "institute" ? instituteBookChapters : myBookChapters}
             selectedChapters={selectedChapters}
-            selectAll={selectAllChapters}
-            onToggleSelectAll={() => {
+            selectAllChapters={selectAllChapters}
+            onToggleSelectAllChapters={() => {
               const chapters = activeTab === "institute" ? instituteBookChapters : myBookChapters;
               if (selectAllChapters) {
                 setSelectedChapters(new Set());
@@ -1087,16 +1065,16 @@ const CampusAdminDashboard = () => {
                 setSelectAllChapters(true);
               }
             }}
-            onToggleSelect={(id) => {
+            onToggleSelectChapter={(id) => {
               const next = new Set(selectedChapters);
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedChapters(next);
             }}
-            expandedIndex={expandedChapter}
-            onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
-            onEdit={(chapter) => { setEditingChapter(chapter); setEditChapterOpen(true); }}
-            onDelete={async (id) => {
+            expandedChapter={expandedChapter}
+            onToggleExpandChapter={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
+            onEditChapter={(chapter) => { setEditingChapter(chapter); setEditChapterOpen(true); }}
+            onDeleteChapter={async (id) => {
               setDeletingChapterId(id);
               try {
                 const token = localStorage.getItem("token");
@@ -1109,19 +1087,10 @@ const CampusAdminDashboard = () => {
               } catch { toast.error("Delete failed"); }
               finally { setDeletingChapterId(null); }
             }}
-            deletingId={deletingChapterId}
-            hasActiveFilters={false}
-            onClearFilters={() => { }}
-          />
-          <Pagination
-            page={activeTab === "institute" ? instituteChaptersPagination.page : myChaptersPagination.page}
-            totalPages={activeTab === "institute" ? instituteChaptersPagination.totalPages : myChaptersPagination.totalPages}
-            total={activeTab === "institute" ? instituteChaptersPagination.total : myChaptersPagination.total}
-            limit={activeTab === "institute" ? instituteChaptersPagination.limit : myChaptersPagination.limit}
-            hasNextPage={activeTab === "institute" ? instituteChaptersPagination.hasNextPage : myChaptersPagination.hasNextPage}
-            hasPrevPage={activeTab === "institute" ? instituteChaptersPagination.hasPrevPage : myChaptersPagination.hasPrevPage}
-            onPageChange={(page) => activeTab === "institute" ? fetchInstituteBookChapters(currentUser, page) : fetchMyBookChapters(page)}
-            onLimitChange={(limit) => {
+            deletingChapterId={deletingChapterId}
+            chaptersPagination={activeTab === "institute" ? instituteChaptersPagination : myChaptersPagination}
+            onChaptersPageChange={(page) => activeTab === "institute" ? fetchInstituteBookChapters(currentUser, page) : fetchMyBookChapters(page)}
+            onChaptersLimitChange={(limit) => {
               if (activeTab === "institute") {
                 setInstituteChaptersPagination(prev => ({ ...prev, limit }));
                 fetchInstituteBookChapters(currentUser, 1);
@@ -1130,18 +1099,12 @@ const CampusAdminDashboard = () => {
                 fetchMyBookChapters(1);
               }
             }}
-            loading={loading}
-          />
-          </>
-        )}
-
-        {activePublicationType === "conferencePapers" && (
-          <>
-          <ConferencePapersTable
-            papers={activeTab === "institute" ? instituteConference : myConference}
-            selectedPapers={selectedConference}
-            selectAll={selectAllConference}
-            onToggleSelectAll={() => {
+            loadingChapters={loading}
+            // Conference props
+            conference={activeTab === "institute" ? instituteConference : myConference}
+            selectedConference={selectedConference}
+            selectAllConference={selectAllConference}
+            onToggleSelectAllConference={() => {
               const papers = activeTab === "institute" ? instituteConference : myConference;
               if (selectAllConference) {
                 setSelectedConference(new Set());
@@ -1151,16 +1114,16 @@ const CampusAdminDashboard = () => {
                 setSelectAllConference(true);
               }
             }}
-            onToggleSelect={(id) => {
+            onToggleSelectConference={(id) => {
               const next = new Set(selectedConference);
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedConference(next);
             }}
-            expandedIndex={expandedConference}
-            onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
-            onEdit={(paper) => { setEditingConference(paper); setEditConferenceOpen(true); }}
-            onDelete={async (id) => {
+            expandedConference={expandedConference}
+            onToggleExpandConference={(i) => setExpandedConference(expandedConference === i ? null : i)}
+            onEditConference={(paper) => { setEditingConference(paper); setEditConferenceOpen(true); }}
+            onDeleteConference={async (id) => {
               setDeletingConferenceId(id);
               try {
                 const token = localStorage.getItem("token");
@@ -1173,19 +1136,10 @@ const CampusAdminDashboard = () => {
               } catch { toast.error("Delete failed"); }
               finally { setDeletingConferenceId(null); }
             }}
-            deletingId={deletingConferenceId}
-            hasActiveFilters={false}
-            onClearFilters={() => { }}
-          />
-          <Pagination
-            page={activeTab === "institute" ? instituteConferencePagination.page : myConferencePagination.page}
-            totalPages={activeTab === "institute" ? instituteConferencePagination.totalPages : myConferencePagination.totalPages}
-            total={activeTab === "institute" ? instituteConferencePagination.total : myConferencePagination.total}
-            limit={activeTab === "institute" ? instituteConferencePagination.limit : myConferencePagination.limit}
-            hasNextPage={activeTab === "institute" ? instituteConferencePagination.hasNextPage : myConferencePagination.hasNextPage}
-            hasPrevPage={activeTab === "institute" ? instituteConferencePagination.hasPrevPage : myConferencePagination.hasPrevPage}
-            onPageChange={(page) => activeTab === "institute" ? fetchInstituteConference(currentUser, page) : fetchMyConference(page)}
-            onLimitChange={(limit) => {
+            deletingConferenceId={deletingConferenceId}
+            conferencePagination={activeTab === "institute" ? instituteConferencePagination : myConferencePagination}
+            onConferencePageChange={(page) => activeTab === "institute" ? fetchInstituteConference(currentUser, page) : fetchMyConference(page)}
+            onConferenceLimitChange={(limit) => {
               if (activeTab === "institute") {
                 setInstituteConferencePagination(prev => ({ ...prev, limit }));
                 fetchInstituteConference(currentUser, 1);
@@ -1194,9 +1148,24 @@ const CampusAdminDashboard = () => {
                 fetchMyConference(1);
               }
             }}
-            loading={loading}
+            loadingConference={loading}
+            // Common props
+            hasActiveFilters={false}
+            onClearFilters={() => { }}
+            filteredCount={
+              activePublicationType === "bookChapters"
+                ? (activeTab === "institute" ? instituteBookChapters.length : myBookChapters.length)
+                : (activeTab === "institute" ? instituteConference.length : myConference.length)
+            }
+            totalCount={
+              activePublicationType === "bookChapters"
+                ? (activeTab === "institute" ? instituteChaptersPagination.total : myChaptersPagination.total)
+                : (activeTab === "institute" ? instituteConferencePagination.total : myConferencePagination.total)
+            }
+            selectedCount={
+              activePublicationType === "bookChapters" ? selectedChapters.size : selectedConference.size
+            }
           />
-          </>
         )}
 
         {activePublicationType === "papers" && (
@@ -1473,25 +1442,16 @@ const CampusAdminDashboard = () => {
       </div>
 
       {/* Edit Dialogs */}
-
-      <EditPublicationDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        value={editData}
-        onChange={setEditData}
-        onSubmit={updatePaper}
-        onCancel={() => setEditDialogOpen(false)}
-        isSubmitting={false}
-        subjectAreas={SUBJECT_AREAS}
-        publicationTypes={PUBLICATION_TYPES}
-        qRatings={Q_RATINGS}
-      />
-
-      <EditBookChapterDialog
-        open={editChapterOpen}
-        onOpenChange={setEditChapterOpen}
-        chapter={editingChapter}
-        onSave={async (data) => {
+      <PublicationEditDialogs
+        editPaperOpen={editDialogOpen}
+        onEditPaperOpenChange={setEditDialogOpen}
+        editingPaper={editData}
+        onUpdatePaper={updatePaper}
+        isUpdatingPaper={false}
+        editChapterOpen={editChapterOpen}
+        onEditChapterOpenChange={setEditChapterOpen}
+        editingChapter={editingChapter}
+        onUpdateChapter={async (data) => {
           try {
             const token = localStorage.getItem("token");
             await axios.put(`${API_BASE_URL}/api/book-chapters/${data._id}`, data, {
@@ -1506,14 +1466,11 @@ const CampusAdminDashboard = () => {
             toast.error(e.response?.data?.error || "Update failed");
           }
         }}
-        isSubmitting={false}
-      />
-
-      <EditConferencePaperDialog
-        open={editConferenceOpen}
-        onOpenChange={setEditConferenceOpen}
-        paper={editingConference}
-        onSave={async (data) => {
+        isUpdatingChapter={false}
+        editConferenceOpen={editConferenceOpen}
+        onEditConferenceOpenChange={setEditConferenceOpen}
+        editingConference={editingConference}
+        onUpdateConference={async (data) => {
           try {
             const token = localStorage.getItem("token");
             await axios.put(`${API_BASE_URL}/api/conference-papers/${data._id}`, data, {
@@ -1528,7 +1485,7 @@ const CampusAdminDashboard = () => {
             toast.error(e.response?.data?.error || "Update failed");
           }
         }}
-        isSubmitting={false}
+        isUpdatingConference={false}
       />
     </div>
   );
