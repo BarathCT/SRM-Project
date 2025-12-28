@@ -12,6 +12,7 @@ import SuperAdminDashboard from './pages/User/SuperAdminDashboard/SuperAdminDash
 import CampusAdminDashboard from './pages/User/CampusAdminDashboard/CampusAdminDashboard';
 import SettingsPage from './pages/Settings/SettingsPage';
 import FacultyDashboard from './pages/User/FacultyDashboard/FacultyDashboard';
+import AnalyticsPage from './pages/User/Analytics/AnalyticsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
 
@@ -30,6 +31,7 @@ function AppContent() {
           <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
             <Route path="/super-admin" element={<SuperAdminDashboard />} />
             <Route path="/super-admin/users" element={<UserManagement />} />
+            <Route path="/super-admin/analytics" element={<AnalyticsPage />} />
             <Route path="/super-admin/edit/:type/:id" element={<EditSelector />} />
           </Route>
 
@@ -37,6 +39,7 @@ function AppContent() {
           <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
             <Route path="/campus-admin" element={<CampusAdminDashboard />} />
             <Route path="/campus-admin/users" element={<UserManagement />} />
+            <Route path="/campus-admin/analytics" element={<AnalyticsPage />} />
  <Route path="/campus-admin/upload" element={<UploadSelector />} />
   <Route path="/campus-admin/upload/research" element={<UploadResearchPage />} />
   <Route path="/campus-admin/upload/conference" element={<UploadConferencePage />} />

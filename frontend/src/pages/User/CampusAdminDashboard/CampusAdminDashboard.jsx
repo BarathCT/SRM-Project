@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useToast } from "@/components/Toast";
 import {
@@ -45,6 +46,7 @@ const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
 
 const CampusAdminDashboard = () => {
+  const navigate = useNavigate();
   const [institutePapers, setInstitutePapers] = useState([]);
   const [myPapers, setMyPapers] = useState([]);
   const [users, setUsers] = useState([]);
@@ -83,8 +85,6 @@ const CampusAdminDashboard = () => {
   const [editConferenceOpen, setEditConferenceOpen] = useState(false);
   const [editingConference, setEditingConference] = useState(null);
 
-  // Analytics section state
-  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Faculty finder panel open/close
   const [facultyFinderOpen, setFacultyFinderOpen] = useState(false);
@@ -928,12 +928,38 @@ const CampusAdminDashboard = () => {
           title="Campus Admin Dashboard"
           subtitle={`${currentUser?.college} - ${currentUser?.institute} Publications Management`}
           userName={currentUser?.fullName}
-          dateTime={new Date().toLocaleString()}
-          icon={<Building2 className="h-6 w-6" />}
+          icon={null}
           showTabSwitch={currentUser?.role === "campus_admin"}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          onShowAnalytics={() => setShowAnalytics(true)}
+          onShowAnalytics={() => {
+            // Determine which items to use based on activePublicationType
+            let itemsToUse = [];
+            if (activePublicationType === "papers") {
+              itemsToUse = institutePapers;
+            } else if (activePublicationType === "bookChapters") {
+              itemsToUse = instituteBookChapters;
+            } else if (activePublicationType === "conferencePapers") {
+              itemsToUse = instituteConference;
+            }
+            
+            const statsData = {
+              ...campusStats,
+              subjectCategoryDistribution: (() => {
+                // Compute: { [subjectArea]: { [category]: count } }
+                const map = {};
+                for (const item of itemsToUse) {
+                  if (!item.subjectArea || !Array.isArray(item.subjectCategories)) continue;
+                  if (!map[item.subjectArea]) map[item.subjectArea] = {};
+                  for (const cat of item.subjectCategories) {
+                    map[item.subjectArea][cat] = (map[item.subjectArea][cat] || 0) + 1;
+                  }
+                }
+                return map;
+              })(),
+            };
+            navigate('/campus-admin/analytics', { state: { stats: statsData, loading } });
+          }}
           facultyFinderOpen={facultyFinderOpen}
           onFacultyFinderOpenChange={setFacultyFinderOpen}
           role="campus-admin"
@@ -958,51 +984,6 @@ const CampusAdminDashboard = () => {
           title="Find Faculty"
         />
 
-        {/* Analytics Section */}
-        {showAnalytics && (
-          <section className="max-w-7xl mx-auto mb-4 sm:mb-8">
-            <div className="relative border border-gray-200 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
-              <header className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 border-b border-gray-200 bg-white/80 rounded-t-xl sm:rounded-t-2xl">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-blue-600" />
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
-                    Analytics Overview
-                  </h2>
-                </div>
-                <button
-                  className="p-1.5 sm:p-2 rounded-full hover:bg-blue-100 transition"
-                  onClick={() => setShowAnalytics(false)}
-                  aria-label="Close analytics"
-                  type="button"
-                >
-                  <X className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500" />
-                </button>
-              </header>
-              <main className="p-4 sm:p-6 lg:p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-xl sm:rounded-b-2xl">
-                <div className="grid grid-cols-1 gap-y-8">
-                  <CampusAnalyticsCard
-                    stats={{
-                      ...campusStats,
-                      subjectCategoryDistribution: (() => {
-                        // Compute: { [subjectArea]: { [category]: count } }
-                        const map = {};
-                        for (const paper of institutePapers) {
-                          if (!paper.subjectArea || !Array.isArray(paper.subjectCategories)) continue;
-                          if (!map[paper.subjectArea]) map[paper.subjectArea] = {};
-                          for (const cat of paper.subjectCategories) {
-                            map[paper.subjectArea][cat] = (map[paper.subjectArea][cat] || 0) + 1;
-                          }
-                        }
-                        return map;
-                      })(),
-                    }}
-                    loading={loading}
-                  />
-                </div>
-              </main>
-            </div>
-          </section>
-        )}
 
         {activeTab === "my" ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

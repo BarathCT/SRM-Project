@@ -184,6 +184,7 @@ function FilterButtonGroup({
 export default function UserStatsCard({
   // users prop is no longer needed for stats, but might be passed by parent. We ignore it for stats.
   users = [],
+  totalUsers = 0,
   roleOptions = [],
   loading: parentLoading = false,
   className = "",

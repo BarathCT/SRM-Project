@@ -227,7 +227,7 @@ export default function ConferencePapersTable({
 
                                         // Long press handler for mobile/tablet selection
                                         const handleTouchStart = (e) => {
-                                            if (window.innerWidth >= 1024) return; // Only on mobile/tablet
+                                            if (window.innerWidth >= 1280) return; // Only on mobile/tablet (below xl breakpoint)
                                             // Clear any existing timer
                                             if (longPressTimerRef.current) {
                                                 clearTimeout(longPressTimerRef.current);
@@ -268,7 +268,7 @@ export default function ConferencePapersTable({
                                                 return;
                                             }
                                             // On mobile/tablet, if selection mode is active (any row is selected), allow single click to select
-                                            if (window.innerWidth < 1024 && selectedPapers.size > 0) {
+                                            if (window.innerWidth < 1280 && selectedPapers.size > 0) {
                                                 // If any row is selected, treat click as selection toggle
                                                 if (
                                                     !e.target.closest('input[type="checkbox"]') &&
@@ -286,7 +286,7 @@ export default function ConferencePapersTable({
                                             ) {
                                                 return;
                                             }
-                                            if (window.innerWidth < 1024) {
+                                            if (window.innerWidth < 1280) {
                                                 setSelectedPaperForMobile(paper);
                                                 setIsMobileModalOpen(true);
                                             }
@@ -636,7 +636,7 @@ export default function ConferencePapersTable({
         {/* Mobile/Tablet Full-Screen Modal */}
         <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
             <DialogContent 
-                className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto overflow-x-hidden lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0"
+                className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto overflow-x-hidden xl:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0"
                 showCloseButton={false}
             >
                 {selectedPaperForMobile && (
