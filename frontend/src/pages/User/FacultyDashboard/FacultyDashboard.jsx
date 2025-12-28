@@ -111,14 +111,11 @@ const FacultyDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 } // Fetch all for client-side filtering (temporary)
       });
-      // Handle both paginated and non-paginated responses
-      const data = response.data?.data || response.data || [];
-      setPapers(Array.isArray(data) ? data : []);
+      setPapers(response.data || []);
     } catch (e) {
+      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch research papers:", e);
-      setPapers([]);
     } finally {
       setLoadingPapers(false);
     }
@@ -130,13 +127,11 @@ const FacultyDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 }
       });
-      const data = response.data?.data || response.data || [];
-      setBookChapters(Array.isArray(data) ? data : []);
+      setBookChapters(response.data || []);
     } catch (e) {
+      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch book chapters:", e);
-      setBookChapters([]);
     } finally {
       setLoadingChapters(false);
     }
@@ -148,13 +143,11 @@ const FacultyDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 }
       });
-      const data = response.data?.data || response.data || [];
-      setConferencePapers(Array.isArray(data) ? data : []);
+      setConferencePapers(response.data || []);
     } catch (e) {
+      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch conference papers:", e);
-      setConferencePapers([]);
     } finally {
       setLoadingConference(false);
     }

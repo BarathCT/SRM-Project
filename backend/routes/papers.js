@@ -2,12 +2,6 @@ import express from 'express';
 import Paper from '../models/Paper.js';
 import User from '../models/User.js';
 import verifyToken from '../middleware/verifyToken.js';
-import {
-  parsePaginationParams,
-  parseSortParams,
-  parsePublicationFilters,
-  buildPaginatedResponse
-} from '../utils/paginationHelper.js';
 
 const router = express.Router();
 
@@ -158,8 +152,6 @@ router.put('/:id', verifyToken, async (req, res) => {
 });
 
 // GET /api/papers/institute - Get papers for specific college/institute (Campus Admin)
-// Supports pagination: ?page=1&limit=15&sortBy=createdAt&sortOrder=desc
-// Supports filtering: ?year=2024&qRating=Q1&publicationType=scopus&subjectArea=...&search=...
 router.get('/institute', verifyToken, async (req, res) => {
   try {
     const { college, institute } = req.query;
@@ -173,61 +165,33 @@ router.get('/institute', verifyToken, async (req, res) => {
     const facultyUsers = await User.find({
       college: college,
       institute: institute,
-      role: { $in: ['faculty', 'campus_admin'] },
+      role: { $in: ['faculty', 'campus_admin'] }, // Include campus_admin papers too
       isActive: true
-    }).select('facultyId fullName department email').lean();
+    }).select('facultyId fullName department email');
 
     if (!facultyUsers.length) {
-      return res.json(buildPaginatedResponse([], 0, { page: 1, limit: 15 }));
+      return res.json([]);
     }
 
-    // Create faculty lookup map for O(1) access
-    const facultyMap = new Map(facultyUsers.map(u => [u.facultyId, u]));
     const facultyIds = facultyUsers.map(user => user.facultyId);
 
-    // Parse pagination and filter parameters
-    const paginationParams = parsePaginationParams(req.query);
-    const sortParams = parseSortParams(req.query);
-    const filters = parsePublicationFilters(req.query);
-
-    // Add facultyId filter
-    filters.facultyId = { $in: facultyIds };
-
-    // Department filter (special handling - need to filter by faculty's department)
-    if (req.query.department && req.query.department !== 'all') {
-      const deptFacultyIds = facultyUsers
-        .filter(u => u.department === req.query.department)
-        .map(u => u.facultyId);
-      filters.facultyId = { $in: deptFacultyIds };
-    }
-
-    // Author filter
-    if (req.query.author && req.query.author !== 'all') {
-      filters.claimedBy = req.query.author;
-    }
-
-    // Get total count for pagination
-    const total = await Paper.countDocuments(filters);
-
-    // Get paginated papers
-    const papers = await Paper.find(filters)
-      .sort(sortParams)
-      .skip(paginationParams.skip)
-      .limit(paginationParams.limit)
-      .lean();
+    // Get papers from these faculty members
+    const papers = await Paper.find({
+      facultyId: { $in: facultyIds }
+    }).sort({ createdAt: -1 });
 
     // Enhance papers with faculty information
     const enhancedPapers = papers.map(paper => {
-      const faculty = facultyMap.get(paper.facultyId);
+      const faculty = facultyUsers.find(user => user.facultyId === paper.facultyId);
       return {
-        ...paper,
+        ...paper.toObject(),
         facultyName: faculty?.fullName || 'Unknown Faculty',
         facultyDepartment: faculty?.department || 'Unknown Department',
         facultyEmail: faculty?.email || ''
       };
     });
 
-    res.json(buildPaginatedResponse(enhancedPapers, total, paginationParams));
+    res.json(enhancedPapers);
   } catch (err) {
     console.error('Institute papers fetch error:', err);
     res.status(500).json({ error: 'Server error while fetching institute papers' });
@@ -329,33 +293,17 @@ router.post('/', verifyToken, async (req, res) => {
 });
 
 // GET /api/papers/my - Get current user's papers
-// Supports pagination: ?page=1&limit=15&sortBy=createdAt&sortOrder=desc
-// Supports filtering: ?year=2024&qRating=Q1&publicationType=scopus&subjectArea=...&search=...
 router.get('/my', verifyToken, async (req, res) => {
   try {
     if (!req.user?.facultyId) {
       return res.status(401).json({ error: 'Invalid token: facultyId missing' });
     }
 
-    // Parse pagination and filter parameters
-    const paginationParams = parsePaginationParams(req.query);
-    const sortParams = parseSortParams(req.query);
-    const filters = parsePublicationFilters(req.query);
+    const papers = await Paper.find({
+      facultyId: req.user.facultyId
+    }).sort({ createdAt: -1 });
 
-    // Add user's facultyId filter
-    filters.facultyId = req.user.facultyId;
-
-    // Get total count for pagination
-    const total = await Paper.countDocuments(filters);
-
-    // Get paginated papers
-    const papers = await Paper.find(filters)
-      .sort(sortParams)
-      .skip(paginationParams.skip)
-      .limit(paginationParams.limit)
-      .lean();
-
-    res.json(buildPaginatedResponse(papers, total, paginationParams));
+    res.json(papers);
   } catch (e) {
     console.error('Error fetching user papers:', e);
     res.status(500).json({ error: 'Server error while fetching papers' });

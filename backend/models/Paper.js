@@ -264,12 +264,7 @@ const PaperSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Indexes for better query performance (pagination and filtering)
+// Index for better query performance
 PaperSchema.index({ subjectArea: 1, subjectCategories: 1 });
-PaperSchema.index({ facultyId: 1, createdAt: -1 });
-PaperSchema.index({ year: 1 });
-PaperSchema.index({ publicationType: 1 });
-PaperSchema.index({ qRating: 1 });
-PaperSchema.index({ createdAt: -1 });
 
 export default mongoose.model('Paper', PaperSchema);

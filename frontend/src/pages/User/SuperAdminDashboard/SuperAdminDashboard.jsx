@@ -164,10 +164,9 @@ export default function SuperAdminDashboard() {
         const token = localStorage.getItem("token");
         const res = await api.get('/admin/users', {
           headers: { Authorization: `Bearer ${token}` },
-          params: { role: "all", limit: 1000 },
+          params: { role: "all" },
         });
-        const data = res.data?.data || res.data || [];
-        setUsers(Array.isArray(data) ? data : []);
+        setUsers(res.data || []);
       } catch {
       } finally {
         setLoading(false);
@@ -219,14 +218,13 @@ export default function SuperAdminDashboard() {
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/papers/institute', {
               headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute, limit: 1000 },
+              params: { college, institute },
             });
-            const data = res.data?.data || res.data || [];
-            all.push(...(Array.isArray(data) ? data : []));
+            all.push(...(res.data || []));
           })
         );
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      } catch (error) {
+      } catch {
         // Error loading - UI shows loading state, no need for toast
         console.error("Failed to load publications for scope:", error);
       } finally {
@@ -277,10 +275,9 @@ export default function SuperAdminDashboard() {
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/book-chapters/institute', {
               headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute, limit: 1000 },
+              params: { college, institute },
             });
-            const data = res.data?.data || res.data || [];
-            all.push(...(Array.isArray(data) ? data : []));
+            all.push(...(res.data || []));
           })
         );
         setScopeBookChapters(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -333,10 +330,9 @@ export default function SuperAdminDashboard() {
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/conference-papers/institute', {
               headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute, limit: 1000 },
+              params: { college, institute },
             });
-            const data = res.data?.data || res.data || [];
-            all.push(...(Array.isArray(data) ? data : []));
+            all.push(...(res.data || []));
           })
         );
         setScopeConference(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));

@@ -3,14 +3,8 @@ import jwt from 'jsonwebtoken';
 import ExcelJS from 'exceljs';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
-import UserLog from '../models/UserLog.js';
+import UserLog from '../models/UserLog.js'; // <-- ADD THIS LINE
 import { sendUserWelcomeEmail } from '../utils/sendUserWelcomeMail.js';
-import {
-  parsePaginationParams,
-  parseSortParams,
-  parseUserFilters,
-  buildPaginatedResponse
-} from '../utils/paginationHelper.js';
 
 // Centralized college / institute helpers
 import {
@@ -168,50 +162,38 @@ router.get('/download-template', authenticate, async (req, res) => {
 });
 
 /* ------------------------------ GET /admin/users --------------------------- */
-// Supports pagination: ?page=1&limit=15&sortBy=createdAt&sortOrder=desc
-// Supports filtering: ?search=...&role=...&college=...&institute=...&department=...
 router.get('/users', authenticate, async (req, res) => {
   try {
     const { role, college, institute } = req.user;
 
-    // Base filter based on user role
-    let baseFilter = {};
+    let filter = {};
     if (role === 'super_admin') {
       // no restriction
     } else if (role === 'campus_admin') {
-      baseFilter.college = college;
+      filter.college = college;
       if (collegeRequiresInstitute(college)) {
-        baseFilter.institute = institute;
+        filter.institute = institute;
       }
     } else {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Parse pagination and filter parameters
-    const paginationParams = parsePaginationParams(req.query);
-    const sortParams = parseSortParams(req.query, ['createdAt', 'fullName', 'email', 'role']);
-    const additionalFilters = parseUserFilters(req.query);
-
-    // Merge filters (base filter takes precedence for security)
-    const filter = { ...additionalFilters, ...baseFilter };
-
-    // Handle college filter for super_admin only
+    if (req.query.search) {
+      const regex = new RegExp(req.query.search, 'i');
+      filter.$or = [{ fullName: regex }, { facultyId: regex }, { email: regex }];
+    }
+    if (req.query.role && req.query.role !== 'all') filter.role = req.query.role;
     if (role === 'super_admin' && req.query.college && req.query.college !== 'all') {
       filter.college = req.query.college;
     }
+    if (req.query.institute && req.query.institute !== 'all') filter.institute = req.query.institute;
+    if (req.query.department && req.query.department !== 'all') filter.department = req.query.department;
 
-    // Get total count for pagination
-    const total = await User.countDocuments(filter);
-
-    // Get paginated users
     const users = await User.find(filter)
       .select('-password -__v')
-      .sort(sortParams)
-      .skip(paginationParams.skip)
-      .limit(paginationParams.limit)
-      .lean();
+      .sort({ createdAt: -1 });
 
-    res.json(buildPaginatedResponse(users, total, paginationParams));
+    res.json(users);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -439,7 +421,7 @@ router.post('/users', authenticate, async (req, res) => {
           collegeName: finalCollege,
           institute: finalInstitute,
           department: finalDepartment,
-          appUrl: process.env.APP_URL || 'https://srm-project-eight.vercel.app/'
+          appUrl: process.env.APP_URL || 'https://scholarsync.example.com'
         });
       } catch (mailErr) {
         console.error('Email sending failed:', mailErr);

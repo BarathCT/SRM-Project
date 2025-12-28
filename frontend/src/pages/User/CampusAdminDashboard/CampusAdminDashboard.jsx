@@ -198,10 +198,9 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, limit: 1000 },
+        params: { college: user.college, institute: user.institute },
       });
-      const data = response.data?.data || response.data || [];
-      setInstitutePapers(Array.isArray(data) ? data : []);
+      setInstitutePapers(response.data || []);
     } catch (error) {
       console.error("Fetch institute papers error:", error);
       setInstitutePapers([]);
@@ -213,10 +212,8 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 },
       });
-      const data = response.data?.data || response.data || [];
-      setMyPapers(Array.isArray(data) ? data : []);
+      setMyPapers(response.data || []);
     } catch (error) {
       console.error("Fetch my papers error:", error);
       setMyPapers([]);
@@ -228,10 +225,9 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, limit: 1000 },
+        params: { college: user.college, institute: user.institute },
       });
-      const data = response.data?.data || response.data || [];
-      setInstituteBookChapters(Array.isArray(data) ? data : []);
+      setInstituteBookChapters(response.data || []);
     } catch {
       setInstituteBookChapters([]);
     }
@@ -242,10 +238,8 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 },
       });
-      const data = response.data?.data || response.data || [];
-      setMyBookChapters(Array.isArray(data) ? data : []);
+      setMyBookChapters(response.data || []);
     } catch {
       setMyBookChapters([]);
     }
@@ -256,10 +250,9 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/institute', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, limit: 1000 },
+        params: { college: user.college, institute: user.institute },
       });
-      const data = response.data?.data || response.data || [];
-      setInstituteConference(Array.isArray(data) ? data : []);
+      setInstituteConference(response.data || []);
     } catch {
       setInstituteConference([]);
     }
@@ -270,10 +263,8 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 },
       });
-      const data = response.data?.data || response.data || [];
-      setMyConference(Array.isArray(data) ? data : []);
+      setMyConference(response.data || []);
     } catch {
       setMyConference([]);
     }
@@ -284,10 +275,9 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/admin/users', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, role: "faculty", limit: 1000 },
+        params: { college: user.college, institute: user.institute, role: "faculty" },
       });
-      const data = response.data?.data || response.data || [];
-      setUsers(Array.isArray(data) ? data : []);
+      setUsers(response.data || []);
     } catch (error) {
       console.error("Fetch users error:", error);
       setUsers([]);
