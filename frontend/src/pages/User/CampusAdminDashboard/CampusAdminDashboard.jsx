@@ -352,21 +352,24 @@ const CampusAdminDashboard = () => {
 
   // Filter options for institute
   const instituteFilterOptions = useMemo(() => {
-    const years = [...new Set(institutePapers.map((p) => Number(p.year)).filter(Boolean))].sort((a, b) => b - a);
-    const qRatings = [...new Set(institutePapers.map((p) => p.qRating).filter(Boolean))].sort();
-    const publicationTypes = [...new Set(institutePapers.map((p) => p.publicationType).filter(Boolean))].sort();
-    const subjectAreas = [...new Set(institutePapers.map((p) => p.subjectArea).filter(Boolean))].sort();
-    const authors = [...new Set(institutePapers.map((p) => p.claimedBy).filter(Boolean))].sort();
-    const departments = [...new Set(users.map((u) => u.department).filter(Boolean))].sort();
+    const safeInstitutePapers = Array.isArray(institutePapers) ? institutePapers : [];
+    const safeUsers = Array.isArray(users) ? users : [];
+    const years = [...new Set(safeInstitutePapers.map((p) => Number(p.year)).filter(Boolean))].sort((a, b) => b - a);
+    const qRatings = [...new Set(safeInstitutePapers.map((p) => p.qRating).filter(Boolean))].sort();
+    const publicationTypes = [...new Set(safeInstitutePapers.map((p) => p.publicationType).filter(Boolean))].sort();
+    const subjectAreas = [...new Set(safeInstitutePapers.map((p) => p.subjectArea).filter(Boolean))].sort();
+    const authors = [...new Set(safeInstitutePapers.map((p) => p.claimedBy).filter(Boolean))].sort();
+    const departments = [...new Set(safeUsers.map((u) => u.department).filter(Boolean))].sort();
     return { years, qRatings, publicationTypes, subjectAreas, authors, departments };
   }, [institutePapers, users]);
 
   // Filter options for my
   const myFilterOptions = useMemo(() => {
-    const years = [...new Set(myPapers.map((p) => Number(p.year)).filter(Boolean))].sort((a, b) => b - a);
-    const qRatings = [...new Set(myPapers.map((p) => p.qRating).filter(Boolean))].sort();
-    const publicationTypes = [...new Set(myPapers.map((p) => p.publicationType).filter(Boolean))].sort();
-    const subjectAreas = [...new Set(myPapers.map((p) => p.subjectArea).filter(Boolean))].sort();
+    const safeMyPapers = Array.isArray(myPapers) ? myPapers : [];
+    const years = [...new Set(safeMyPapers.map((p) => Number(p.year)).filter(Boolean))].sort((a, b) => b - a);
+    const qRatings = [...new Set(safeMyPapers.map((p) => p.qRating).filter(Boolean))].sort();
+    const publicationTypes = [...new Set(safeMyPapers.map((p) => p.publicationType).filter(Boolean))].sort();
+    const subjectAreas = [...new Set(safeMyPapers.map((p) => p.subjectArea).filter(Boolean))].sort();
     return { years, qRatings, publicationTypes, subjectAreas };
   }, [myPapers]);
 
@@ -425,10 +428,11 @@ const CampusAdminDashboard = () => {
 
   // Filtered institute papers
   const filteredInstitutePapers = useMemo(() => {
+    const safeInstitutePapers = Array.isArray(institutePapers) ? institutePapers : [];
     const lowerTerm = (instituteFilters.searchTerm || "").trim().toLowerCase();
     const scope = selectedFacultyId
-      ? institutePapers.filter((p) => p.facultyId === selectedFacultyId)
-      : institutePapers;
+      ? safeInstitutePapers.filter((p) => p.facultyId === selectedFacultyId)
+      : safeInstitutePapers;
 
     return scope.filter((paper) => {
       if (!matchesText(paper, lowerTerm)) return false;
@@ -453,8 +457,9 @@ const CampusAdminDashboard = () => {
 
   // Filtered my papers
   const filteredMyPapers = useMemo(() => {
+    const safeMyPapers = Array.isArray(myPapers) ? myPapers : [];
     const lowerTerm = (debouncedMyText || "").trim().toLowerCase();
-    return myPapers.filter((paper) => {
+    return safeMyPapers.filter((paper) => {
       if (!matchesText(paper, lowerTerm)) return false;
       if (myFilters.selectedYear !== "all" && String(paper.year) !== String(myFilters.selectedYear)) return false;
       if (myFilters.selectedQRating !== "all" && paper.qRating !== myFilters.selectedQRating) return false;
@@ -470,44 +475,48 @@ const CampusAdminDashboard = () => {
   ]);
 
   // Selected faculty
-  const selectedFaculty = useMemo(
-    () => (selectedFacultyId ? users.find((u) => u.facultyId === selectedFacultyId) || null : null),
-    [users, selectedFacultyId]
-  );
-  const selectedFacultyAllPapers = useMemo(
-    () => (selectedFacultyId ? institutePapers.filter((p) => p.facultyId === selectedFacultyId) : []),
-    [institutePapers, selectedFacultyId]
-  );
+  const selectedFaculty = useMemo(() => {
+    const safeUsers = Array.isArray(users) ? users : [];
+    return selectedFacultyId ? safeUsers.find((u) => u.facultyId === selectedFacultyId) || null : null;
+  }, [users, selectedFacultyId]);
+  const selectedFacultyAllPapers = useMemo(() => {
+    const safeInstitutePapers = Array.isArray(institutePapers) ? institutePapers : [];
+    return selectedFacultyId ? safeInstitutePapers.filter((p) => p.facultyId === selectedFacultyId) : [];
+  }, [institutePapers, selectedFacultyId]);
 
   // Stats
   const campusStats = useMemo(() => {
-    const totalPapers = institutePapers.length;
-    const myTotalPapers = myPapers.length;
-    const totalFaculty = users.length;
-    const activeFaculty = users.filter((u) => institutePapers.some((p) => p.facultyId === u.facultyId)).length;
+    const safeInstitutePapers = Array.isArray(institutePapers) ? institutePapers : [];
+    const safeMyPapers = Array.isArray(myPapers) ? myPapers : [];
+    const safeUsers = Array.isArray(users) ? users : [];
 
-    const qDistribution = institutePapers.reduce((acc, paper) => {
+    const totalPapers = safeInstitutePapers.length;
+    const myTotalPapers = safeMyPapers.length;
+    const totalFaculty = safeUsers.length;
+    const activeFaculty = safeUsers.filter((u) => safeInstitutePapers.some((p) => p.facultyId === u.facultyId)).length;
+
+    const qDistribution = safeInstitutePapers.reduce((acc, paper) => {
       acc[paper.qRating] = (acc[paper.qRating] || 0) + 1;
       return acc;
     }, {});
 
-    const myQDistribution = myPapers.reduce((acc, paper) => {
+    const myQDistribution = safeMyPapers.reduce((acc, paper) => {
       acc[paper.qRating] = (acc[paper.qRating] || 0) + 1;
       return acc;
     }, {});
 
-    const yearlyTrend = institutePapers.reduce((acc, paper) => {
+    const yearlyTrend = safeInstitutePapers.reduce((acc, paper) => {
       acc[paper.year] = (acc[paper.year] || 0) + 1;
       return acc;
     }, {});
 
-    const subjectDistribution = institutePapers.reduce((acc, paper) => {
+    const subjectDistribution = safeInstitutePapers.reduce((acc, paper) => {
       acc[paper.subjectArea] = (acc[paper.subjectArea] || 0) + 1;
       return acc;
     }, {});
 
-    const departmentStats = users.reduce((acc, user) => {
-      const userPapers = institutePapers.filter((p) => p.facultyId === user.facultyId);
+    const departmentStats = safeUsers.reduce((acc, user) => {
+      const userPapers = safeInstitutePapers.filter((p) => p.facultyId === user.facultyId);
       const dep = user.department || "—";
       if (!acc[dep]) {
         acc[dep] = { faculty: 0, papers: 0, q1Papers: 0, recentPapers: 0 };
@@ -535,7 +544,10 @@ const CampusAdminDashboard = () => {
     };
   }, [institutePapers, myPapers, users]);
 
-  const myStats = useMemo(() => ({ total: myPapers.length }), [myPapers]);
+  const myStats = useMemo(() => {
+    const safeMyPapers = Array.isArray(myPapers) ? myPapers : [];
+    return { total: safeMyPapers.length };
+  }, [myPapers]);
 
   // Selections
   const handleInstituteSelectAll = useCallback(() => {

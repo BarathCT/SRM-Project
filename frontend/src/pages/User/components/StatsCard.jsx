@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"; // optional; remove if you don't use it
 /**
  * StatsCard
  * Clean, professional white/blue statistic card.
+ * Responsive: Compact on mobile, spacious on desktop.
  *
  * Props:
  * - title: string
@@ -25,15 +26,15 @@ export default function StatsCard({
 }) {
   return (
     <Card className={cn("border border-gray-200 bg-white", className)}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-gray-600 text-sm font-medium truncate">{title}</p>
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{title}</p>
 
             {loading ? (
-              <Skeleton className="mt-2 h-8 w-24" />
+              <Skeleton className="mt-2 h-6 sm:h-8 w-16 sm:w-24" />
             ) : (
-              <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{value}</p>
             )}
 
             {subtitle && (
@@ -42,8 +43,10 @@ export default function StatsCard({
           </div>
 
           {icon ? (
-            <div className="p-3 bg-blue-50 rounded-lg shrink-0">
-              {icon}
+            <div className="p-2 sm:p-3 bg-blue-50 rounded-lg shrink-0">
+              {React.cloneElement(icon, {
+                className: cn(icon.props?.className, "h-6 w-6 sm:h-8 sm:w-8")
+              })}
             </div>
           ) : null}
         </div>

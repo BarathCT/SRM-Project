@@ -187,9 +187,12 @@ const FacultyDashboard = () => {
   const filterOptions = useMemo(() => {
     const data = activeTab === "papers" ? papers :
       activeTab === "bookChapters" ? bookChapters : conferencePapers;
-    const years = [...new Set(data.map((p) => p.year))].sort((a, b) => b - a);
-    const qRatings = activeTab === "papers" ? [...new Set(papers.map((p) => p.qRating))].sort() : [];
-    const publicationTypes = activeTab === "papers" ? [...new Set(papers.map((p) => p.publicationType))].sort() : [];
+    // Guard against non-array data
+    const safeData = Array.isArray(data) ? data : [];
+    const safePapers = Array.isArray(papers) ? papers : [];
+    const years = [...new Set(safeData.map((p) => p.year))].sort((a, b) => b - a);
+    const qRatings = activeTab === "papers" ? [...new Set(safePapers.map((p) => p.qRating))].sort() : [];
+    const publicationTypes = activeTab === "papers" ? [...new Set(safePapers.map((p) => p.publicationType))].sort() : [];
     const subjectAreas = Object.keys(SUBJECT_AREAS);
     return { years, qRatings, publicationTypes, subjectAreas };
   }, [activeTab, papers, bookChapters, conferencePapers]);
@@ -206,7 +209,8 @@ const FacultyDashboard = () => {
 
   // Filtered data for active tab
   const filteredPapers = useMemo(() => {
-    return papers.filter((paper) => {
+    const safePapers = Array.isArray(papers) ? papers : [];
+    return safePapers.filter((paper) => {
       const matchesSearch =
         searchTerm === "" ||
         paper.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -221,7 +225,8 @@ const FacultyDashboard = () => {
   }, [papers, searchTerm, selectedYear, selectedQRating, selectedPublicationType, selectedSubjectArea]);
 
   const filteredChapters = useMemo(() => {
-    return bookChapters.filter((chapter) => {
+    const safeChapters = Array.isArray(bookChapters) ? bookChapters : [];
+    return safeChapters.filter((chapter) => {
       const matchesSearch =
         searchTerm === "" ||
         chapter.chapterTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -234,7 +239,8 @@ const FacultyDashboard = () => {
   }, [bookChapters, searchTerm, selectedYear, selectedSubjectArea]);
 
   const filteredConference = useMemo(() => {
-    return conferencePapers.filter((paper) => {
+    const safeConference = Array.isArray(conferencePapers) ? conferencePapers : [];
+    return safeConference.filter((paper) => {
       const matchesSearch =
         searchTerm === "" ||
         paper.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -247,11 +253,16 @@ const FacultyDashboard = () => {
   }, [conferencePapers, searchTerm, selectedYear, selectedSubjectArea]);
 
   // Stats
-  const stats = useMemo(() => ({
-    papers: papers.length,
-    chapters: bookChapters.length,
-    conference: conferencePapers.length,
-  }), [papers.length, bookChapters.length, conferencePapers.length]);
+  const stats = useMemo(() => {
+    const safePapers = Array.isArray(papers) ? papers : [];
+    const safeChapters = Array.isArray(bookChapters) ? bookChapters : [];
+    const safeConference = Array.isArray(conferencePapers) ? conferencePapers : [];
+    return {
+      papers: safePapers.length,
+      chapters: safeChapters.length,
+      conference: safeConference.length,
+    };
+  }, [papers, bookChapters, conferencePapers]);
 
   // Clear filters
   const clearFilters = () => {
@@ -527,7 +538,7 @@ const FacultyDashboard = () => {
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
         <StatsCard
           title="Research Papers"
           value={stats.papers}
@@ -548,25 +559,27 @@ const FacultyDashboard = () => {
           subtitle="Conference presentations"
           icon={<Presentation className="h-8 w-8 text-purple-600" />}
           loading={loadingConference}
+          className="sm:col-span-2 lg:col-span-1"
         />
       </div>
 
-      {/* Tab Navigation */}
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="flex gap-4">
+      {/* Tab Navigation - Scrollable on mobile */}
+      <div className="mb-4 sm:mb-6 border-b border-gray-200 -mx-2 sm:mx-0 px-2 sm:px-0">
+        <nav className="flex gap-1 sm:gap-4 overflow-x-auto scrollbar-hide pb-px">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${activeTab === tab.id
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 font-medium text-xs sm:text-sm transition-colors border-b-2 -mb-px whitespace-nowrap min-h-[44px] ${activeTab === tab.id
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
-                <Icon className="h-4 w-4" />
-                {tab.label}
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="hidden xs:inline sm:inline">{tab.label}</span>
+                <span className="xs:hidden sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             );
           })}

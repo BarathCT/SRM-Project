@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import axios from 'axios';
 import {
   Users,
   Building2,
@@ -61,6 +62,8 @@ ChartJS.register(
   LineElement,
   Filler
 );
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const roleConfig = {
   super_admin: {
@@ -179,9 +182,10 @@ function FilterButtonGroup({
 }
 
 export default function UserStatsCard({
+  // users prop is no longer needed for stats, but might be passed by parent. We ignore it for stats.
   users = [],
   roleOptions = [],
-  loading = false,
+  loading: parentLoading = false,
   className = "",
   currentUser
 }) {
@@ -195,8 +199,59 @@ export default function UserStatsCard({
   });
   const [selectedLocation, setSelectedLocation] = useState(null);
 
+  // Local loading state for stats fetching
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // Statistics State (initialized with empty skeletons)
+  const [statistics, setStatistics] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    roleStats: { super_admin: 0, campus_admin: 0, faculty: 0, total: 0 },
+    collegeDistribution: [],
+    instituteDistribution: [],
+    departmentDistribution: [],
+    rolesByCollege: {},
+    rolesByInstitute: {},
+    rolesByDepartment: {}
+  });
+
   const currentUserRole = currentUser?.role || 'super_admin';
   const isCampusAdmin = currentUserRole === 'campus_admin';
+
+  // Fetch stats from server
+  const fetchStats = useCallback(async () => {
+    try {
+      setStatsLoading(true);
+      const token = localStorage.getItem('token');
+
+      // Build query params
+      const params = new URLSearchParams();
+      if (filters.role !== 'all') params.append('role', filters.role);
+      if (filters.college !== 'all') params.append('college', filters.college);
+      if (filters.institute !== 'all') params.append('institute', filters.institute);
+      if (filters.department !== 'all') params.append('department', filters.department);
+      if (filters.search) params.append('search', filters.search);
+
+      const response = await axios.get(`${API_BASE_URL}/api/admin/stats?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setStatistics(response.data);
+    } catch (error) {
+      console.error("Failed to fetch user stats:", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [filters]);
+
+  // Fetch on mount and when filters change
+  // Debounce search filter? For now direct dependency.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStats();
+    }, 300); // 300ms debounce for all filter changes including search
+    return () => clearTimeout(timer);
+  }, [fetchStats]);
 
   // For campus admin: only show department analytics for their scope.
   let campusAdminDepartments = [];
@@ -250,28 +305,17 @@ export default function UserStatsCard({
   // TABS
   const chartTabs = isCampusAdmin
     ? [
-        { value: 'overview', label: 'Overview', icon: Eye },
-        { value: 'departments', label: 'Departments', icon: Award }
-      ]
+      { value: 'overview', label: 'Overview', icon: Eye },
+      { value: 'departments', label: 'Departments', icon: Award }
+    ]
     : [
-        { value: 'overview', label: 'Overview', icon: Eye },
-        { value: 'colleges', label: 'Colleges', icon: Building2 },
-        ...(isNonInstituteCollegeSelected
-          ? []
-          : [{ value: 'institutes', label: 'Institutes', icon: Layers }]),
-        { value: 'departments', label: 'Departments', icon: Award }
-      ];
-
-  // Filtered users
-  const filteredUsers = useMemo(() => {
-    return users.filter(user => {
-      const matchesRole = filters.role === 'all' || user.role === filters.role;
-      const matchesCollege = filters.college === 'all' || user.college === filters.college;
-      const matchesInstitute = filters.institute === 'all' || user.institute === filters.institute;
-      const matchesDepartment = filters.department === 'all' || user.department === filters.department;
-      return matchesRole && matchesCollege && matchesInstitute && matchesDepartment;
-    });
-  }, [users, filters]);
+      { value: 'overview', label: 'Overview', icon: Eye },
+      { value: 'colleges', label: 'Colleges', icon: Building2 },
+      ...(isNonInstituteCollegeSelected
+        ? []
+        : [{ value: 'institutes', label: 'Institutes', icon: Layers }]),
+      { value: 'departments', label: 'Departments', icon: Award }
+    ];
 
   // Filter drilldown: when a parent changes, reset lower levels
   const handleFilterChange = useCallback((key, value) => {
@@ -315,145 +359,6 @@ export default function UserStatsCard({
   const allInstitutes = getAllInstituteNames();
   const allColleges = ALL_COLLEGE_NAMES;
 
-  // Stats calculation
-  const statistics = useMemo(() => {
-    const totalUsers = filteredUsers.length;
-    const roleStats = {
-      super_admin: filteredUsers.filter(u => u.role === 'super_admin').length,
-      campus_admin: filteredUsers.filter(u => u.role === 'campus_admin').length,
-      faculty: filteredUsers.filter(u => u.role === 'faculty').length,
-      total: totalUsers
-    };
-
-    // Department
-    const departmentStats = {};
-    activeDepartmentList.forEach(dept => { departmentStats[dept] = 0; });
-    filteredUsers
-      .filter(user => user.role !== 'super_admin')
-      .forEach(user => {
-        if (user.department && departmentStats.hasOwnProperty(user.department)) {
-          departmentStats[user.department]++;
-        }
-      });
-    const departmentDistribution = activeDepartmentList.map(dept => ({
-      label: dept,
-      value: departmentStats[dept] || 0
-    }));
-
-    const rolesByDepartment = {};
-    activeDepartmentList.forEach(dept => {
-      rolesByDepartment[dept] = { campus_admin: 0, faculty: 0 };
-    });
-    filteredUsers
-      .filter(user => user.role !== 'super_admin')
-      .forEach(user => {
-        if (user.department && rolesByDepartment.hasOwnProperty(user.department) && user.role) {
-          rolesByDepartment[user.department][user.role] = (rolesByDepartment[user.department][user.role] || 0) + 1;
-        }
-      });
-
-    // Colleges/Institutes
-    let collegeDistribution = [];
-    let rolesByCollege = {};
-    let instituteDistribution = [];
-    let rolesByInstitute = {};
-    if (!isCampusAdmin) {
-      // Colleges
-      const collegeStats = {};
-      allColleges.forEach(c => { collegeStats[c] = 0; });
-      filteredUsers
-        .filter(user => user.role !== 'super_admin')
-        .forEach(user => {
-          if (user.college && collegeStats.hasOwnProperty(user.college)) {
-            collegeStats[user.college]++;
-          }
-        });
-      collegeDistribution = allColleges.map(college => ({
-        label: college,
-        value: collegeStats[college] || 0
-      }));
-
-      rolesByCollege = {};
-      allColleges.forEach(college => {
-        rolesByCollege[college] = { campus_admin: 0, faculty: 0 };
-      });
-      filteredUsers
-        .filter(user => user.role !== 'super_admin')
-        .forEach(user => {
-          if (user.college && rolesByCollege.hasOwnProperty(user.college) && user.role) {
-            rolesByCollege[user.college][user.role] = (rolesByCollege[user.college][user.role] || 0) + 1;
-          }
-        });
-
-      // Institutes
-      const instituteStats = {};
-      activeInstituteList.forEach(i => { instituteStats[i] = 0; });
-      filteredUsers
-        .filter(user => user.role !== 'super_admin')
-        .forEach(user => {
-          if (user.institute && instituteStats.hasOwnProperty(user.institute)) {
-            instituteStats[user.institute]++;
-          }
-        });
-      instituteDistribution = activeInstituteList.map(inst => ({
-        label: inst,
-        value: instituteStats[inst] || 0
-      }));
-
-      rolesByInstitute = {};
-      activeInstituteList.forEach(inst => {
-        rolesByInstitute[inst] = { campus_admin: 0, faculty: 0 };
-      });
-      filteredUsers
-        .filter(user => user.role !== 'super_admin')
-        .forEach(user => {
-          if (user.institute && rolesByInstitute.hasOwnProperty(user.institute) && user.role) {
-            rolesByInstitute[user.institute][user.role] = (rolesByInstitute[user.institute][user.role] || 0) + 1;
-          }
-        });
-    }
-
-    return {
-      totalUsers,
-      roleStats,
-      collegeDistribution,
-      instituteDistribution,
-      departmentDistribution,
-      rolesByCollege,
-      rolesByInstitute,
-      rolesByDepartment,
-    };
-  }, [filteredUsers, isCampusAdmin, activeDepartmentList, allColleges, activeInstituteList]);
-
-  // Hierarchical data for CollegeHierarchyTree (for super admin, and not filtering for super_admin)
-  const collegeHierarchyData = useMemo(() => {
-    if (!users?.length) return {};
-    const tree = {};
-    users.forEach(user => {
-      if (user.role === 'super_admin') return;
-      const college = user.college || 'Unknown College';
-      const isCollegeWithoutInstitutes = collegesWithoutInstitutes.includes(college);
-      
-      if (!tree[college]) tree[college] = {};
-      
-      if (isCollegeWithoutInstitutes) {
-        // For colleges without institutes, use college name as the "institute" label
-        // This makes it consistent with how institutes are displayed
-        const collegeLabel = college;
-        if (!tree[college][collegeLabel]) tree[college][collegeLabel] = {};
-        tree[college][collegeLabel][user.role] = (tree[college][collegeLabel][user.role] || 0) + 1;
-      } else {
-        // For colleges with institutes, use institute level but skip N/A
-        const institute = user.institute && user.institute !== 'N/A' ? user.institute : null;
-        if (institute) {
-          if (!tree[college][institute]) tree[college][institute] = {};
-          tree[college][institute][user.role] = (tree[college][institute][user.role] || 0) + 1;
-        }
-      }
-    });
-    return tree;
-  }, [users]);
-
   // Chart configs
   const chartOptions = {
     responsive: true,
@@ -496,7 +401,7 @@ export default function UserStatsCard({
         bodyColor: 'white'
       }
     },
-    onClick: () => {}
+    onClick: () => { }
   };
 
   // Chart Data Creators
@@ -543,39 +448,29 @@ export default function UserStatsCard({
   // COUNT MAPS for all chart filter groups
   const collegeCountMap = useMemo(() => {
     const map = {};
-    ALL_COLLEGE_NAMES.forEach(college => {
-      map[college] = users.filter(u =>
-        (filters.role === 'all' || u.role === filters.role) &&
-        u.college === college
-      ).length;
+    statistics.collegeDistribution.forEach(item => {
+      map[item.label] = item.value;
     });
     return map;
-  }, [users, filters.role]);
+  }, [statistics.collegeDistribution]);
+
   const instituteCountMap = useMemo(() => {
     const map = {};
-    activeInstituteList.forEach(institute => {
-      map[institute] = users.filter(u =>
-        (filters.role === 'all' || u.role === filters.role) &&
-        (filters.college === 'all' || u.college === filters.college) &&
-        u.institute === institute
-      ).length;
+    statistics.instituteDistribution.forEach(item => {
+      map[item.label] = item.value;
     });
     return map;
-  }, [users, filters.role, filters.college, activeInstituteList]);
+  }, [statistics.instituteDistribution]);
+
   const departmentCountMap = useMemo(() => {
     const map = {};
-    activeDepartmentList.forEach(department => {
-      map[department] = users.filter(u =>
-        (filters.role === 'all' || u.role === filters.role) &&
-        (filters.college === 'all' || u.college === filters.college) &&
-        (filters.institute === 'all' || u.institute === filters.institute) &&
-        u.department === department
-      ).length;
+    statistics.departmentDistribution.forEach(item => {
+      map[item.label] = item.value;
     });
     return map;
-  }, [users, filters.role, filters.college, filters.institute, activeDepartmentList]);
+  }, [statistics.departmentDistribution]);
 
-  if (loading) {
+  if (loading || statsLoading) {
     return (
       <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
         <Card className="border border-gray-200 bg-white overflow-hidden">
@@ -597,20 +492,48 @@ export default function UserStatsCard({
     );
   }
 
+  // College Hierarchical Tree
+  const collegeHierarchyData = useMemo(() => {
+    const tree = {};
+    const { rolesByCollege, rolesByInstitute } = statistics;
+
+    // Process Institutes
+    Object.entries(rolesByInstitute || {}).forEach(([institute, roles]) => {
+      // Find college for this institute
+      const collegeOption = COLLEGE_OPTIONS.find(c =>
+        c.institutes && c.institutes.some(i => i.name === institute)
+      );
+      const collegeName = collegeOption ? collegeOption.name : 'Unknown';
+
+      if (!tree[collegeName]) tree[collegeName] = {};
+      tree[collegeName][institute] = roles;
+    });
+
+    // Process non-institute colleges
+    Object.entries(rolesByCollege || {}).forEach(([college, roles]) => {
+      if (collegesWithoutInstitutes.includes(college)) {
+        if (!tree[college]) tree[college] = {};
+        tree[college][college] = roles;
+      }
+    });
+
+    return tree;
+  }, [statistics]);
+
   // College Hierarchical Tree: show only for super admin and not filtering for super_admin
   const showCollegeHierarchicalTree =
     currentUserRole === 'super_admin' && filters.role !== 'super_admin';
 
   const collegeSummaries = statistics.rolesByCollege
-    ? allColleges.map(college => (
-        <SummaryCard
-          key={college}
-          location={college}
-          roles={statistics.rolesByCollege[college] || { campus_admin: 0, faculty: 0 }}
-          onClick={handleLocationClick}
-          isSelected={selectedLocation === college}
-        />
-      ))
+    ? Object.keys(statistics.rolesByCollege).map(college => (
+      <SummaryCard
+        key={college}
+        location={college}
+        roles={statistics.rolesByCollege[college] || { campus_admin: 0, faculty: 0 }}
+        onClick={handleLocationClick}
+        isSelected={selectedLocation === college}
+      />
+    ))
     : [];
 
   return (
@@ -633,7 +556,7 @@ export default function UserStatsCard({
               </div>
               <div className="flex flex-col items-end">
                 <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 text-base font-semibold">
-                  {statistics.totalUsers} Total Users
+                  {totalUsers || statistics.totalUsers} Total Users
                 </Badge>
               </div>
             </div>
@@ -641,7 +564,7 @@ export default function UserStatsCard({
               filters={filters}
               onFilterChange={handleFilterChange}
               onReset={resetFilters}
-              stats={{ filtered: statistics.totalUsers, total: users.length }}
+              stats={{ filtered: statistics.totalUsers, total: totalUsers || users.length }}
               showInstituteFilter={!isCampusAdmin && !isNonInstituteCollegeSelected}
               currentUser={currentUser}
             />
@@ -790,10 +713,10 @@ export default function UserStatsCard({
                         filters.college === "all"
                           ? "Department Distribution"
                           : isNonInstituteCollegeSelected
-                          ? `Departments in ${filters.college}`
-                          : filters.institute === "all"
-                          ? `Departments in ${filters.college}`
-                          : `Departments in ${filters.institute}, ${filters.college}`
+                            ? `Departments in ${filters.college}`
+                            : filters.institute === "all"
+                              ? `Departments in ${filters.college}`
+                              : `Departments in ${filters.institute}, ${filters.college}`
                       }
                       icon={Award}
                       iconColor="text-emerald-600"
