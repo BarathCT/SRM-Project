@@ -180,6 +180,7 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       if (!token) {
         toast.error("Authentication required");
+        setLoading(false);
         return;
       }
       const payload = JSON.parse(atob(token.split(".")[1]));
@@ -1071,6 +1072,7 @@ const CampusAdminDashboard = () => {
 
         {/* Show Book Chapters or Conference Papers when their tab is active */}
         {activePublicationType === "bookChapters" && (
+          <>
           <BookChaptersTable
             chapters={activeTab === "institute" ? instituteBookChapters : myBookChapters}
             selectedChapters={selectedChapters}
@@ -1111,9 +1113,30 @@ const CampusAdminDashboard = () => {
             hasActiveFilters={false}
             onClearFilters={() => { }}
           />
+          <Pagination
+            page={activeTab === "institute" ? instituteChaptersPagination.page : myChaptersPagination.page}
+            totalPages={activeTab === "institute" ? instituteChaptersPagination.totalPages : myChaptersPagination.totalPages}
+            total={activeTab === "institute" ? instituteChaptersPagination.total : myChaptersPagination.total}
+            limit={activeTab === "institute" ? instituteChaptersPagination.limit : myChaptersPagination.limit}
+            hasNextPage={activeTab === "institute" ? instituteChaptersPagination.hasNextPage : myChaptersPagination.hasNextPage}
+            hasPrevPage={activeTab === "institute" ? instituteChaptersPagination.hasPrevPage : myChaptersPagination.hasPrevPage}
+            onPageChange={(page) => activeTab === "institute" ? fetchInstituteBookChapters(currentUser, page) : fetchMyBookChapters(page)}
+            onLimitChange={(limit) => {
+              if (activeTab === "institute") {
+                setInstituteChaptersPagination(prev => ({ ...prev, limit }));
+                fetchInstituteBookChapters(currentUser, 1);
+              } else {
+                setMyChaptersPagination(prev => ({ ...prev, limit }));
+                fetchMyBookChapters(1);
+              }
+            }}
+            loading={loading}
+          />
+          </>
         )}
 
         {activePublicationType === "conferencePapers" && (
+          <>
           <ConferencePapersTable
             papers={activeTab === "institute" ? instituteConference : myConference}
             selectedPapers={selectedConference}
@@ -1154,6 +1177,26 @@ const CampusAdminDashboard = () => {
             hasActiveFilters={false}
             onClearFilters={() => { }}
           />
+          <Pagination
+            page={activeTab === "institute" ? instituteConferencePagination.page : myConferencePagination.page}
+            totalPages={activeTab === "institute" ? instituteConferencePagination.totalPages : myConferencePagination.totalPages}
+            total={activeTab === "institute" ? instituteConferencePagination.total : myConferencePagination.total}
+            limit={activeTab === "institute" ? instituteConferencePagination.limit : myConferencePagination.limit}
+            hasNextPage={activeTab === "institute" ? instituteConferencePagination.hasNextPage : myConferencePagination.hasNextPage}
+            hasPrevPage={activeTab === "institute" ? instituteConferencePagination.hasPrevPage : myConferencePagination.hasPrevPage}
+            onPageChange={(page) => activeTab === "institute" ? fetchInstituteConference(currentUser, page) : fetchMyConference(page)}
+            onLimitChange={(limit) => {
+              if (activeTab === "institute") {
+                setInstituteConferencePagination(prev => ({ ...prev, limit }));
+                fetchInstituteConference(currentUser, 1);
+              } else {
+                setMyConferencePagination(prev => ({ ...prev, limit }));
+                fetchMyConference(1);
+              }
+            }}
+            loading={loading}
+          />
+          </>
         )}
 
         {activePublicationType === "papers" && (
