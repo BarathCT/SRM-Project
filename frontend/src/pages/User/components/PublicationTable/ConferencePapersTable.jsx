@@ -1,5 +1,17 @@
 import React, { useMemo, useState } from "react";
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
     Card,
     CardContent,
     CardHeader,
@@ -28,6 +40,7 @@ import {
     Calendar,
     ChevronLeft,
     ChevronRight,
+    ArrowLeft,
 } from "lucide-react";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 
@@ -51,6 +64,10 @@ export default function ConferencePapersTable({
     const PER_PAGE = 15;
     const [page, setPage] = useState(1);
 
+    // Mobile/Tablet full-screen modal state
+    const [selectedPaperForMobile, setSelectedPaperForMobile] = useState(null);
+    const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+
     const totalPages = useMemo(
         () => Math.max(1, Math.ceil(papers.length / PER_PAGE)),
         [papers.length]
@@ -61,10 +78,11 @@ export default function ConferencePapersTable({
         return { start, end: start + PER_PAGE };
     }, [page]);
 
-    const displayedPapers = useMemo(
-        () => papers.slice(pageSlice.start, pageSlice.end),
-        [papers, pageSlice]
-    );
+    const displayedPapers = useMemo(() => {
+        const start = (page - 1) * PER_PAGE;
+        const end = start + PER_PAGE;
+        return papers.slice(start, end);
+    }, [papers, page]);
 
     // Reset page when papers change
     React.useEffect(() => {
@@ -185,7 +203,7 @@ export default function ConferencePapersTable({
                     <>
                         <div className="overflow-x-auto">
                             <table className="w-full bg-white">
-                                <thead className="bg-white-50 border-b border-blue-100">
+                                <thead className="bg-white-50 border-b border-blue-100 hidden md:table-header-group">
                                     <tr>
                                         <th className="py-4 px-4 text-left">
                                             <Checkbox
@@ -203,117 +221,135 @@ export default function ConferencePapersTable({
                                         <th className="py-4 px-4 text-left font-semibold text-gray-900">
                                             Type / Mode
                                         </th>
-                                        <th className="py-4 px-4 text-left font-semibold text-gray-900">
+                                        <th className="py-4 px-4 text-left font-semibold text-gray-900 hidden lg:table-cell">
                                             Actions
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-blue-100">
-                                    {displayedPapers.map((paper, index) => (
-                                        <React.Fragment key={paper._id}>
-                                            <tr className="hover:bg-blue-50/60 transition-colors">
-                                                <td className="py-4 px-4">
-                                                    <Checkbox
-                                                        checked={selectedPapers.has(paper._id)}
-                                                        onCheckedChange={() => onToggleSelect(paper._id)}
-                                                        className="border-blue-300"
-                                                    />
-                                                </td>
-                                                <td className="py-4 px-4 align-top">
-                                                    <div className="space-y-2">
-                                                        <h4 className="font-semibold text-gray-900 leading-tight">
-                                                            {paper.title}
-                                                        </h4>
-                                                        <p className="text-sm text-gray-600">
-                                                            <span className="font-medium">Conference:</span>{" "}
-                                                            {paper.conferenceName}
-                                                            {paper.conferenceShortName && (
-                                                                <span className="text-blue-700">
-                                                                    {" "}
-                                                                    ({paper.conferenceShortName})
-                                                                </span>
-                                                            )}
-                                                        </p>
-                                                        <p className="text-sm text-gray-600">
-                                                            <span className="font-medium">Authors:</span>{" "}
-                                                            {paper.authors
-                                                                ?.slice(0, 3)
-                                                                .map((a) =>
-                                                                    a.isCorresponding ? `${a.name} (C)` : a.name
-                                                                )
-                                                                .join(", ")}
-                                                            {paper.authors?.length > 3 && (
-                                                                <span className="text-blue-700">
-                                                                    {" "}
-                                                                    +{paper.authors.length - 3} more
-                                                                </span>
-                                                            )}
-                                                        </p>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="bg-gray-100 text-gray-800 font-medium"
-                                                            >
-                                                                {paper.year}
-                                                            </Badge>
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
-                                                            >
-                                                                {paper.subjectArea}
-                                                            </Badge>
+                                    {displayedPapers.map((paper, index) => {
+                                        const handleRowClick = (e) => {
+                                            if (
+                                                e.target.closest('input[type="checkbox"]') ||
+                                                e.target.closest('button') ||
+                                                e.target.closest('[role="button"]')
+                                            ) {
+                                                return;
+                                            }
+                                            if (window.innerWidth < 1024) {
+                                                setSelectedPaperForMobile(paper);
+                                                setIsMobileModalOpen(true);
+                                            }
+                                        };
+
+                                        return (
+                                            <React.Fragment key={paper._id}>
+                                                <tr 
+                                                    className="hover:bg-blue-50/60 transition-colors lg:cursor-default cursor-pointer"
+                                                    onClick={handleRowClick}
+                                                >
+                                                    <td className="py-3 px-2 md:py-4 md:px-4">
+                                                        <Checkbox
+                                                            checked={selectedPapers.has(paper._id)}
+                                                            onCheckedChange={() => onToggleSelect(paper._id)}
+                                                            className="border-blue-300"
+                                                        />
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 align-top">
+                                                        <div className="space-y-2">
+                                                            <h4 className="font-semibold text-gray-900 leading-tight text-sm lg:text-base line-clamp-2">
+                                                                {paper.title}
+                                                            </h4>
+                                                            <p className="text-sm text-gray-600 hidden lg:block">
+                                                                <span className="font-medium">Conference:</span>{" "}
+                                                                {paper.conferenceName}
+                                                                {paper.conferenceShortName && (
+                                                                    <span className="text-blue-700">
+                                                                        {" "}
+                                                                        ({paper.conferenceShortName})
+                                                                    </span>
+                                                                )}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600 hidden lg:block">
+                                                                <span className="font-medium">Authors:</span>{" "}
+                                                                {paper.authors
+                                                                    ?.slice(0, 3)
+                                                                    .map((a) =>
+                                                                        a.isCorresponding ? `${a.name} (C)` : a.name
+                                                                    )
+                                                                    .join(", ")}
+                                                                {paper.authors?.length > 3 && (
+                                                                    <span className="text-blue-700">
+                                                                        {" "}
+                                                                        +{paper.authors.length - 3} more
+                                                                    </span>
+                                                                )}
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="bg-gray-100 text-gray-800 font-medium"
+                                                                >
+                                                                    {paper.year}
+                                                                </Badge>
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                                                >
+                                                                    {paper.subjectArea}
+                                                                </Badge>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-4 hidden md:table-cell align-top">
-                                                    <div className="space-y-1">
-                                                        <p className="font-medium text-gray-900 flex items-center gap-1">
-                                                            <MapPin className="h-3 w-3 text-gray-500" />
-                                                            {paper.conferenceLocation?.city},{" "}
-                                                            {paper.conferenceLocation?.country}
-                                                        </p>
-                                                        <p className="text-sm text-gray-600 flex items-center gap-1">
-                                                            <Calendar className="h-3 w-3 text-gray-500" />
-                                                            {formatDate(paper.conferenceStartDate)} -{" "}
-                                                            {formatDate(paper.conferenceEndDate)}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500">
-                                                            {paper.organizer}
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-4 align-top">
-                                                    <div className="space-y-2">
-                                                        <Badge
-                                                            className={`w-fit text-white font-medium ${paper.conferenceType === "International"
-                                                                    ? "bg-blue-700"
-                                                                    : "bg-green-600"
-                                                                }`}
-                                                        >
-                                                            {paper.conferenceType}
-                                                        </Badge>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={`block w-fit text-xs ${paper.conferenceMode === "Online"
-                                                                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                                                                    : paper.conferenceMode === "Offline"
-                                                                        ? "bg-gray-50 text-gray-700 border-gray-200"
-                                                                        : "bg-orange-50 text-orange-700 border-orange-200"
-                                                                }`}
-                                                        >
-                                                            {paper.conferenceMode}
-                                                        </Badge>
-                                                        {paper.indexedIn && (
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 hidden md:table-cell align-top">
+                                                        <div className="space-y-1">
+                                                            <p className="font-medium text-gray-900 flex items-center gap-1">
+                                                                <MapPin className="h-3 w-3 text-gray-500" />
+                                                                {paper.conferenceLocation?.city},{" "}
+                                                                {paper.conferenceLocation?.country}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600 flex items-center gap-1">
+                                                                <Calendar className="h-3 w-3 text-gray-500" />
+                                                                {formatDate(paper.conferenceStartDate)} -{" "}
+                                                                {formatDate(paper.conferenceEndDate)}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                {paper.organizer}
+                                                            </p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 align-top">
+                                                        <div className="flex flex-col sm:block space-y-1 sm:space-y-2">
+                                                            <Badge
+                                                                className={`w-fit text-white font-medium ${paper.conferenceType === "International"
+                                                                        ? "bg-blue-700"
+                                                                        : "bg-green-600"
+                                                                    }`}
+                                                            >
+                                                                {paper.conferenceType}
+                                                            </Badge>
                                                             <Badge
                                                                 variant="outline"
-                                                                className="block w-fit text-xs bg-green-50 text-green-700 border-green-200"
+                                                                className={`w-fit text-xs ${paper.conferenceMode === "Online"
+                                                                        ? "bg-purple-50 text-purple-700 border-purple-200"
+                                                                        : paper.conferenceMode === "Offline"
+                                                                            ? "bg-gray-50 text-gray-700 border-gray-200"
+                                                                            : "bg-orange-50 text-orange-700 border-orange-200"
+                                                                    }`}
                                                             >
-                                                                {paper.indexedIn}
+                                                                {paper.conferenceMode}
                                                             </Badge>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-4 align-top">
+                                                            {paper.indexedIn && (
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="w-fit text-xs bg-green-50 text-green-700 border-green-200"
+                                                                >
+                                                                    {paper.indexedIn}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-2 md:py-4 md:px-4 align-top hidden lg:table-cell">
                                                     <div className="flex items-center gap-2">
                                                         <Button
                                                             onClick={() => onToggleExpand(index)}
@@ -528,8 +564,8 @@ export default function ConferencePapersTable({
                         {/* Pagination Footer */}
                         <div className="flex items-center justify-between p-4 border-t border-blue-100 bg-white-50">
                             <p className="text-sm text-gray-600">
-                                Showing {pageSlice.start + 1}–
-                                {Math.min(pageSlice.end, papers.length)} of {papers.length}
+                                Showing {papers.length === 0 ? 0 : (page - 1) * PER_PAGE + 1}–
+                                {Math.min(page * PER_PAGE, papers.length)} of {papers.length}
                             </p>
                             <PaginationControls />
                         </div>
@@ -537,5 +573,205 @@ export default function ConferencePapersTable({
                 )}
             </CardContent>
         </Card>
+
+        {/* Mobile/Tablet Full-Screen Modal */}
+        <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
+            <DialogContent 
+                className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0"
+                showCloseButton={false}
+            >
+                {selectedPaperForMobile && (
+                    <>
+                        <DialogHeader className="relative">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsMobileModalOpen(false)}
+                                className="absolute left-0 top-0 -ml-2 -mt-1 p-2 hover:bg-gray-100"
+                            >
+                                <ArrowLeft className="h-5 w-5 text-gray-700" />
+                            </Button>
+                            <DialogTitle className="text-xl font-bold text-gray-900 pr-8">
+                                {selectedPaperForMobile.title}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-6 mt-4">
+                            {/* Conference Information */}
+                            <Card className="border border-gray-200 bg-white">
+                                <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                                    <CardTitle className="text-lg text-gray-900">
+                                        Conference Information
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
+                                    <p>
+                                        <span className="font-semibold">Conference:</span>{" "}
+                                        {selectedPaperForMobile.conferenceName || "N/A"}
+                                        {selectedPaperForMobile.conferenceShortName && (
+                                            <span className="text-blue-700">
+                                                {" "}({selectedPaperForMobile.conferenceShortName})
+                                            </span>
+                                        )}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Location:</span>{" "}
+                                        {selectedPaperForMobile.conferenceLocation?.city && selectedPaperForMobile.conferenceLocation?.country
+                                            ? `${selectedPaperForMobile.conferenceLocation.city}, ${selectedPaperForMobile.conferenceLocation.country}`
+                                            : "N/A"}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Dates:</span>{" "}
+                                        {formatDate(selectedPaperForMobile.conferenceStartDate)} -{" "}
+                                        {formatDate(selectedPaperForMobile.conferenceEndDate)}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Organizer:</span>{" "}
+                                        {selectedPaperForMobile.organizer || "N/A"}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Type:</span>{" "}
+                                        <Badge
+                                            className={`text-white font-medium ${
+                                                selectedPaperForMobile.conferenceType === "International"
+                                                    ? "bg-blue-700"
+                                                    : "bg-green-600"
+                                            }`}
+                                        >
+                                            {selectedPaperForMobile.conferenceType}
+                                        </Badge>
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Mode:</span>{" "}
+                                        <Badge
+                                            variant="outline"
+                                            className={`text-xs ${
+                                                selectedPaperForMobile.conferenceMode === "Online"
+                                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                                    : selectedPaperForMobile.conferenceMode === "Offline"
+                                                        ? "bg-gray-50 text-gray-700 border-gray-200"
+                                                        : "bg-orange-50 text-orange-700 border-orange-200"
+                                            }`}
+                                        >
+                                            {selectedPaperForMobile.conferenceMode}
+                                        </Badge>
+                                    </p>
+                                    {selectedPaperForMobile.indexedIn && (
+                                        <p>
+                                            <span className="font-semibold">Indexed In:</span>{" "}
+                                            <Badge
+                                                variant="outline"
+                                                className="text-xs bg-green-50 text-green-700 border-green-200"
+                                            >
+                                                {selectedPaperForMobile.indexedIn}
+                                            </Badge>
+                                        </p>
+                                    )}
+                                    <p>
+                                        <span className="font-semibold">Year:</span>{" "}
+                                        {selectedPaperForMobile.year || "N/A"}
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            {/* Author Information */}
+                            <Card className="border border-gray-200 bg-white">
+                                <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                                    <CardTitle className="text-lg text-gray-900">
+                                        Author Information
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
+                                    <p>
+                                        <span className="font-semibold">Authors:</span>{" "}
+                                        {selectedPaperForMobile.authors
+                                            ?.map((a) =>
+                                                a.isCorresponding ? `${a.name} (C)` : a.name
+                                            )
+                                            .join(", ") || "N/A"}
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            {/* Subject Classification */}
+                            <Card className="border border-gray-200 bg-white">
+                                <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                                    <CardTitle className="text-lg text-gray-900">
+                                        Subject Classification
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3 pt-4">
+                                    <div>
+                                        <span className="text-sm font-semibold text-gray-700">
+                                            Subject Area:
+                                        </span>
+                                        <Badge
+                                            variant="outline"
+                                            className="bg-blue-50 text-blue-700 border-blue-200 ml-2"
+                                        >
+                                            {selectedPaperForMobile.subjectArea}
+                                        </Badge>
+                                    </div>
+                                    {selectedPaperForMobile.subjectCategories?.length > 0 && (
+                                        <div>
+                                            <span className="text-sm font-semibold text-gray-700">
+                                                Categories:
+                                            </span>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {selectedPaperForMobile.subjectCategories.map(
+                                                    (category, i) => (
+                                                        <Badge
+                                                            key={i}
+                                                            variant="outline"
+                                                            className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                                        >
+                                                            {category}
+                                                        </Badge>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Actions */}
+                            <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-gray-200">
+                                <Button
+                                    onClick={() => {
+                                        setIsMobileModalOpen(false);
+                                        onEdit(selectedPaperForMobile);
+                                    }}
+                                    variant="outline"
+                                    className="flex-1 border-blue-200 hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Paper
+                                </Button>
+                                <DeleteConfirmationDialog
+                                    trigger={
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1 border-red-200 hover:border-red-500 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                        </Button>
+                                    }
+                                    title="Delete Conference Paper"
+                                    description="This action cannot be undone."
+                                    itemName={selectedPaperForMobile.title}
+                                    onConfirm={() => {
+                                        setIsMobileModalOpen(false);
+                                        onDelete(selectedPaperForMobile._id);
+                                    }}
+                                    isDeleting={deletingId === selectedPaperForMobile._id}
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
+            </DialogContent>
+        </Dialog>
     );
 }

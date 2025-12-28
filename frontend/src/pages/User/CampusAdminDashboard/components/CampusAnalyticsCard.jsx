@@ -97,11 +97,11 @@ function FilterButtonGroup({
   countBg = "#eff6ff"
 }) {
   return (
-    <div className="flex flex-wrap gap-2 justify-center mt-3 mb-2">
+    <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mt-2 sm:mt-3 mb-2">
       <button
         type="button"
         onClick={() => setFilter("all")}
-        className="text-xs px-3 py-1 rounded-full border transition"
+        className="text-xs px-2 sm:px-3 py-1 rounded-full border transition"
         style={{
           background: selected === "all" ? filledColor : "transparent",
           color: selected === "all" ? filledTextColor : textColor,
@@ -130,7 +130,7 @@ function FilterButtonGroup({
             key={v}
             type="button"
             onClick={() => setFilter(prev => prev === v ? "all" : v)}
-            className="text-xs px-3 py-1 rounded-full border transition"
+            className="text-xs px-2 sm:px-3 py-1 rounded-full border transition"
             style={{
               background: isActive ? color : "transparent",
               color: isActive ? "#fff" : color,
@@ -430,9 +430,9 @@ export default function CampusAnalyticsCard({ stats, loading }) {
   // --- Badge card for area/category/QRating top-right ---
   function BadgeCard({ label, count }) {
     return (
-      <div className="absolute top-3 right-4 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1 flex items-center gap-2 z-10">
-        <span className="text-xs font-semibold text-blue-700">{label}</span>
-        <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 rounded-full">
+      <div className="absolute top-2 sm:top-3 right-2 sm:right-4 bg-blue-50 border border-blue-200 rounded-lg px-2 sm:px-3 py-1 flex items-center gap-1 sm:gap-2 z-10">
+        <span className="text-xs font-semibold text-blue-700 truncate max-w-[120px] sm:max-w-none">{label}</span>
+        <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-1.5 sm:px-2 rounded-full flex-shrink-0">
           {count}
         </span>
       </div>
@@ -447,69 +447,72 @@ export default function CampusAnalyticsCard({ stats, loading }) {
           Campus Analytics
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-3 sm:p-4 lg:p-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-50">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <PieChart className="h-4 w-4" />
-              Overview
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-4 sm:mb-6 bg-gray-50 h-auto">
+            <TabsTrigger value="overview" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+              <PieChart className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Overview</span>
+              <span className="sm:hidden">Over</span>
             </TabsTrigger>
-            <TabsTrigger value="trends" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+            <TabsTrigger value="trends" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
               Trends
             </TabsTrigger>
-            <TabsTrigger value="subjects" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Subjects
+            <TabsTrigger value="subjects" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+              <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Subjects</span>
+              <span className="sm:hidden">Subj</span>
             </TabsTrigger>
-            <TabsTrigger value="departments" className="flex items-center gap-2">
-              <Award className="h-4 w-4" />
-              Departments
+            <TabsTrigger value="departments" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+              <Award className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Departments</span>
+              <span className="sm:hidden">Dept</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <div className="relative">
                 <BadgeCard
                   label={qRatingFilter === "all" ? "All Q Ratings" : qRatingFilter}
                   count={qRatingTotal}
                 />
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 text-center">
                   Q-Rating Distribution
                 </h4>
-                <div className="h-64">
+                <div className="h-48 sm:h-64">
                   <Doughnut data={qRatingData} options={chartOptions} />
                 </div>
                 {renderQRatingLegend()}
               </div>
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-gray-700 text-center">
+              <div className="space-y-3 sm:space-y-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-gray-700 text-center">
                   Quality Metrics
                 </h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Q1 Publications</span>
-                    <span className="font-semibold text-blue-700">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex justify-between items-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+                    <span className="text-xs sm:text-sm text-gray-700">Q1 Publications</span>
+                    <span className="font-semibold text-blue-700 text-xs sm:text-sm">
                       {stats.qDistribution?.Q1 || 0} ({stats.q1Percentage}%)
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Q2 Publications</span>
-                    <span className="font-semibold text-green-700">
-                      {stats.qDistribution?.Q2 || 0}
+                  <div className="flex justify-between items-center p-2 sm:p-3 bg-green-50 rounded-lg">
+                    <span className="text-xs sm:text-sm text-gray-700">Q2 Publications</span>
+                    <span className="font-semibold text-green-700 text-xs sm:text-sm">
+                      {stats.qDistribution?.Q2 || 0} ({stats.q2Percentage}%)
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Q3 Publications</span>
-                    <span className="font-semibold text-yellow-700">
-                      {stats.qDistribution?.Q3 || 0}
+                  <div className="flex justify-between items-center p-2 sm:p-3 bg-orange-50 rounded-lg">
+                    <span className="text-xs sm:text-sm text-gray-700">Q3 Publications</span>
+                    <span className="font-semibold text-orange-700 text-xs sm:text-sm">
+                      {stats.qDistribution?.Q3 || 0} ({stats.q3Percentage}%)
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                    <span className="text-sm text-gray-700">Q4 Publications</span>
-                    <span className="font-semibold text-red-700">
-                      {stats.qDistribution?.Q4 || 0}
+                  <div className="flex justify-between items-center p-2 sm:p-3 bg-red-50 rounded-lg">
+                    <span className="text-xs sm:text-sm text-gray-700">Q4 Publications</span>
+                    <span className="font-semibold text-red-700 text-xs sm:text-sm">
+                      {stats.qDistribution?.Q4 || 0} ({stats.q4Percentage}%)
                     </span>
                   </div>
                 </div>
@@ -517,19 +520,19 @@ export default function CampusAnalyticsCard({ stats, loading }) {
             </div>
           </TabsContent>
 
-          <TabsContent value="trends" className="space-y-4">
+          <TabsContent value="trends" className="space-y-3 sm:space-y-4">
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 text-center">
                 Yearly Publication Trend
               </h4>
-              <div className="h-80">
+              <div className="h-64 sm:h-80">
                 <Bar data={chartData.yearlyTrendData} options={barChartOptions} />
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="subjects" className="space-y-4">
-            <div className="flex flex-col gap-8">
+          <TabsContent value="subjects" className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
               {/* Subject Area Card */}
               <div className="relative">
                 <BadgeCard
@@ -540,12 +543,12 @@ export default function CampusAnalyticsCard({ stats, loading }) {
                 />
                 <Card className="border border-gray-200 bg-white w-full">
                   <CardHeader className="pb-2">
-                    <h4 className="text-sm font-semibold text-gray-700 text-center">
+                    <h4 className="text-xs sm:text-sm font-semibold text-gray-700 text-center">
                       Subject Area Distribution
                     </h4>
                   </CardHeader>
-                  <CardContent>
-                    <div className="h-72">
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="h-56 sm:h-72">
                       <Pie data={chartData.subjectAreaData} options={chartOptions} />
                     </div>
                     {renderSubjectAreaLegend()}
@@ -563,12 +566,12 @@ export default function CampusAnalyticsCard({ stats, loading }) {
                   />
                   <Card className="border border-gray-200 bg-white w-full">
                     <CardHeader className="pb-2">
-                      <h4 className="text-sm font-semibold text-gray-700 text-center">
+                      <h4 className="text-xs sm:text-sm font-semibold text-gray-700 text-center">
                         Subject Categories in {subjectAreaFilter}
                       </h4>
                     </CardHeader>
-                    <CardContent>
-                      <div className="h-72">
+                    <CardContent className="p-3 sm:p-6">
+                      <div className="h-56 sm:h-72">
                         <Pie data={chartData.subjectCategoryData} options={chartOptions} />
                       </div>
                       {renderSubjectCategoryLegend()}
@@ -579,12 +582,12 @@ export default function CampusAnalyticsCard({ stats, loading }) {
             </div>
           </TabsContent>
 
-          <TabsContent value="departments" className="space-y-4">
+          <TabsContent value="departments" className="space-y-3 sm:space-y-4">
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 text-center">
                 Department-wise Publication Stats
               </h4>
-              <div className="h-80">
+              <div className="h-64 sm:h-80">
                 <Bar data={chartData.departmentData} options={barChartOptions} />
               </div>
             </div>

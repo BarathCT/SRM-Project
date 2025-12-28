@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { jwtDecode } from 'jwt-decode';
@@ -422,23 +422,34 @@ export default function UserManagement() {
     }
   };
 
-  // Get available filter options from current users
-  const availableRoles = [...new Set(users.map(user => user.role))].filter(role => ['super_admin', 'campus_admin', 'faculty'].includes(role));
-  const availableInstitutes = [...new Set(
-    users
-      .filter(user => user.institute && user.institute !== 'N/A')
-      .map(user => user.institute)
-  )];
-  const availableColleges = [...new Set(
-    users
-      .filter(user => user.college && user.college !== 'N/A')
-      .map(user => user.college)
-  )];
-  const availableDepartments = [...new Set(
-    users
-      .filter(user => user.department && user.department !== 'N/A')
-      .map(user => user.department)
-  )];
+  // Get available filter options from current users - memoized to prevent infinite loops
+  const availableRoles = useMemo(() => {
+    return [...new Set(users.map(user => user.role))].filter(role => ['super_admin', 'campus_admin', 'faculty'].includes(role));
+  }, [users]);
+
+  const availableInstitutes = useMemo(() => {
+    return [...new Set(
+      users
+        .filter(user => user.institute && user.institute !== 'N/A')
+        .map(user => user.institute)
+    )];
+  }, [users]);
+
+  const availableColleges = useMemo(() => {
+    return [...new Set(
+      users
+        .filter(user => user.college && user.college !== 'N/A')
+        .map(user => user.college)
+    )];
+  }, [users]);
+
+  const availableDepartments = useMemo(() => {
+    return [...new Set(
+      users
+        .filter(user => user.department && user.department !== 'N/A')
+        .map(user => user.department)
+    )];
+  }, [users]);
 
   // Bulk Upload Function
   const handleBulkUpload = async (formData) => {

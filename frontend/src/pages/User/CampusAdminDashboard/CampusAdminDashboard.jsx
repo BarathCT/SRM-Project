@@ -939,25 +939,25 @@ const CampusAdminDashboard = () => {
 
         {/* Analytics Section */}
         {showAnalytics && (
-          <section className="max-w-7xl mx-auto mb-8">
-            <div className="relative border border-gray-200 rounded-2xl bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
-              <header className="flex items-center justify-between px-8 py-5 border-b border-gray-200 bg-white/80 rounded-t-2xl">
-                <div className="flex items-center gap-3">
-                  <BarChart3 className="h-7 w-7 text-blue-600" />
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+          <section className="max-w-7xl mx-auto mb-4 sm:mb-8">
+            <div className="relative border border-gray-200 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-white to-blue-50/70 overflow-hidden">
+              <header className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 border-b border-gray-200 bg-white/80 rounded-t-xl sm:rounded-t-2xl">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-blue-600" />
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
                     Analytics Overview
                   </h2>
                 </div>
                 <button
-                  className="p-2 rounded-full hover:bg-blue-100 transition"
+                  className="p-1.5 sm:p-2 rounded-full hover:bg-blue-100 transition"
                   onClick={() => setShowAnalytics(false)}
                   aria-label="Close analytics"
                   type="button"
                 >
-                  <X className="h-6 w-6 text-gray-500" />
+                  <X className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500" />
                 </button>
               </header>
-              <main className="p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-2xl">
+              <main className="p-4 sm:p-6 lg:p-8 bg-gradient-to-tr from-white/70 to-blue-50 rounded-b-xl sm:rounded-b-2xl">
                 <div className="grid grid-cols-1 gap-y-8">
                   <CampusAnalyticsCard
                     stats={{

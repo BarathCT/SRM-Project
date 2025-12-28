@@ -289,28 +289,31 @@ export default function SuperAdminAnalyticsCard({
 
   return (
     <Tabs defaultValue="college" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-50">
-        <TabsTrigger value="college" className="flex items-center gap-2">
-          <Building2 className="h-4 w-4" />
-          College
+      <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-4 sm:mb-6 bg-gray-50 h-auto">
+        <TabsTrigger value="college" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+          <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">College</span>
+          <span className="sm:hidden">Col</span>
         </TabsTrigger>
-        <TabsTrigger value="institute" className="flex items-center gap-2">
-          <Building className="h-4 w-4" />
-          Institute
+        <TabsTrigger value="institute" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+          <Building className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">Institute</span>
+          <span className="sm:hidden">Inst</span>
         </TabsTrigger>
-        <TabsTrigger value="department" className="flex items-center gap-2">
-          <Layers className="h-4 w-4" />
-          Department
+        <TabsTrigger value="department" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+          <Layers className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">Department</span>
+          <span className="sm:hidden">Dept</span>
         </TabsTrigger>
-        <TabsTrigger value="trends" className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" />
+        <TabsTrigger value="trends" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
+          <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
           Trends
         </TabsTrigger>
       </TabsList>
 
       {/* College Tab */}
       <TabsContent value="college">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Publications by College */}
           <AnalyticsChart
             type="bar"
