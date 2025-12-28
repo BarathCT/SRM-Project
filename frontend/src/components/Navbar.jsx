@@ -297,13 +297,13 @@ export default function Navbar() {
     );
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
-      <div className="max-w-full mx-auto px-3 sm:px-4 lg:px-6">
-        <div className="flex items-center justify-between h-14 sm:h-16">
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 w-full overflow-x-hidden">
+      <div className="max-w-full mx-auto px-3 sm:px-4 lg:px-6 w-full">
+        <div className="flex items-center justify-between h-14 sm:h-16 w-full min-w-0">
           {/* Left: Logo and Title */}
           <Link
             to={getDashboardPath()}
-            className="flex items-center space-x-2 sm:space-x-3 group min-w-0 flex-shrink-0"
+            className="flex items-center space-x-2 sm:space-x-3 group min-w-0 flex-shrink-0 max-w-[calc(100%-200px)] sm:max-w-none"
           >
             <div className="flex-shrink-0">
               <img
@@ -312,7 +312,7 @@ export default function Navbar() {
                 className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg object-cover"
               />
             </div>
-            <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-blue-600 whitespace-nowrap">
+            <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-blue-600 whitespace-nowrap truncate">
               ScholarSync
             </span>
           </Link>
@@ -327,7 +327,7 @@ export default function Navbar() {
                   size="sm"
                   onClick={handleUploadClick}
                   disabled={loading}
-                  className={`h-9 sm:h-10 px-3 sm:px-4 gap-1.5 sm:gap-2 border-0 transition-colors ${
+                  className={`h-9 sm:h-10 px-2 sm:px-3 lg:px-4 gap-0 sm:gap-1.5 lg:gap-2 border-0 transition-colors ${
                     hasAuthorIds
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-orange-500 hover:bg-orange-600 text-white'
@@ -338,8 +338,7 @@ export default function Navbar() {
                   ) : (
                     <FilePlus className="h-4 w-4 flex-shrink-0" />
                   )}
-                  <span className="hidden sm:inline text-sm font-medium">Upload Research</span>
-                  <span className="sm:hidden text-sm font-medium">Upload</span>
+                  <span className="hidden lg:inline text-sm font-medium">Upload Research</span>
                 </Button>
 
                 {/* Warning indicator for required roles without Author IDs */}
@@ -357,11 +356,10 @@ export default function Navbar() {
                 variant="outline"
                 size="sm"
                 onClick={handleManageUsers}
-                className="h-9 sm:h-10 px-3 sm:px-4 gap-1.5 sm:gap-2 border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors flex-shrink-0"
+                className="h-9 sm:h-10 px-2 sm:px-3 lg:px-4 gap-0 sm:gap-1.5 lg:gap-2 border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors flex-shrink-0"
               >
                 <Users className="h-4 w-4 flex-shrink-0" />
-                <span className="hidden sm:inline text-sm font-medium">Manage Users</span>
-                <span className="sm:hidden text-sm font-medium">Users</span>
+                <span className="hidden lg:inline text-sm font-medium">Manage Users</span>
               </Button>
             )}
 

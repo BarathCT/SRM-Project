@@ -15,14 +15,12 @@ import {
 import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
 import PublicationsTable from "../components/PublicationTable/PublicationsTable";
-import BookChaptersTable from "../components/PublicationTable/BookChaptersTable";
-import ConferencePapersTable from "../components/PublicationTable/ConferencePapersTable";
+import PublicationTabs from "../components/PublicationTabs";
+import PublicationTableSection from "../components/PublicationTableSection";
+import PublicationEditDialogs from "../components/PublicationEditDialogs";
 import StatsCard from "../components/StatsCard";
 import CampusAnalyticsCard from "../CampusAdminDashboard/components/CampusAnalyticsCard";
 import FacultyDetailsCard from "../CampusAdminDashboard/components/FacultyDetailsCard";
-import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
-import EditBookChapterDialog from "../components/PublicationTable/EditBookChapterDialog";
-import EditConferencePaperDialog from "../components/PublicationTable/EditConferencePaperDialog";
 import UserFinderSidebar from "../components/UserFinderSidebar";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 import SuperAdminAnalyticsCard from "./components/SuperAdminAnalyticsCard";
@@ -42,11 +40,6 @@ import { Pagination } from '@/components/ui/pagination';
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
-const PUB_TABS = [
-  { id: "papers", label: "Research Papers", icon: FileText },
-  { id: "bookChapters", label: "Book Chapters", icon: BookOpen },
-  { id: "conferencePapers", label: "Conference Papers", icon: Presentation },
-];
 
 export default function SuperAdminDashboard() {
   const { toast } = useToast();
@@ -935,70 +928,33 @@ export default function SuperAdminDashboard() {
 
         {/* Tab Navigation for Publication Types */}
         {!selectedUser && (
-          <div className="mb-6 border-b border-gray-200">
-            <nav className="flex gap-4">
-              {PUB_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const count = tab.id === "papers" ? (scopePapersTotal > 0 ? scopePapersTotal : scopePapers.length) :
-                  tab.id === "bookChapters" ? (scopeChaptersTotal > 0 ? scopeChaptersTotal : scopeBookChapters.length) :
-                    (scopeConferenceTotal > 0 ? scopeConferenceTotal : scopeConference.length);
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActivePublicationType(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${activePublicationType === tab.id
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                      }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${activePublicationType === tab.id ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                      }`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+          <PublicationTabs
+            activeTab={activePublicationType}
+            onTabChange={setActivePublicationType}
+            counts={{
+              papers: scopePapersTotal > 0 ? scopePapersTotal : scopePapers.length,
+              bookChapters: scopeChaptersTotal > 0 ? scopeChaptersTotal : scopeBookChapters.length,
+              conferencePapers: scopeConferenceTotal > 0 ? scopeConferenceTotal : scopeConference.length,
+            }}
+          />
         )}
 
-        {/* Publications table summary */}
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm text-gray-700 flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-blue-600" />
-            {selectedUser ? (
-              <>
-                Showing <span className="font-semibold text-gray-900">{selectedUserPapers.length}</span> of{" "}
-                <span className="font-semibold text-gray-900">{selectedUserPapers.length}</span> publications for{" "}
-                <span className="font-medium text-blue-700">{selectedUser?.fullName}</span>
-              </>
-            ) : (
-              <>
-                Showing <span className="font-semibold text-gray-900">
-                  {activePublicationType === "papers" ? filteredPapers.length :
-                    activePublicationType === "bookChapters" ? paginatedChapters.length :
-                      paginatedConference.length}
-                </span> of{" "}
-                <span className="font-semibold text-gray-900">
-                  {activePublicationType === "papers" ? (scopePapersTotal > 0 ? scopePapersTotal : scopePapers.length) :
-                    activePublicationType === "bookChapters" ? (scopeChaptersTotal > 0 ? scopeChaptersTotal : filteredChapters.length) :
-                      (scopeConferenceTotal > 0 ? scopeConferenceTotal : filteredConference.length)}
-                </span> {activePublicationType === "papers" ? "research papers" :
-                  activePublicationType === "bookChapters" ? "book chapters" :
-                    "conference papers"} in scope
-              </>
-            )}
-          </p>
-          {selectedUser && (
+        {/* Publications table summary - only show for selected user or papers tab */}
+        {selectedUser && (
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm text-gray-700 flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-blue-600" />
+              Showing <span className="font-semibold text-gray-900">{selectedUserPapers.length}</span> of{" "}
+              <span className="font-semibold text-gray-900">{selectedUserPapers.length}</span> publications for{" "}
+              <span className="font-medium text-blue-700">{selectedUser?.fullName}</span>
+            </p>
             <div className="text-sm text-gray-600">
               <span className="font-medium">{selectedUser?.college}</span>
               {" • "}
               <span className="font-medium">{selectedUser?.institute}</span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Conditional Table Rendering */}
         {activePublicationType === "papers" && (
@@ -1100,13 +1056,14 @@ export default function SuperAdminDashboard() {
           />
         )}
 
-        {activePublicationType === "bookChapters" && (
-          <>
-          <BookChaptersTable
+        {(activePublicationType === "bookChapters" || activePublicationType === "conferencePapers") && (
+          <PublicationTableSection
+            activeTab={activePublicationType}
+            // Chapters props
             chapters={paginatedChapters}
             selectedChapters={selectedChapters}
-            selectAll={selectAllChapters}
-            onToggleSelectAll={() => {
+            selectAllChapters={selectAllChapters}
+            onToggleSelectAllChapters={() => {
               if (selectAllChapters) {
                 setSelectedChapters(new Set());
                 setSelectAllChapters(false);
@@ -1115,20 +1072,20 @@ export default function SuperAdminDashboard() {
                 setSelectAllChapters(true);
               }
             }}
-            onToggleSelect={(id) => {
+            onToggleSelectChapter={(id) => {
               const next = new Set(selectedChapters);
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedChapters(next);
               setSelectAllChapters(next.size === paginatedChapters.length && paginatedChapters.length > 0);
             }}
-            expandedIndex={expandedChapter}
-            onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
-            onEdit={(chapter) => {
+            expandedChapter={expandedChapter}
+            onToggleExpandChapter={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
+            onEditChapter={(chapter) => {
               setEditingChapter(chapter);
               setEditChapterOpen(true);
             }}
-            onDelete={async (id) => {
+            onDeleteChapter={async (id) => {
               setDeletingChapterId(id);
               try {
                 const token = localStorage.getItem("token");
@@ -1144,30 +1101,23 @@ export default function SuperAdminDashboard() {
                 setDeletingChapterId(null);
               }
             }}
-            deletingId={deletingChapterId}
-            hasActiveFilters={false}
-            onClearFilters={() => { }}
-          />
-          <Pagination
-            page={chaptersPage}
-            totalPages={chaptersTotalPages}
-            total={scopeChaptersTotal > 0 ? scopeChaptersTotal : filteredChapters.length}
-            limit={chaptersLimit}
-            hasNextPage={chaptersHasNextPage}
-            hasPrevPage={chaptersHasPrevPage}
-            onPageChange={(page) => setChaptersPage(page)}
-            loading={scopeChaptersLoading}
-          />
-          </>
-        )}
-
-        {activePublicationType === "conferencePapers" && (
-          <>
-          <ConferencePapersTable
-            papers={paginatedConference}
-            selectedPapers={selectedConference}
-            selectAll={selectAllConference}
-            onToggleSelectAll={() => {
+            deletingChapterId={deletingChapterId}
+            chaptersPagination={{
+              page: chaptersPage,
+              totalPages: chaptersTotalPages,
+              total: scopeChaptersTotal > 0 ? scopeChaptersTotal : filteredChapters.length,
+              limit: chaptersLimit,
+              hasNextPage: chaptersHasNextPage,
+              hasPrevPage: chaptersHasPrevPage,
+            }}
+            onChaptersPageChange={(page) => setChaptersPage(page)}
+            onChaptersLimitChange={() => {}}
+            loadingChapters={scopeChaptersLoading}
+            // Conference props
+            conference={paginatedConference}
+            selectedConference={selectedConference}
+            selectAllConference={selectAllConference}
+            onToggleSelectAllConference={() => {
               if (selectAllConference) {
                 setSelectedConference(new Set());
                 setSelectAllConference(false);
@@ -1176,20 +1126,20 @@ export default function SuperAdminDashboard() {
                 setSelectAllConference(true);
               }
             }}
-            onToggleSelect={(id) => {
+            onToggleSelectConference={(id) => {
               const next = new Set(selectedConference);
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedConference(next);
               setSelectAllConference(next.size === paginatedConference.length && paginatedConference.length > 0);
             }}
-            expandedIndex={expandedConference}
-            onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
-            onEdit={(paper) => {
+            expandedConference={expandedConference}
+            onToggleExpandConference={(i) => setExpandedConference(expandedConference === i ? null : i)}
+            onEditConference={(paper) => {
               setEditingConference(paper);
               setEditConferenceOpen(true);
             }}
-            onDelete={async (id) => {
+            onDeleteConference={async (id) => {
               setDeletingConferenceId(id);
               try {
                 const token = localStorage.getItem("token");
@@ -1205,31 +1155,42 @@ export default function SuperAdminDashboard() {
                 setDeletingConferenceId(null);
               }
             }}
-            deletingId={deletingConferenceId}
+            deletingConferenceId={deletingConferenceId}
+            conferencePagination={{
+              page: conferencePage,
+              totalPages: conferenceTotalPages,
+              total: scopeConferenceTotal > 0 ? scopeConferenceTotal : filteredConference.length,
+              limit: conferenceLimit,
+              hasNextPage: conferenceHasNextPage,
+              hasPrevPage: conferenceHasPrevPage,
+            }}
+            onConferencePageChange={(page) => setConferencePage(page)}
+            onConferenceLimitChange={() => {}}
+            loadingConference={scopeConferenceLoading}
+            // Common props
             hasActiveFilters={false}
             onClearFilters={() => { }}
+            filteredCount={
+              activePublicationType === "bookChapters" ? paginatedChapters.length : paginatedConference.length
+            }
+            totalCount={
+              activePublicationType === "bookChapters"
+                ? (scopeChaptersTotal > 0 ? scopeChaptersTotal : filteredChapters.length)
+                : (scopeConferenceTotal > 0 ? scopeConferenceTotal : filteredConference.length)
+            }
+            selectedCount={
+              activePublicationType === "bookChapters" ? selectedChapters.size : selectedConference.size
+            }
           />
-          <Pagination
-            page={conferencePage}
-            totalPages={conferenceTotalPages}
-            total={scopeConferenceTotal > 0 ? scopeConferenceTotal : filteredConference.length}
-            limit={conferenceLimit}
-            hasNextPage={conferenceHasNextPage}
-            hasPrevPage={conferenceHasPrevPage}
-            onPageChange={(page) => setConferencePage(page)}
-            loading={scopeConferenceLoading}
-          />
-          </>
         )}
       </div>
 
       {/* Edit Dialogs */}
-      <EditPublicationDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        value={editData}
-        onChange={setEditData}
-        onSubmit={async () => {
+      <PublicationEditDialogs
+        editPaperOpen={editDialogOpen}
+        onEditPaperOpenChange={setEditDialogOpen}
+        editingPaper={editData}
+        onUpdatePaper={async () => {
           if (!editingId || !editData) return;
           try {
             const token = localStorage.getItem("token");
@@ -1245,18 +1206,11 @@ export default function SuperAdminDashboard() {
             toast.error(e.response?.data?.error || "Update failed");
           }
         }}
-        onCancel={() => setEditDialogOpen(false)}
-        isSubmitting={false}
-        subjectAreas={SUBJECT_AREAS}
-        publicationTypes={PUBLICATION_TYPES}
-        qRatings={Q_RATINGS}
-      />
-
-      <EditBookChapterDialog
-        open={editChapterOpen}
-        onOpenChange={setEditChapterOpen}
-        chapter={editingChapter}
-        onSave={async (data) => {
+        isUpdatingPaper={false}
+        editChapterOpen={editChapterOpen}
+        onEditChapterOpenChange={setEditChapterOpen}
+        editingChapter={editingChapter}
+        onUpdateChapter={async (data) => {
           try {
             const token = localStorage.getItem("token");
             await axios.put(`${API_BASE_URL}/api/book-chapters/${data._id}`, data, {
@@ -1270,14 +1224,11 @@ export default function SuperAdminDashboard() {
             toast.error(e.response?.data?.error || "Update failed");
           }
         }}
-        isSubmitting={false}
-      />
-
-      <EditConferencePaperDialog
-        open={editConferenceOpen}
-        onOpenChange={setEditConferenceOpen}
-        paper={editingConference}
-        onSave={async (data) => {
+        isUpdatingChapter={false}
+        editConferenceOpen={editConferenceOpen}
+        onEditConferenceOpenChange={setEditConferenceOpen}
+        editingConference={editingConference}
+        onUpdateConference={async (data) => {
           try {
             const token = localStorage.getItem("token");
             await axios.put(`${API_BASE_URL}/api/conference-papers/${data._id}`, data, {
@@ -1291,7 +1242,7 @@ export default function SuperAdminDashboard() {
             toast.error(e.response?.data?.error || "Update failed");
           }
         }}
-        isSubmitting={false}
+        isUpdatingConference={false}
       />
     </div>
   );

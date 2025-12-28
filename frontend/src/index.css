@@ -119,17 +119,7 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
 /* Font */
-
 @theme {
   --font-sans: "Poppins", sans-serif;
 }
@@ -138,7 +128,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html, body {
+    @apply overflow-x-hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+  #root {
+    @apply overflow-x-hidden;
+    width: 100%;
+    max-width: 100vw;
   }
 }
