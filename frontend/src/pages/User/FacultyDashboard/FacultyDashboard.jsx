@@ -254,15 +254,16 @@ const FacultyDashboard = () => {
 
   // Stats
   const stats = useMemo(() => {
-    const safePapers = Array.isArray(papers) ? papers : [];
-    const safeChapters = Array.isArray(bookChapters) ? bookChapters : [];
-    const safeConference = Array.isArray(conferencePapers) ? conferencePapers : [];
+    // Use pagination total if available, otherwise fall back to array length
+    const papersCount = papersPagination?.total ?? (Array.isArray(papers) ? papers.length : 0);
+    const chaptersCount = chaptersPagination?.total ?? (Array.isArray(bookChapters) ? bookChapters.length : 0);
+    const conferenceCount = conferencePagination?.total ?? (Array.isArray(conferencePapers) ? conferencePapers.length : 0);
     return {
-      papers: safePapers.length,
-      chapters: safeChapters.length,
-      conference: safeConference.length,
+      papers: papersCount,
+      chapters: chaptersCount,
+      conference: conferenceCount,
     };
-  }, [papers, bookChapters, conferencePapers]);
+  }, [papers, bookChapters, conferencePapers, papersPagination, chaptersPagination, conferencePagination]);
 
   // Clear filters
   const clearFilters = () => {

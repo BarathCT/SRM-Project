@@ -71,6 +71,9 @@ export default function Navbar() {
           throw new Error('Invalid response structure');
         }
       } catch (err) {
+        // Get token again in case it's needed in catch block
+        const token = localStorage.getItem('token');
+        
         // Only remove token and redirect on authentication errors (401, 403)
         const isAuthError = err.response?.status === 401 || err.response?.status === 403;
         const isTimeoutError = err.code === 'ECONNABORTED' || err.message?.includes('timeout');
@@ -94,7 +97,7 @@ export default function Navbar() {
         } else {
           // For timeout/network errors, use cached user data from localStorage
           const cachedUser = localStorage.getItem('user');
-          if (cachedUser) {
+          if (cachedUser && token) {
             try {
               const userData = JSON.parse(cachedUser);
               const decoded = jwtDecode(token);
@@ -173,6 +176,7 @@ export default function Navbar() {
             duration: 5000
           }
         );
+        setLoading(false);
         return;
       }
 
@@ -180,7 +184,6 @@ export default function Navbar() {
     } catch (error) {
       console.error('Error checking Author ID requirement:', error);
       // Error checking - user can still try to upload
-      console.error('Error checking Author ID requirement:', error);
     } finally {
       setLoading(false);
     }
@@ -199,6 +202,7 @@ export default function Navbar() {
             duration: 5000
           }
         );
+        setLoading(false);
         return;
       }
 
@@ -206,7 +210,6 @@ export default function Navbar() {
     } catch (error) {
       console.error('Error checking Author ID requirement:', error);
       // Error checking - user can still try to upload
-      console.error('Error checking upload permissions:', error);
     } finally {
       setLoading(false);
     }
