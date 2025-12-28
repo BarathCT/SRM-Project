@@ -139,7 +139,7 @@ export default function SuperAdminDashboard() {
   // Finder modal/drawer
   const [finderOpen, setFinderOpen] = useState(false);
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // Selected user (faculty or campus_admin) and their publications
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -164,9 +164,10 @@ export default function SuperAdminDashboard() {
         const token = localStorage.getItem("token");
         const res = await api.get('/admin/users', {
           headers: { Authorization: `Bearer ${token}` },
-          params: { role: "all" },
+          params: { role: "all", limit: 1000 },
         });
-        setUsers(res.data || []);
+        const data = res.data?.data || res.data || [];
+        setUsers(Array.isArray(data) ? data : []);
       } catch {
       } finally {
         setLoading(false);
@@ -218,13 +219,14 @@ export default function SuperAdminDashboard() {
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/papers/institute', {
               headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute },
+              params: { college, institute, limit: 1000 },
             });
-            all.push(...(res.data || []));
+            const data = res.data?.data || res.data || [];
+            all.push(...(Array.isArray(data) ? data : []));
           })
         );
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      } catch {
+      } catch (error) {
         // Error loading - UI shows loading state, no need for toast
         console.error("Failed to load publications for scope:", error);
       } finally {
@@ -275,9 +277,10 @@ export default function SuperAdminDashboard() {
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/book-chapters/institute', {
               headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute },
+              params: { college, institute, limit: 1000 },
             });
-            all.push(...(res.data || []));
+            const data = res.data?.data || res.data || [];
+            all.push(...(Array.isArray(data) ? data : []));
           })
         );
         setScopeBookChapters(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -330,9 +333,10 @@ export default function SuperAdminDashboard() {
           pairs.map(async ({ college, institute }) => {
             const res = await api.get('/conference-papers/institute', {
               headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute },
+              params: { college, institute, limit: 1000 },
             });
-            all.push(...(res.data || []));
+            const data = res.data?.data || res.data || [];
+            all.push(...(Array.isArray(data) ? data : []));
           })
         );
         setScopeConference(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -838,8 +842,8 @@ export default function SuperAdminDashboard() {
                     key={tab.id}
                     onClick={() => setActivePublicationType(tab.id)}
                     className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${activePublicationType === tab.id
-                        ? "border-blue-600 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                       }`}
                   >
                     <Icon className="h-4 w-4" />

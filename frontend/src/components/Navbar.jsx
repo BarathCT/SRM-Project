@@ -294,124 +294,126 @@ export default function Navbar() {
     );
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b px-6 py-3 flex items-center justify-between">
-      {/* Left: Logo and Title */}
-      <Link
-        to={getDashboardPath()}
-        className="flex items-center space-x-3 group"
-      >
-        <div className="p-1.5 rounded-lg transition-all">
-          <img
-            src="/logo.jpg"
-            alt="ScholarSync"
-            className="h-9 w-9 rounded-lg object-cover border-2 border-white/20"
-          />
-        </div>
-        <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-blue-800 bg-clip-text text-transparent">
-          ScholarSync
-        </span>
-      </Link>
-
-      {/* Right: Actions and Profile Dropdown */}
-      <div className="flex items-center gap-4">
-        {/* Upload Button */}
-        {canUpload && (
-          <div className="relative">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleUploadClick}
-              disabled={loading}
-              className={`gap-2 shadow-sm transition-colors ${
-                hasAuthorIds
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                  : 'bg-orange-500 hover:bg-orange-600 text-white'
-              }`}
-            >
-              {loading ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <FilePlus className="h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">Upload Research</span>
-              <span className="sm:hidden">Upload</span>
-            </Button>
-
-            {/* Warning indicator for required roles without Author IDs */}
-            {requiresAuthorIds && !hasAuthorIds && (
-              <div className="absolute -top-1 -right-1">
-                <AlertCircle className="h-4 w-4 text-orange-500 bg-white rounded-full" />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* User Management Button */}
-        {canManageUsers && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleManageUsers}
-            className="gap-2 border-blue-500 text-blue-500 hover:bg-blue-50 shadow-sm transition-colors"
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
+      <div className="max-w-full mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="flex items-center justify-between h-14 sm:h-16">
+          {/* Left: Logo and Title */}
+          <Link
+            to={getDashboardPath()}
+            className="flex items-center space-x-2 sm:space-x-3 group min-w-0 flex-shrink-0"
           >
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Manage Users</span>
-            <span className="sm:hidden">Users</span>
-          </Button>
-        )}
+            <div className="flex-shrink-0">
+              <img
+                src="/logo.jpg"
+                alt="ScholarSync"
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg object-cover"
+              />
+            </div>
+            <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-blue-600 whitespace-nowrap">
+              ScholarSync
+            </span>
+          </Link>
 
-        {/* Profile Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2 px-3 py-8 rounded-lg hover:bg-gray-100/50 focus-visible:ring-0 focus-visible:ring-offset-0"
-            >
-              <Avatar className="h-8 w-8 border border-gray-200">
-                <AvatarImage src="" alt={getDisplayName()} />
-                <AvatarFallback className="bg-blue-100 text-blue-800 font-medium">
-                  {getInitials(user.fullName || user.email)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden md:flex flex-col items-start gap-0.5">
-                <span className="ml-1 text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                  {getDisplayName()}
-                </span>
-                {user.role && (
-                  <Badge
-                    variant={
-                      user.role === 'super_admin' ? 'default' :
-                        user.role === 'campus_admin' ? 'secondary' :
-                          user.role === 'admin' ? 'outline' :
-                            'destructive'
-                    }
-                    className="h-5 text-xs capitalize px-1.5"
-                  >
-                    {user.role.replace('_', ' ')}
-                  </Badge>
+          {/* Right: Actions and Profile Dropdown */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Upload Button */}
+            {canUpload && (
+              <div className="relative flex-shrink-0">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleUploadClick}
+                  disabled={loading}
+                  className={`h-9 sm:h-10 px-3 sm:px-4 gap-1.5 sm:gap-2 border-0 transition-colors ${
+                    hasAuthorIds
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-orange-500 hover:bg-orange-600 text-white'
+                  }`}
+                >
+                  {loading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <FilePlus className="h-4 w-4 flex-shrink-0" />
+                  )}
+                  <span className="hidden sm:inline text-sm font-medium">Upload Research</span>
+                  <span className="sm:hidden text-sm font-medium">Upload</span>
+                </Button>
+
+                {/* Warning indicator for required roles without Author IDs */}
+                {requiresAuthorIds && !hasAuthorIds && (
+                  <div className="absolute -top-1 -right-1">
+                    <AlertCircle className="h-3.5 w-3.5 text-orange-500 bg-white rounded-full" />
+                  </div>
                 )}
               </div>
-              <ChevronDown className="h-4 w-4 text-gray-500 ml-1" />
-            </Button>
-          </DropdownMenuTrigger>
+            )}
 
-          <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl shadow-md border">
-            <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-gray-500">
+            {/* User Management Button */}
+            {canManageUsers && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManageUsers}
+                className="h-9 sm:h-10 px-3 sm:px-4 gap-1.5 sm:gap-2 border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors flex-shrink-0"
+              >
+                <Users className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline text-sm font-medium">Manage Users</span>
+                <span className="sm:hidden text-sm font-medium">Users</span>
+              </Button>
+            )}
+
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 px-2 sm:px-3 h-9 sm:h-10 rounded-lg hover:bg-gray-50 focus-visible:ring-0 focus-visible:ring-offset-0 min-w-0"
+                >
+                  <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border border-gray-200 flex-shrink-0">
+                    <AvatarImage src="" alt={getDisplayName()} />
+                    <AvatarFallback className="bg-blue-600 text-white font-medium text-sm">
+                      {getInitials(user.fullName || user.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden lg:flex flex-col items-start gap-0.5 min-w-0">
+                    <span className="text-sm font-medium text-gray-900 truncate max-w-[140px]">
+                      {getDisplayName()}
+                    </span>
+                    {user.role && (
+                      <Badge
+                        variant={
+                          user.role === 'super_admin' ? 'default' :
+                            user.role === 'campus_admin' ? 'secondary' :
+                              user.role === 'admin' ? 'outline' :
+                                'destructive'
+                        }
+                        className="h-4 text-xs capitalize px-1.5"
+                      >
+                        {user.role.replace('_', ' ')}
+                      </Badge>
+                    )}
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0 hidden sm:block" />
+                </Button>
+              </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-64 p-1 rounded-lg border border-gray-200 bg-white shadow-lg">
+            <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Account
             </DropdownMenuLabel>
-            <DropdownMenuItem className="px-2 py-1.5 rounded-md">
+            <DropdownMenuItem className="px-3 py-2.5 rounded-md focus:bg-gray-50">
               <div className="flex items-center gap-3 w-full">
-                <Avatar className="h-9 w-9 flex-shrink-0">
+                <Avatar className="h-10 w-10 flex-shrink-0">
                   <AvatarImage src="" alt={getDisplayName()} />
-                  <AvatarFallback className="bg-blue-100 text-blue-800 font-medium">
+                  <AvatarFallback className="bg-blue-600 text-white font-medium">
                     {getInitials(user.fullName || user.email)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
                     {getDisplayName()}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-gray-500 truncate mt-0.5">
                     {getEmail()}
                   </p>
                   {user.role && (
@@ -422,7 +424,7 @@ export default function Navbar() {
                             user.role === 'admin' ? 'outline' :
                               'destructive'
                       }
-                      className="h-5 text-xs capitalize mt-1 w-fit"
+                      className="h-4 text-xs capitalize mt-1.5 w-fit"
                     >
                       {user.role.replace('_', ' ')}
                     </Badge>
@@ -434,13 +436,13 @@ export default function Navbar() {
                   )}
                   {/* Author ID Status for roles that require IDs */}
                   {requiresAuthorIds && (
-                    <div className="flex items-center gap-1 mt-1">
+                    <div className="flex items-center gap-1 mt-1.5">
                       {hasAuthorIds ? (
-                        <Badge variant="outline" className="h-4 text-xs text-green-600 border-green-300">
+                        <Badge variant="outline" className="h-4 text-xs text-green-600 border-green-300 bg-green-50">
                           Author IDs ✓
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="h-4 text-xs text-orange-600 border-orange-300">
+                        <Badge variant="outline" className="h-4 text-xs text-orange-600 border-orange-300 bg-orange-50">
                           Author IDs Required
                         </Badge>
                       )}
@@ -450,22 +452,22 @@ export default function Navbar() {
               </div>
             </DropdownMenuItem>
 
-            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuSeparator className="my-1 bg-gray-200" />
 
             <DropdownMenuItem
               onClick={() => navigate(getDashboardPath())}
-              className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
+              className="px-3 py-2.5 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer focus:bg-gray-50"
             >
-              <LayoutDashboard className="mr-2 h-4 w-4 text-gray-500" />
+              <LayoutDashboard className="mr-3 h-4 w-4 text-gray-500" />
               Dashboard
             </DropdownMenuItem>
 
             {canManageUsers && (
               <DropdownMenuItem
                 onClick={handleManageUsers}
-                className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
+                className="px-3 py-2.5 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer focus:bg-gray-50"
               >
-                <Users className="mr-2 h-4 w-4 text-gray-500" />
+                <Users className="mr-3 h-4 w-4 text-gray-500" />
                 Manage Users
               </DropdownMenuItem>
             )}
@@ -474,13 +476,13 @@ export default function Navbar() {
               <DropdownMenuItem
                 onClick={handleUploadFromDropdown}
                 disabled={loading}
-                className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
+                className="px-3 py-2.5 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer focus:bg-gray-50 disabled:opacity-50"
               >
                 <div className="flex items-center w-full">
                   {loading ? (
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+                    <div className="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
                   ) : (
-                    <FilePlus className="mr-2 h-4 w-4 text-gray-500" />
+                    <FilePlus className="mr-3 h-4 w-4 text-gray-500" />
                   )}
                   Upload Research
                   {requiresAuthorIds && !hasAuthorIds && (
@@ -492,10 +494,10 @@ export default function Navbar() {
 
             <DropdownMenuItem
               asChild
-              className="px-2 py-1.5 text-sm text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
+              className="px-3 py-2.5 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer focus:bg-gray-50"
             >
-              <Link to="/settings">
-                <Settings className="mr-2 h-4 w-4 text-gray-500" />
+              <Link to="/settings" className="flex items-center">
+                <Settings className="mr-3 h-4 w-4 text-gray-500" />
                 Account Settings
                 {requiresAuthorIds && !hasAuthorIds && (
                   <AlertCircle className="ml-auto h-4 w-4 text-orange-500" />
@@ -503,17 +505,19 @@ export default function Navbar() {
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuSeparator className="my-1 bg-gray-200" />
 
             <DropdownMenuItem
               onClick={handleLogout}
-              className="px-2 py-1-5 text-sm text-red-600 rounded-md hover:bg-red-50 cursor-pointer"
+              className="px-3 py-2.5 text-sm text-red-600 rounded-md hover:bg-red-50 cursor-pointer focus:bg-red-50"
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="mr-3 h-4 w-4" />
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+          </div>
+        </div>
       </div>
     </nav>
   );

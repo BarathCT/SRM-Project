@@ -108,4 +108,10 @@ const ConferencePaperSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Indexes for pagination and filtering optimization
+ConferencePaperSchema.index({ facultyId: 1, createdAt: -1 });
+ConferencePaperSchema.index({ year: 1 });
+ConferencePaperSchema.index({ subjectArea: 1 });
+ConferencePaperSchema.index({ createdAt: -1 });
+
 export default mongoose.model("ConferencePaper", ConferencePaperSchema);

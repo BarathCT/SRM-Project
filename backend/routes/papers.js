@@ -2,6 +2,12 @@ import express from 'express';
 import Paper from '../models/Paper.js';
 import User from '../models/User.js';
 import verifyToken from '../middleware/verifyToken.js';
+import {
+  parsePaginationParams,
+  parseSortParams,
+  parsePublicationFilters,
+  buildPaginatedResponse
+} from '../utils/paginationHelper.js';
 
 const router = express.Router();
 
@@ -36,9 +42,9 @@ router.delete('/:id', verifyToken, async (req, res) => {
     } else if (req.user?.role === 'campus_admin') {
       // Campus admin can delete papers from their institute
       const paperAuthor = await User.findOne({ facultyId: paper.facultyId });
-      if (paperAuthor && 
-          paperAuthor.college === req.user.college && 
-          paperAuthor.institute === req.user.institute) {
+      if (paperAuthor &&
+        paperAuthor.college === req.user.college &&
+        paperAuthor.institute === req.user.institute) {
         canDelete = true;
       }
     } else if (req.user?.facultyId === paper.facultyId) {
@@ -51,8 +57,8 @@ router.delete('/:id', verifyToken, async (req, res) => {
     }
 
     await Paper.findByIdAndDelete(id);
-    return res.json({ 
-      message: 'Paper deleted successfully', 
+    return res.json({
+      message: 'Paper deleted successfully',
       id,
       deletedAt: new Date().toISOString()
     });
@@ -83,9 +89,9 @@ router.put('/:id', verifyToken, async (req, res) => {
       canEdit = true;
     } else if (req.user?.role === 'campus_admin') {
       const paperAuthor = await User.findOne({ facultyId: paper.facultyId });
-      if (paperAuthor && 
-          paperAuthor.college === req.user.college && 
-          paperAuthor.institute === req.user.institute) {
+      if (paperAuthor &&
+        paperAuthor.college === req.user.college &&
+        paperAuthor.institute === req.user.institute) {
         canEdit = true;
       }
     } else if (req.user?.facultyId === paper.facultyId) {
@@ -128,8 +134,8 @@ router.put('/:id', verifyToken, async (req, res) => {
     });
 
     const updatedPaper = await Paper.findByIdAndUpdate(
-      id, 
-      updateData, 
+      id,
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -152,10 +158,12 @@ router.put('/:id', verifyToken, async (req, res) => {
 });
 
 // GET /api/papers/institute - Get papers for specific college/institute (Campus Admin)
+// Supports pagination: ?page=1&limit=15&sortBy=createdAt&sortOrder=desc
+// Supports filtering: ?year=2024&qRating=Q1&publicationType=scopus&subjectArea=...&search=...
 router.get('/institute', verifyToken, async (req, res) => {
   try {
     const { college, institute } = req.query;
-    
+
     // Validate user permissions
     if (!canAccessInstitute(req.user, college, institute)) {
       return res.status(403).json({ error: 'Access denied to institute data' });
@@ -165,33 +173,61 @@ router.get('/institute', verifyToken, async (req, res) => {
     const facultyUsers = await User.find({
       college: college,
       institute: institute,
-      role: { $in: ['faculty', 'campus_admin'] }, // Include campus_admin papers too
+      role: { $in: ['faculty', 'campus_admin'] },
       isActive: true
-    }).select('facultyId fullName department email');
+    }).select('facultyId fullName department email').lean();
 
     if (!facultyUsers.length) {
-      return res.json([]);
+      return res.json(buildPaginatedResponse([], 0, { page: 1, limit: 15 }));
     }
 
+    // Create faculty lookup map for O(1) access
+    const facultyMap = new Map(facultyUsers.map(u => [u.facultyId, u]));
     const facultyIds = facultyUsers.map(user => user.facultyId);
 
-    // Get papers from these faculty members
-    const papers = await Paper.find({
-      facultyId: { $in: facultyIds }
-    }).sort({ createdAt: -1 });
+    // Parse pagination and filter parameters
+    const paginationParams = parsePaginationParams(req.query);
+    const sortParams = parseSortParams(req.query);
+    const filters = parsePublicationFilters(req.query);
+
+    // Add facultyId filter
+    filters.facultyId = { $in: facultyIds };
+
+    // Department filter (special handling - need to filter by faculty's department)
+    if (req.query.department && req.query.department !== 'all') {
+      const deptFacultyIds = facultyUsers
+        .filter(u => u.department === req.query.department)
+        .map(u => u.facultyId);
+      filters.facultyId = { $in: deptFacultyIds };
+    }
+
+    // Author filter
+    if (req.query.author && req.query.author !== 'all') {
+      filters.claimedBy = req.query.author;
+    }
+
+    // Get total count for pagination
+    const total = await Paper.countDocuments(filters);
+
+    // Get paginated papers
+    const papers = await Paper.find(filters)
+      .sort(sortParams)
+      .skip(paginationParams.skip)
+      .limit(paginationParams.limit)
+      .lean();
 
     // Enhance papers with faculty information
     const enhancedPapers = papers.map(paper => {
-      const faculty = facultyUsers.find(user => user.facultyId === paper.facultyId);
+      const faculty = facultyMap.get(paper.facultyId);
       return {
-        ...paper.toObject(),
+        ...paper,
         facultyName: faculty?.fullName || 'Unknown Faculty',
         facultyDepartment: faculty?.department || 'Unknown Department',
         facultyEmail: faculty?.email || ''
       };
     });
 
-    res.json(enhancedPapers);
+    res.json(buildPaginatedResponse(enhancedPapers, total, paginationParams));
   } catch (err) {
     console.error('Institute papers fetch error:', err);
     res.status(500).json({ error: 'Server error while fetching institute papers' });
@@ -203,7 +239,7 @@ router.get('/doi/:doi', verifyToken, async (req, res) => {
   try {
     const doi = req.params.doi;
     if (!doi) return res.status(400).json({ error: 'DOI is required' });
-    
+
     const exists = await Paper.exists({ doi: doi.trim() });
     res.json({ exists: !!exists });
   } catch (e) {
@@ -216,7 +252,7 @@ router.get('/doi/:doi', verifyToken, async (req, res) => {
 router.post('/', verifyToken, async (req, res) => {
   try {
     const b = req.body;
-    
+
     // Enhanced validation
     if (!b.title?.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -274,7 +310,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     const paper = new Paper(payload);
     const saved = await paper.save();
-    
+
     return res.status(201).json({
       message: 'Paper created successfully',
       paper: saved
@@ -293,17 +329,33 @@ router.post('/', verifyToken, async (req, res) => {
 });
 
 // GET /api/papers/my - Get current user's papers
+// Supports pagination: ?page=1&limit=15&sortBy=createdAt&sortOrder=desc
+// Supports filtering: ?year=2024&qRating=Q1&publicationType=scopus&subjectArea=...&search=...
 router.get('/my', verifyToken, async (req, res) => {
   try {
     if (!req.user?.facultyId) {
       return res.status(401).json({ error: 'Invalid token: facultyId missing' });
     }
 
-    const papers = await Paper.find({ 
-      facultyId: req.user.facultyId 
-    }).sort({ createdAt: -1 });
+    // Parse pagination and filter parameters
+    const paginationParams = parsePaginationParams(req.query);
+    const sortParams = parseSortParams(req.query);
+    const filters = parsePublicationFilters(req.query);
 
-    res.json(papers);
+    // Add user's facultyId filter
+    filters.facultyId = req.user.facultyId;
+
+    // Get total count for pagination
+    const total = await Paper.countDocuments(filters);
+
+    // Get paginated papers
+    const papers = await Paper.find(filters)
+      .sort(sortParams)
+      .skip(paginationParams.skip)
+      .limit(paginationParams.limit)
+      .lean();
+
+    res.json(buildPaginatedResponse(papers, total, paginationParams));
   } catch (e) {
     console.error('Error fetching user papers:', e);
     res.status(500).json({ error: 'Server error while fetching papers' });
@@ -314,7 +366,7 @@ router.get('/my', verifyToken, async (req, res) => {
 router.get('/stats/institute', verifyToken, async (req, res) => {
   try {
     const { college, institute } = req.query;
-    
+
     if (!canAccessInstitute(req.user, college, institute)) {
       return res.status(403).json({ error: 'Access denied to institute statistics' });
     }
@@ -339,7 +391,7 @@ router.get('/stats/institute', verifyToken, async (req, res) => {
       totalPapers: papers.length,
       totalFaculty: facultyUsers.length,
       activeFaculty: [...new Set(papers.map(p => p.facultyId))].length,
-      
+
       // Q-rating distribution
       qDistribution: papers.reduce((acc, paper) => {
         acc[paper.qRating] = (acc[paper.qRating] || 0) + 1;

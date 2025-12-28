@@ -70,7 +70,7 @@ const FacultyDashboard = () => {
   const [editConferenceOpen, setEditConferenceOpen] = useState(false);
   const [editingConference, setEditingConference] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // Export
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -111,11 +111,14 @@ const FacultyDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 1000 } // Fetch all for client-side filtering (temporary)
       });
-      setPapers(response.data || []);
+      // Handle both paginated and non-paginated responses
+      const data = response.data?.data || response.data || [];
+      setPapers(Array.isArray(data) ? data : []);
     } catch (e) {
-      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch research papers:", e);
+      setPapers([]);
     } finally {
       setLoadingPapers(false);
     }
@@ -127,11 +130,13 @@ const FacultyDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/book-chapters/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 1000 }
       });
-      setBookChapters(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setBookChapters(Array.isArray(data) ? data : []);
     } catch (e) {
-      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch book chapters:", e);
+      setBookChapters([]);
     } finally {
       setLoadingChapters(false);
     }
@@ -143,11 +148,13 @@ const FacultyDashboard = () => {
       const token = localStorage.getItem("token");
       const response = await api.get('/conference-papers/my', {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 1000 }
       });
-      setConferencePapers(response.data || []);
+      const data = response.data?.data || response.data || [];
+      setConferencePapers(Array.isArray(data) ? data : []);
     } catch (e) {
-      // Error fetching - UI shows empty state, no need for toast
       console.error("Failed to fetch conference papers:", e);
+      setConferencePapers([]);
     } finally {
       setLoadingConference(false);
     }
@@ -534,8 +541,8 @@ const FacultyDashboard = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${activeTab === tab.id
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
                 <Icon className="h-4 w-4" />
