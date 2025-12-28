@@ -10,12 +10,6 @@ import {
     CardContent,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
     CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -556,7 +550,8 @@ export default function ConferencePapersTable({
                                                 </tr>
                                             )}
                                         </React.Fragment>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
