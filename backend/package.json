@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-
     "seed:admin": "node scripts/createUsers.js",
     "seed:book": "node scripts/addBookChapterData.js",
     "seed:conference": "node scripts/addConferencePaperData.js",
