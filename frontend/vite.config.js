@@ -9,5 +9,17 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
+  },
+  build: {
+    // Ensure public files (like _redirects) are copied to dist
+    copyPublicDir: true,
+  },
+  // For development server - handle SPA routing
+  server: {
+    historyApiFallback: true,
+  },
+  preview: {
+    // For preview server - handle SPA routing
+    historyApiFallback: true,
   }
 });
