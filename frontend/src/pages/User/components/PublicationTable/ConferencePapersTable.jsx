@@ -159,6 +159,7 @@ export default function ConferencePapersTable({
     };
 
     return (
+        <>
         <Card className="border border-gray-200 bg-white">
             <CardHeader className="bg-white-50 border-b border-blue-100">
                 <div className="flex items-center justify-between">
@@ -823,5 +824,6 @@ export default function ConferencePapersTable({
                 )}
             </DialogContent>
         </Dialog>
+        </>
     );
 }
