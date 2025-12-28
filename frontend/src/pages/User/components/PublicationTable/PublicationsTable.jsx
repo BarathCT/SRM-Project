@@ -23,6 +23,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   BookOpen,
   Eye,
   EyeOff,
@@ -75,6 +81,10 @@ export default function PublicationsTable({
   // Local edit dialog state
   const [editingPaper, setEditingPaper] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // Mobile/Tablet full-screen modal state
+  const [selectedPaperForMobile, setSelectedPaperForMobile] = useState(null);
+  const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
   const openEditDialog = useCallback((paper) => {
     setEditingPaper(paper);
@@ -317,7 +327,7 @@ export default function PublicationsTable({
                       <th className="py-4 px-4 text-left font-semibold text-gray-900">
                         Metrics
                       </th>
-                      <th className="py-4 px-4 text-left font-semibold text-gray-900">
+                      <th className="py-4 px-4 text-left font-semibold text-gray-900 hidden lg:table-cell">
                         Actions
                       </th>
                     </tr>
@@ -338,10 +348,28 @@ export default function PublicationsTable({
 
                       const showDropdownMenu = !showAuthorInfo || isOwn;
 
+                      const handleRowClick = (e) => {
+                        // Only handle row click on mobile/tablet (below lg breakpoint)
+                        // Prevent if clicking on checkbox or button
+                        if (
+                          e.target.closest('input[type="checkbox"]') ||
+                          e.target.closest('button') ||
+                          e.target.closest('[role="button"]')
+                        ) {
+                          return;
+                        }
+                        // Check if we're on mobile/tablet (window width < 1024px)
+                        if (window.innerWidth < 1024) {
+                          setSelectedPaperForMobile(paper);
+                          setIsMobileModalOpen(true);
+                        }
+                      };
+
                       return (
                         <React.Fragment key={paper._id}>
                           <tr
-                            className={`hover:bg-blue-50/60 transition-colors`}
+                            className={`hover:bg-blue-50/60 transition-colors lg:cursor-default cursor-pointer`}
+                            onClick={handleRowClick}
                           >
                             <td className="py-4 px-4">
                               <Checkbox
@@ -354,12 +382,15 @@ export default function PublicationsTable({
                             <td className="py-4 px-4 align-top">
                               <div className="space-y-2">
                                 <div className="flex items-start gap-2">
-                                  <h4 className="font-semibold text-gray-900 leading-tight flex-1">
+                                  <h4 className="font-semibold text-gray-900 leading-tight flex-1 text-sm lg:text-base">
                                     {paper.title}
                                   </h4>
-                                  {getOwnershipBadge(paper)}
+                                  <span className="hidden lg:inline-block">
+                                    {getOwnershipBadge(paper)}
+                                  </span>
                                 </div>
-                                <p className="text-sm text-gray-600">
+                                {/* Show authors only on desktop */}
+                                <p className="text-sm text-gray-600 hidden lg:block">
                                   <span className="font-medium">Authors:</span>{" "}
                                   {paper.authors
                                     ?.slice(0, 3)
@@ -464,7 +495,7 @@ export default function PublicationsTable({
                                 </Badge>
                               </div>
                             </td>
-                            <td className="py-4 px-4 align-top">
+                            <td className="py-4 px-4 align-top hidden lg:table-cell">
                               <div className="flex items-center gap-2">
                                 <Button
                                   onClick={() => onToggleExpand(index)}
@@ -824,6 +855,255 @@ export default function PublicationsTable({
         onSave={handleSaveEdit}
         isSaving={isUpdatingPaper}
       />
+
+      {/* Mobile/Tablet Full-Screen Modal */}
+      <Dialog open={isMobileModalOpen} onOpenChange={setIsMobileModalOpen}>
+        <DialogContent className="max-w-none w-screen h-screen max-h-screen m-0 rounded-none p-4 sm:p-6 overflow-y-auto lg:hidden !translate-x-0 !translate-y-0 top-0 left-0 right-0 bottom-0">
+          {selectedPaperForMobile && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  {selectedPaperForMobile.title}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6 mt-4">
+                {/* Publication Details */}
+                <Card className="border border-gray-200 bg-white">
+                  <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                    <CardTitle className="text-lg text-gray-900">
+                      Publication Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
+                    <p>
+                      <span className="font-semibold">DOI:</span>{" "}
+                      <a
+                        href={`https://doi.org/${selectedPaperForMobile.doi}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 font-mono break-all hover:underline"
+                      >
+                        {selectedPaperForMobile.doi}
+                      </a>
+                    </p>
+                    <p>
+                      <span className="font-semibold">Journal:</span>{" "}
+                      {selectedPaperForMobile.journal || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Publisher:</span>{" "}
+                      {selectedPaperForMobile.publisher || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Volume:</span>{" "}
+                      {selectedPaperForMobile.volume || "N/A"}
+                      <span className="font-semibold ml-2">Issue:</span>{" "}
+                      {selectedPaperForMobile.issue || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Pages:</span>{" "}
+                      {selectedPaperForMobile.pageNo || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Publication ID:</span>{" "}
+                      {selectedPaperForMobile.publicationId || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Issue Type:</span>{" "}
+                      {selectedPaperForMobile.typeOfIssue || "N/A"}
+                    </p>
+                    {showAuthorInfo && (
+                      <>
+                        <p>
+                          <span className="font-semibold">Faculty ID:</span>{" "}
+                          {selectedPaperForMobile.facultyId}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Uploaded By:</span>{" "}
+                          {getFacultyInfo(selectedPaperForMobile.facultyId).fullName}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Department:</span>{" "}
+                          {getFacultyInfo(selectedPaperForMobile.facultyId).department}
+                        </p>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Author Information */}
+                <Card className="border border-gray-200 bg-white">
+                  <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                    <CardTitle className="text-lg text-gray-900">
+                      Author Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 pt-4 text-sm text-gray-700">
+                    <p>
+                      <span className="font-semibold">Authors:</span>{" "}
+                      {selectedPaperForMobile.authors
+                        ?.map((a) =>
+                          a.isCorresponding ? `${a.name} (C)` : a.name
+                        )
+                        .join(", ") || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Claimed By:</span>{" "}
+                      {selectedPaperForMobile.claimedBy || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Author No:</span>{" "}
+                      {selectedPaperForMobile.authorNo || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Student Scholar:</span>{" "}
+                      {selectedPaperForMobile.isStudentScholar || "N/A"}
+                    </p>
+                    {selectedPaperForMobile.studentScholars?.length > 0 && (
+                      <div>
+                        <span className="font-semibold">Scholar Names:</span>
+                        <ul className="mt-1 space-y-1">
+                          {(selectedPaperForMobile.studentScholars || []).map(
+                            (scholar, idx) => (
+                              <li
+                                key={idx}
+                                className="text-xs bg-gray-50 p-1 rounded"
+                              >
+                                {typeof scholar === "string"
+                                  ? scholar
+                                  : scholar.name}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Metrics & Classification */}
+                <Card className="border border-gray-200 bg-white">
+                  <CardHeader className="pb-3 bg-white-50 border-b border-blue-100">
+                    <CardTitle className="text-lg text-gray-900">
+                      Metrics & Classification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-700">
+                        Year:
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="bg-gray-100 text-gray-800 font-medium"
+                      >
+                        {selectedPaperForMobile.year}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-700">
+                        Q Rating:
+                      </span>
+                      <Badge
+                        className={`text-white font-medium ${
+                          selectedPaperForMobile.qRating === "Q1"
+                            ? "bg-blue-700"
+                            : selectedPaperForMobile.qRating === "Q2"
+                            ? "bg-blue-600"
+                            : selectedPaperForMobile.qRating === "Q3"
+                            ? "bg-blue-500"
+                            : "bg-gray-600"
+                        }`}
+                      >
+                        {selectedPaperForMobile.qRating}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="text-sm font-semibold text-gray-700">
+                        Subject Area:
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-700 border-blue-200 ml-2"
+                      >
+                        {selectedPaperForMobile.subjectArea}
+                      </Badge>
+                    </div>
+                    {selectedPaperForMobile.subjectCategories?.length > 0 && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-700">
+                          Categories:
+                        </span>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {selectedPaperForMobile.subjectCategories.map(
+                            (category, i) => (
+                              <Badge
+                                key={i}
+                                variant="outline"
+                                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                              >
+                                {category}
+                              </Badge>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2">
+                    {getOwnershipBadge(selectedPaperForMobile)}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {showDropdownMenu && (
+                      <>
+                        {canEdit && (
+                          <Button
+                            onClick={() => {
+                              setIsMobileModalOpen(false);
+                              openEditDialog(selectedPaperForMobile);
+                            }}
+                            variant="outline"
+                            className="flex-1 border-blue-200 hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Publication
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <DeleteConfirmationDialog
+                            trigger={
+                              <Button
+                                variant="outline"
+                                className="flex-1 border-red-200 hover:border-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </Button>
+                            }
+                            title="Delete Publication"
+                            description="This action cannot be undone."
+                            itemName={selectedPaperForMobile.title}
+                            onConfirm={() => {
+                              setIsMobileModalOpen(false);
+                              onDelete(selectedPaperForMobile._id);
+                            }}
+                            isDeleting={deletingId === selectedPaperForMobile._id}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
