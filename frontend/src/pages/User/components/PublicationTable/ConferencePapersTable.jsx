@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -62,8 +62,8 @@ export default function ConferencePapersTable({
     const [selectedPaperForMobile, setSelectedPaperForMobile] = useState(null);
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
-    // Long press state for mobile/tablet selection
-    const [longPressTimer, setLongPressTimer] = useState(null);
+    // Long press state for mobile/tablet selection (use ref for timer to avoid closure issues)
+    const longPressTimerRef = useRef(null);
     const [longPressTarget, setLongPressTarget] = useState(null);
 
     const totalPages = useMemo(
@@ -231,6 +231,10 @@ export default function ConferencePapersTable({
                                         // Long press handler for mobile/tablet selection
                                         const handleTouchStart = (e) => {
                                             if (window.innerWidth >= 1024) return; // Only on mobile/tablet
+                                            // Clear any existing timer
+                                            if (longPressTimerRef.current) {
+                                                clearTimeout(longPressTimerRef.current);
+                                            }
                                             const timer = setTimeout(() => {
                                                 // Long press detected - toggle selection
                                                 onToggleSelect(paper._id);
@@ -239,23 +243,24 @@ export default function ConferencePapersTable({
                                                 if (navigator.vibrate) {
                                                     navigator.vibrate(50);
                                                 }
+                                                longPressTimerRef.current = null;
                                             }, 500); // 500ms for long press
-                                            setLongPressTimer(timer);
+                                            longPressTimerRef.current = timer;
                                         };
 
                                         const handleTouchEnd = () => {
-                                            if (longPressTimer) {
-                                                clearTimeout(longPressTimer);
-                                                setLongPressTimer(null);
+                                            if (longPressTimerRef.current) {
+                                                clearTimeout(longPressTimerRef.current);
+                                                longPressTimerRef.current = null;
                                             }
                                             // Reset target after a short delay
                                             setTimeout(() => setLongPressTarget(null), 200);
                                         };
 
                                         const handleTouchCancel = () => {
-                                            if (longPressTimer) {
-                                                clearTimeout(longPressTimer);
-                                                setLongPressTimer(null);
+                                            if (longPressTimerRef.current) {
+                                                clearTimeout(longPressTimerRef.current);
+                                                longPressTimerRef.current = null;
                                             }
                                             setLongPressTarget(null);
                                         };
