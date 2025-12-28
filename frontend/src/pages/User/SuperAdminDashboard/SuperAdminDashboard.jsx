@@ -762,7 +762,7 @@ export default function SuperAdminDashboard() {
         <DashboardHeader
           title="Super Admin Dashboard"
           subtitle="Global publications analysis across all colleges and institutes"
-          icon={<Building2 className="h-6 w-6" />}
+          icon={null}
           showTabSwitch={false}
           onShowAnalytics={() => setShowAnalytics(true)}
           facultyFinderOpen={finderOpen}
