@@ -470,7 +470,7 @@ export default function UserStatsCard({
     return map;
   }, [statistics.departmentDistribution]);
 
-  if (loading || statsLoading) {
+  if (parentLoading || statsLoading) {
     return (
       <div className={`animate-in fade-in-0 zoom-in-95 duration-500 ${className}`}>
         <Card className="border border-gray-200 bg-white overflow-hidden">

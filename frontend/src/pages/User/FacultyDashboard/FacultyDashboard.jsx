@@ -1,34 +1,20 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "axios";
 import { useToast } from "@/components/Toast";
-import { BookOpen, Presentation, FileText } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
-import { Pagination } from "@/components/ui/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 
 // Components
 import DashboardHeader from "../components/DashboardHeader";
 import PublicationsFilterCard from "../components/PublicationsFilterCard";
-import PublicationsTable from "../components/PublicationTable/PublicationsTable";
-import BookChaptersTable from "../components/PublicationTable/BookChaptersTable";
-import ConferencePapersTable from "../components/PublicationTable/ConferencePapersTable";
-import EditPublicationDialog from "../components/PublicationTable/EditPublicationDialog";
-import EditBookChapterDialog from "../components/PublicationTable/EditBookChapterDialog";
-import EditConferencePaperDialog from "../components/PublicationTable/EditConferencePaperDialog";
-import StatsCard from "../components/StatsCard";
+import PublicationTabs from "../components/PublicationTabs";
+import PublicationTableSection from "../components/PublicationTableSection";
+import PublicationEditDialogs from "../components/PublicationEditDialogs";
+import PublicationStatsCards from "../components/PublicationStatsCards";
 
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 
 import api from '@/lib/api';
-
-
-const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
-const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
-const TABS = [
-  { id: "papers", label: "Research Papers", icon: FileText },
-  { id: "bookChapters", label: "Book Chapters", icon: BookOpen },
-  { id: "conferencePapers", label: "Conference Papers", icon: Presentation },
-];
 
 const FacultyDashboard = () => {
   const [activeTab, setActiveTab] = useState("papers");
@@ -539,53 +525,25 @@ const FacultyDashboard = () => {
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-        <StatsCard
-          title="Research Papers"
-          value={stats.papers}
-          subtitle="Journal publications"
-          icon={<FileText className="h-8 w-8 text-blue-600" />}
-          loading={loadingPapers}
-        />
-        <StatsCard
-          title="Book Chapters"
-          value={stats.chapters}
-          subtitle="Book contributions"
-          icon={<BookOpen className="h-8 w-8 text-green-600" />}
-          loading={loadingChapters}
-        />
-        <StatsCard
-          title="Conference Papers"
-          value={stats.conference}
-          subtitle="Conference presentations"
-          icon={<Presentation className="h-8 w-8 text-purple-600" />}
-          loading={loadingConference}
-          className="sm:col-span-2 lg:col-span-1"
-        />
-      </div>
+      <PublicationStatsCards
+        stats={stats}
+        loading={{
+          papers: loadingPapers,
+          chapters: loadingChapters,
+          conference: loadingConference,
+        }}
+      />
 
-      {/* Tab Navigation - Scrollable on mobile */}
-      <div className="mb-4 sm:mb-6 border-b border-gray-200 -mx-2 sm:mx-0 px-2 sm:px-0">
-        <nav className="flex gap-1 sm:gap-4 overflow-x-auto scrollbar-hide pb-px">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 font-medium text-xs sm:text-sm transition-colors border-b-2 -mb-px whitespace-nowrap min-h-[44px] ${activeTab === tab.id
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="hidden xs:inline sm:inline">{tab.label}</span>
-                <span className="xs:hidden sm:hidden">{tab.label.split(' ')[0]}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+      {/* Tab Navigation */}
+      <PublicationTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        counts={{
+          papers: stats.papers,
+          bookChapters: stats.chapters,
+          conferencePapers: stats.conference,
+        }}
+      />
 
       {/* Filters */}
       <PublicationsFilterCard
@@ -612,158 +570,95 @@ const FacultyDashboard = () => {
         onExport={() => { }}
       />
 
-      {/* Content based on active tab */}
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-gray-700 flex items-center gap-2">
-          {activeTab === "papers" && <FileText className="h-4 w-4 text-blue-600" />}
-          {activeTab === "bookChapters" && <BookOpen className="h-4 w-4 text-green-600" />}
-          {activeTab === "conferencePapers" && <Presentation className="h-4 w-4 text-purple-600" />}
-          Showing{" "}
-          <span className="font-semibold text-gray-900">
-            {activeTab === "papers" ? filteredPapers.length :
-              activeTab === "bookChapters" ? filteredChapters.length : filteredConference.length}
-          </span>{" "}
-          of{" "}
-          <span className="font-semibold text-gray-900">
-            {activeTab === "papers" ? papersPagination.total :
-              activeTab === "bookChapters" ? chaptersPagination.total : conferencePagination.total}
-          </span>
-          {getSelectedCount() > 0 && (
-            <span className="text-blue-600">
-              {" "}• <span className="font-semibold">{getSelectedCount()}</span> selected
-            </span>
-          )}
-        </p>
-      </div>
-
       {/* Tables with Pagination */}
-      {activeTab === "papers" && (
-        <>
-          <PublicationsTable
-            papers={filteredPapers}
-            selectedPapers={selectedPapers}
-            selectAll={selectAllPapers}
-            onToggleSelectAll={handleSelectAllPapers}
-            onToggleSelect={handleSelectPaper}
-            expandedIndex={expandedPaper}
-            onToggleExpand={(i) => setExpandedPaper(expandedPaper === i ? null : i)}
-            onEdit={startEditPaper}
-            onDelete={deletePaper}
-            deletingId={deletingPaperId}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={clearFilters}
-          />
-          <Pagination
-            page={papersPagination.page}
-            totalPages={papersPagination.totalPages}
-            total={papersPagination.total}
-            limit={papersPagination.limit}
-            hasNextPage={papersPagination.hasNextPage}
-            hasPrevPage={papersPagination.hasPrevPage}
-            onPageChange={(page) => fetchPapers(page)}
-            onLimitChange={(limit) => {
-              setPapersPagination(prev => ({ ...prev, limit }));
-              fetchPapers(1);
-            }}
-            loading={loadingPapers}
-          />
-        </>
-      )}
-
-      {activeTab === "bookChapters" && (
-        <>
-          <BookChaptersTable
-            chapters={filteredChapters}
-            selectedChapters={selectedChapters}
-            selectAll={selectAllChapters}
-            onToggleSelectAll={handleSelectAllChapters}
-            onToggleSelect={handleSelectChapter}
-            expandedIndex={expandedChapter}
-            onToggleExpand={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
-            onEdit={startEditChapter}
-            onDelete={deleteChapter}
-            deletingId={deletingChapterId}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={clearFilters}
-          />
-          <Pagination
-            page={chaptersPagination.page}
-            totalPages={chaptersPagination.totalPages}
-            total={chaptersPagination.total}
-            limit={chaptersPagination.limit}
-            hasNextPage={chaptersPagination.hasNextPage}
-            hasPrevPage={chaptersPagination.hasPrevPage}
-            onPageChange={(page) => fetchBookChapters(page)}
-            onLimitChange={(limit) => {
-              setChaptersPagination(prev => ({ ...prev, limit }));
-              fetchBookChapters(1);
-            }}
-            loading={loadingChapters}
-          />
-        </>
-      )}
-
-      {activeTab === "conferencePapers" && (
-        <>
-          <ConferencePapersTable
-            papers={filteredConference}
-            selectedPapers={selectedConference}
-            selectAll={selectAllConference}
-            onToggleSelectAll={handleSelectAllConference}
-            onToggleSelect={handleSelectConference}
-            expandedIndex={expandedConference}
-            onToggleExpand={(i) => setExpandedConference(expandedConference === i ? null : i)}
-            onEdit={startEditConference}
-            onDelete={deleteConferencePaper}
-            deletingId={deletingConferenceId}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={clearFilters}
-          />
-          <Pagination
-            page={conferencePagination.page}
-            totalPages={conferencePagination.totalPages}
-            total={conferencePagination.total}
-            limit={conferencePagination.limit}
-            hasNextPage={conferencePagination.hasNextPage}
-            hasPrevPage={conferencePagination.hasPrevPage}
-            onPageChange={(page) => fetchConferencePapers(page)}
-            onLimitChange={(limit) => {
-              setConferencePagination(prev => ({ ...prev, limit }));
-              fetchConferencePapers(1);
-            }}
-            loading={loadingConference}
-          />
-        </>
-      )}
+      <PublicationTableSection
+        activeTab={activeTab}
+        // Papers props
+        papers={filteredPapers}
+        selectedPapers={selectedPapers}
+        selectAllPapers={selectAllPapers}
+        onToggleSelectAllPapers={handleSelectAllPapers}
+        onToggleSelectPaper={handleSelectPaper}
+        expandedPaper={expandedPaper}
+        onToggleExpandPaper={(i) => setExpandedPaper(expandedPaper === i ? null : i)}
+        onEditPaper={startEditPaper}
+        onDeletePaper={deletePaper}
+        deletingPaperId={deletingPaperId}
+        papersPagination={papersPagination}
+        onPapersPageChange={(page) => fetchPapers(page)}
+        onPapersLimitChange={(limit) => {
+          setPapersPagination(prev => ({ ...prev, limit }));
+          fetchPapers(1);
+        }}
+        loadingPapers={loadingPapers}
+        // Chapters props
+        chapters={filteredChapters}
+        selectedChapters={selectedChapters}
+        selectAllChapters={selectAllChapters}
+        onToggleSelectAllChapters={handleSelectAllChapters}
+        onToggleSelectChapter={handleSelectChapter}
+        expandedChapter={expandedChapter}
+        onToggleExpandChapter={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
+        onEditChapter={startEditChapter}
+        onDeleteChapter={deleteChapter}
+        deletingChapterId={deletingChapterId}
+        chaptersPagination={chaptersPagination}
+        onChaptersPageChange={(page) => fetchBookChapters(page)}
+        onChaptersLimitChange={(limit) => {
+          setChaptersPagination(prev => ({ ...prev, limit }));
+          fetchBookChapters(1);
+        }}
+        loadingChapters={loadingChapters}
+        // Conference props
+        conference={filteredConference}
+        selectedConference={selectedConference}
+        selectAllConference={selectAllConference}
+        onToggleSelectAllConference={handleSelectAllConference}
+        onToggleSelectConference={handleSelectConference}
+        expandedConference={expandedConference}
+        onToggleExpandConference={(i) => setExpandedConference(expandedConference === i ? null : i)}
+        onEditConference={startEditConference}
+        onDeleteConference={deleteConferencePaper}
+        deletingConferenceId={deletingConferenceId}
+        conferencePagination={conferencePagination}
+        onConferencePageChange={(page) => fetchConferencePapers(page)}
+        onConferenceLimitChange={(limit) => {
+          setConferencePagination(prev => ({ ...prev, limit }));
+          fetchConferencePapers(1);
+        }}
+        loadingConference={loadingConference}
+        // Common props
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
+        filteredCount={
+          activeTab === "papers" ? filteredPapers.length :
+          activeTab === "bookChapters" ? filteredChapters.length : filteredConference.length
+        }
+        totalCount={
+          activeTab === "papers" ? papersPagination.total :
+          activeTab === "bookChapters" ? chaptersPagination.total : conferencePagination.total
+        }
+        selectedCount={getSelectedCount()}
+      />
 
       {/* Edit Dialogs */}
-      <EditPublicationDialog
-        open={editPaperOpen}
-        onOpenChange={setEditPaperOpen}
-        value={editingPaper}
-        onChange={setEditingPaper}
-        onSubmit={() => updatePaper(editingPaper)}
-        onCancel={() => setEditPaperOpen(false)}
-        isSubmitting={isUpdating}
+      <PublicationEditDialogs
+        editPaperOpen={editPaperOpen}
+        onEditPaperOpenChange={setEditPaperOpen}
+        editingPaper={editingPaper}
+        onUpdatePaper={updatePaper}
+        isUpdatingPaper={isUpdating}
         subjectAreas={SUBJECT_AREAS}
-        publicationTypes={PUBLICATION_TYPES}
-        qRatings={Q_RATINGS}
-      />
-
-      <EditBookChapterDialog
-        open={editChapterOpen}
-        onOpenChange={setEditChapterOpen}
-        chapter={editingChapter}
-        onSave={updateChapter}
-        isSubmitting={isUpdating}
-      />
-
-      <EditConferencePaperDialog
-        open={editConferenceOpen}
-        onOpenChange={setEditConferenceOpen}
-        paper={editingConference}
-        onSave={updateConferencePaper}
-        isSubmitting={isUpdating}
+        editChapterOpen={editChapterOpen}
+        onEditChapterOpenChange={setEditChapterOpen}
+        editingChapter={editingChapter}
+        onUpdateChapter={updateChapter}
+        isUpdatingChapter={isUpdating}
+        editConferenceOpen={editConferenceOpen}
+        onEditConferenceOpenChange={setEditConferenceOpen}
+        editingConference={editingConference}
+        onUpdateConference={updateConferencePaper}
+        isUpdatingConference={isUpdating}
       />
     </div>
   );
