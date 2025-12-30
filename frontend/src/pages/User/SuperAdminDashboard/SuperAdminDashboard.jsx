@@ -289,7 +289,7 @@ export default function SuperAdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users, pubFilters.selectedCollege, pubFilters.selectedInstitute]);
 
-  // Load scope book chapters
+  // Load scope book chapters - fetch all pages
   useEffect(() => {
     if (!users.length) return;
       const fetchScopeChapters = async () => {
@@ -326,31 +326,65 @@ export default function SuperAdminDashboard() {
         } else {
           pairs = [{ college: pubFilters.selectedCollege, institute: pubFilters.selectedInstitute }];
         }
+        
+        // Fetch ALL pages for each pair to get complete data
         const all = [];
         let totalCount = 0;
+        
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await api.get('/book-chapters/institute', {
-              headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute },
-            });
-            // Handle paginated response
-            const result = res.data;
-            if (result.pagination) {
-              all.push(...(result.data || []));
-              // Sum up total counts from each pair
-              totalCount += result.pagination.total || 0;
-            } else {
-              all.push(...(result || []));
-              // If no pagination, count the items
-              totalCount += Array.isArray(result) ? result.length : 0;
+            let page = 1;
+            let hasMore = true;
+            let pairTotal = 0;
+            const pairChapters = [];
+            
+            // Fetch all pages for this college/institute pair
+            while (hasMore) {
+              try {
+                const res = await api.get('/book-chapters/institute', {
+                  headers: { Authorization: `Bearer ${token}` },
+                  params: { 
+                    college, 
+                    institute,
+                    page,
+                    limit: 100 // Fetch 100 per page to reduce API calls
+                  },
+                });
+                
+                const result = res.data;
+                if (result.pagination) {
+                  const pageData = result.data || [];
+                  pairChapters.push(...pageData);
+                  pairTotal = result.pagination.total || 0;
+                  
+                  // Check if there are more pages
+                  const totalPages = result.pagination.totalPages || 1;
+                  hasMore = page < totalPages;
+                  page++;
+                } else {
+                  // Legacy response - assume all data in one response
+                  const pageData = Array.isArray(result) ? result : [];
+                  pairChapters.push(...pageData);
+                  pairTotal = pageData.length;
+                  hasMore = false;
+                }
+              } catch (err) {
+                console.error(`Error fetching page ${page} for ${college}/${institute}:`, err);
+                hasMore = false;
+              }
             }
+            
+            all.push(...pairChapters);
+            totalCount += pairTotal;
           })
         );
+        
         setScopeBookChapters(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         setScopeChaptersTotal(totalCount);
-      } catch {
-        // Silently fail - book chapters may not exist
+      } catch (error) {
+        console.error("Failed to load book chapters for scope:", error);
+        setScopeBookChapters([]);
+        setScopeChaptersTotal(0);
       } finally {
         setScopeChaptersLoading(false);
       }
@@ -358,7 +392,7 @@ export default function SuperAdminDashboard() {
     fetchScopeChapters();
   }, [users, pubFilters.selectedCollege, pubFilters.selectedInstitute]);
 
-  // Load scope conference papers
+  // Load scope conference papers - fetch all pages
   useEffect(() => {
     if (!users.length) return;
       const fetchScopeConference = async () => {
@@ -395,31 +429,65 @@ export default function SuperAdminDashboard() {
         } else {
           pairs = [{ college: pubFilters.selectedCollege, institute: pubFilters.selectedInstitute }];
         }
+        
+        // Fetch ALL pages for each pair to get complete data
         const all = [];
         let totalCount = 0;
+        
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await api.get('/conference-papers/institute', {
-              headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute },
-            });
-            // Handle paginated response
-            const result = res.data;
-            if (result.pagination) {
-              all.push(...(result.data || []));
-              // Sum up total counts from each pair
-              totalCount += result.pagination.total || 0;
-            } else {
-              all.push(...(result || []));
-              // If no pagination, count the items
-              totalCount += Array.isArray(result) ? result.length : 0;
+            let page = 1;
+            let hasMore = true;
+            let pairTotal = 0;
+            const pairConference = [];
+            
+            // Fetch all pages for this college/institute pair
+            while (hasMore) {
+              try {
+                const res = await api.get('/conference-papers/institute', {
+                  headers: { Authorization: `Bearer ${token}` },
+                  params: { 
+                    college, 
+                    institute,
+                    page,
+                    limit: 100 // Fetch 100 per page to reduce API calls
+                  },
+                });
+                
+                const result = res.data;
+                if (result.pagination) {
+                  const pageData = result.data || [];
+                  pairConference.push(...pageData);
+                  pairTotal = result.pagination.total || 0;
+                  
+                  // Check if there are more pages
+                  const totalPages = result.pagination.totalPages || 1;
+                  hasMore = page < totalPages;
+                  page++;
+                } else {
+                  // Legacy response - assume all data in one response
+                  const pageData = Array.isArray(result) ? result : [];
+                  pairConference.push(...pageData);
+                  pairTotal = pageData.length;
+                  hasMore = false;
+                }
+              } catch (err) {
+                console.error(`Error fetching page ${page} for ${college}/${institute}:`, err);
+                hasMore = false;
+              }
             }
+            
+            all.push(...pairConference);
+            totalCount += pairTotal;
           })
         );
+        
         setScopeConference(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         setScopeConferenceTotal(totalCount);
-      } catch {
-        // Silently fail - conference papers may not exist
+      } catch (error) {
+        console.error("Failed to load conference papers for scope:", error);
+        setScopeConference([]);
+        setScopeConferenceTotal(0);
       } finally {
         setScopeConferenceLoading(false);
       }

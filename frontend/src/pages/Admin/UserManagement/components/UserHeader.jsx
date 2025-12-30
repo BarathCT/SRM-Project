@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { UserCog, UserPlus, Info, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ export default function UserHeader({
   collegeOptions = [],
 }) {
   const { toast } = useToast();
+  const [showButtons, setShowButtons] = useState(false);
   const safeUser = currentUser || {};
   const college = safeUser.college || '';
   const role = safeUser.role || '';
@@ -108,83 +110,115 @@ export default function UserHeader({
   const instructions = getBulkUploadInstructions();
 
   return (
-    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
-      <div className="flex-1">
-        <div className="flex items-center gap-3 mb-2">
+    <div className="mb-6">
+      {/* Header with Info Icon */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
           <UserCog className="h-6 w-6 text-blue-600" />
           <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-gray-600">
-            {role.replace('_', ' ')}
-          </Badge>
-          {college && college !== 'N/A' && (
-            <Badge variant="outline" className="text-gray-600">
-              {college}
-            </Badge>
-          )}
-          {shouldShowInstitute && institute && institute !== 'N/A' && (
-            <Badge variant="outline" className="text-gray-600">
-              {institute}
-            </Badge>
-          )}
-          {shouldShowDepartment && department && department !== 'N/A' && (
-            <Badge variant="outline" className="text-gray-600">
-              {department}
-            </Badge>
-          )}
-        </div>
+        {/* Info Icon Button - Square */}
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-600 rounded-md"
+          onClick={() => setShowButtons(!showButtons)}
+        >
+          <Info className="h-5 w-5" />
+        </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2">
-        {getAvailableRoles().length > 0 && (
-          <Button
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={() => setOpenDialog(true)}
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add User 
-          </Button>
+      {/* Badges */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <Badge variant="outline" className="text-gray-600">
+          {role.replace('_', ' ')}
+        </Badge>
+        {college && college !== 'N/A' && (
+          <Badge variant="outline" className="text-gray-600">
+            {college}
+          </Badge>
         )}
+        {shouldShowInstitute && institute && institute !== 'N/A' && (
+          <Badge variant="outline" className="text-gray-600">
+            {institute}
+          </Badge>
+        )}
+        {shouldShowDepartment && department && department !== 'N/A' && (
+          <Badge variant="outline" className="text-gray-600">
+            {department}
+          </Badge>
+        )}
+      </div>
 
-        {(role === 'super_admin' || role === 'campus_admin') && (
-          <>
+      {/* Action Buttons Row - Shown when info icon is clicked */}
+      {showButtons && (
+        <div className="flex flex-row gap-2 mb-4">
+          {getAvailableRoles().length > 0 && (
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+              onClick={() => {
+                setOpenDialog(true);
+                setShowButtons(false);
+              }}
+            >
+              <span className="hidden md:inline">
+                <UserPlus className="mr-2 h-4 w-4" />
+              </span>
+              Add User 
+            </Button>
+          )}
+
+          {(role === 'super_admin' || role === 'campus_admin') && (
+            <>
+              <Button
+                variant="outline"
+                className="border-blue-600 text-blue-600 hover:bg-blue-50 flex-1 sm:flex-none"
+                onClick={() => {
+                  setOpenBulkDialog(true);
+                  setShowButtons(false);
+                }}
+              >
+                <span className="hidden md:inline">
+                  <FileText className="mr-2 h-4 w-4" />
+                </span>
+                Bulk Upload
+              </Button>
+              
+              {/* Instructions - accessible via BulkUploadInstructions but not shown as a button */}
+              <BulkUploadInstructions
+                currentUser={currentUser}
+                instructions={instructions}
+                trigger={
+                  <Button 
+                    variant="outline" 
+                    className="border-blue-600 text-blue-600 hover:bg-blue-50 hidden"
+                    onClick={() => setShowButtons(false)}
+                  >
+                    Instructions
+                  </Button>
+                }
+              />
+            </>
+          )}
+
+          {role === 'super_admin' && (
             <Button
               variant="outline"
-              className="border-blue-600 text-blue-600 hover:bg-blue-50"
-              onClick={() => setOpenBulkDialog(true)}
+              className="border-blue-600 text-blue-600 hover:bg-blue-50 flex-1 sm:flex-none"
+              onClick={() => {
+                setShowLogDialog(true);
+                setShowButtons(false);
+              }}
             >
-              <FileText className="mr-2 h-4 w-4" />
-              Bulk Upload
+              <span className="hidden md:inline">
+                <FileText className="mr-2 h-4 w-4" />
+              </span>
+              Logs
             </Button>
-            <BulkUploadInstructions
-              currentUser={currentUser}
-              instructions={instructions}
-              trigger={
-                <Button 
-                  variant="outline" 
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                >
-                  <Info className="mr-2 h-4 w-4" />
-                  Instructions
-                </Button>
-              }
-            />
-          </>
-        )}
-
-        {role === 'super_admin' && (
-          <Button
-            variant="outline"
-            className="border-blue-600 text-blue-600 hover:bg-blue-50"
-            onClick={() => setShowLogDialog(true)}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Logs
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

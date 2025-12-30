@@ -126,17 +126,44 @@ const FacultyDashboard = () => {
     try {
       setLoadingChapters(true);
       const token = localStorage.getItem("token");
-      const response = await api.get('/book-chapters/my', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: chaptersPagination.limit }
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setBookChapters(result.data || []);
-        setChaptersPagination(result.pagination);
-      } else {
-        setBookChapters(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allChapters = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/book-chapters/my', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          }
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allChapters.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allChapters.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      setBookChapters(allChapters);
+      setChaptersPagination({
+        page: 1,
+        limit: 15,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch (e) {
       console.error("Failed to fetch book chapters:", e);
     } finally {
@@ -148,17 +175,44 @@ const FacultyDashboard = () => {
     try {
       setLoadingConference(true);
       const token = localStorage.getItem("token");
-      const response = await api.get('/conference-papers/my', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: conferencePagination.limit }
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setConferencePapers(result.data || []);
-        setConferencePagination(result.pagination);
-      } else {
-        setConferencePapers(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allConference = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/conference-papers/my', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          }
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allConference.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allConference.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      setConferencePapers(allConference);
+      setConferencePagination({
+        page: 1,
+        limit: 15,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch (e) {
       console.error("Failed to fetch conference papers:", e);
     } finally {

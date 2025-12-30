@@ -30,7 +30,7 @@ export default function AnalyticsChart({
     (data.datasets[0] && (!data.datasets[0].data || data.datasets[0].data.every(val => val === 0 || !val)));
 
   return (
-    <div className={`bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-200 ${className}`}>
+    <div className={`bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${className}`}>
       <h5 className="font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
         {Icon && <Icon className={`w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 ${iconColor}`} />}
         {title}
@@ -40,16 +40,18 @@ export default function AnalyticsChart({
           </Badge>
         )}
       </h5>
-      <div className={type === 'bar' ? 'h-64 sm:h-72 lg:h-80' : 'h-64 sm:h-72 lg:h-80 relative'}>
+      <div className={`${type === 'bar' ? 'h-64 sm:h-72 lg:h-80' : 'h-64 sm:h-72 lg:h-80'} relative min-h-[200px]`}>
         {isEmpty ? (
           <div className="flex items-center justify-center h-full text-gray-400 text-sm">
             <div className="text-center">
-              <p className="font-medium">No data available</p>
-              <p className="text-xs mt-1">Try adjusting your filters</p>
+              <p className="font-medium text-gray-500">No data available</p>
+              <p className="text-xs mt-1 text-gray-400">Try adjusting your filters</p>
             </div>
           </div>
         ) : (
-          <ChartComponent data={data} options={options} />
+          <div className="w-full h-full flex items-center justify-center">
+            <ChartComponent data={data} options={options} />
+          </div>
         )}
       </div>
       {children}

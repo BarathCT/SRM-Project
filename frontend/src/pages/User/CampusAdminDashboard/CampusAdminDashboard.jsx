@@ -238,17 +238,46 @@ const CampusAdminDashboard = () => {
   const fetchInstituteBookChapters = async (user, page = 1) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await api.get('/book-chapters/institute', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, page, limit: instituteChaptersPagination.limit },
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setInstituteBookChapters(result.data || []);
-        setInstituteChaptersPagination(result.pagination);
-      } else {
-        setInstituteBookChapters(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allChapters = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/book-chapters/institute', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            college: user.college, 
+            institute: user.institute, 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          },
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allChapters.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allChapters.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      setInstituteBookChapters(allChapters);
+      setInstituteChaptersPagination({
+        page: 1,
+        limit: 15,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch {
       setInstituteBookChapters([]);
     }
@@ -257,17 +286,44 @@ const CampusAdminDashboard = () => {
   const fetchMyBookChapters = async (page = 1) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await api.get('/book-chapters/my', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: myChaptersPagination.limit },
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setMyBookChapters(result.data || []);
-        setMyChaptersPagination(result.pagination);
-      } else {
-        setMyBookChapters(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allChapters = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/book-chapters/my', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          },
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allChapters.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allChapters.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      setMyBookChapters(allChapters);
+      setMyChaptersPagination({
+        page: 1,
+        limit: 15,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch {
       setMyBookChapters([]);
     }
@@ -276,17 +332,46 @@ const CampusAdminDashboard = () => {
   const fetchInstituteConference = async (user, page = 1) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await api.get('/conference-papers/institute', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, page, limit: instituteConferencePagination.limit },
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setInstituteConference(result.data || []);
-        setInstituteConferencePagination(result.pagination);
-      } else {
-        setInstituteConference(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allConference = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/conference-papers/institute', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            college: user.college, 
+            institute: user.institute, 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          },
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allConference.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allConference.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      setInstituteConference(allConference);
+      setInstituteConferencePagination({
+        page: 1,
+        limit: 15,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch {
       setInstituteConference([]);
     }
@@ -295,17 +380,44 @@ const CampusAdminDashboard = () => {
   const fetchMyConference = async (page = 1) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await api.get('/conference-papers/my', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: myConferencePagination.limit },
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setMyConference(result.data || []);
-        setMyConferencePagination(result.pagination);
-      } else {
-        setMyConference(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allConference = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/conference-papers/my', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          },
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allConference.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allConference.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      setMyConference(allConference);
+      setMyConferencePagination({
+        page: 1,
+        limit: 15,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch {
       setMyConference([]);
     }

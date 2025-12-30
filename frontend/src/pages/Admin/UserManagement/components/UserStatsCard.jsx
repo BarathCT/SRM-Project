@@ -105,7 +105,7 @@ const extendedColors = [
 
 const NON_INSTITUTE_COLLEGES = collegesWithoutInstitutes;
 
-// --- UNIVERSAL FILTER BUTTON GROUP ---
+// --- OPTIMIZED FILTER BUTTON GROUP ---
 function FilterButtonGroup({
   filters,
   setFilter,
@@ -120,63 +120,81 @@ function FilterButtonGroup({
   filledTextColor = "#fff",
   countBg = "#eff6ff"
 }) {
+  const totalCount = showCount ? Object.values(countMap || {}).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0) : 0;
+  const hasManyFilters = filters.length > 8;
+  
   return (
-    <div className="flex flex-wrap gap-2 justify-center mt-3 mb-2">
-      <button
-        type="button"
-        onClick={() => setFilter("all")}
-        className="text-xs px-3 py-1 rounded-full border transition"
-        style={{
-          background: selected === "all" ? filledColor : "transparent",
-          color: selected === "all" ? filledTextColor : textColor,
-          borderColor: selected === "all" ? filledColor : outlineColor,
-          fontWeight: selected === "all" ? 600 : 400,
-        }}
-      >
-        All {type}
-        {showCount && (
-          <span
-            className="ml-1 inline-block text-xs font-semibold px-2 rounded-full"
-            style={{
-              background: selected === "all" ? "rgba(255,255,255,0.2)" : countBg,
-              color: selected === "all" ? "#fff" : filledColor
-            }}
-          >
-            {Object.values(countMap || {}).reduce((sum, v) => sum + v, 0)}
-          </span>
-        )}
-      </button>
-      {filters.map((v, idx) => {
-        const isActive = selected === v;
-        const color = colorPalette[idx % colorPalette.length] || filledColor;
-        return (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setFilter(v)}
-            className="text-xs px-3 py-1 rounded-full border transition"
-            style={{
-              background: isActive ? color : "transparent",
-              color: isActive ? "#fff" : color,
-              borderColor: color,
-              fontWeight: isActive ? 600 : 400,
-            }}
-          >
-            {v}
-            {showCount && (
-              <span
-                className="ml-1 inline-block text-xs font-semibold px-2 rounded-full"
+    <div className="mt-3 mb-2">
+      {/* All button - always visible */}
+      <div className="flex justify-center mb-2">
+        <button
+          type="button"
+          onClick={() => setFilter("all")}
+          className="text-xs px-3 py-1.5 rounded-full border transition-all hover:scale-105 active:scale-95"
+          style={{
+            background: selected === "all" ? filledColor : "transparent",
+            color: selected === "all" ? filledTextColor : textColor,
+            borderColor: selected === "all" ? filledColor : outlineColor,
+            fontWeight: selected === "all" ? 600 : 500,
+            boxShadow: selected === "all" ? "0 2px 4px rgba(37, 99, 235, 0.2)" : "none",
+          }}
+        >
+          All {type}
+          {showCount && (
+            <span
+              className="ml-1.5 inline-block text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{
+                background: selected === "all" ? "rgba(255,255,255,0.25)" : countBg,
+                color: selected === "all" ? "#fff" : filledColor
+              }}
+            >
+              {totalCount}
+            </span>
+          )}
+        </button>
+      </div>
+      
+      {/* Filter buttons - scrollable if many */}
+      <div className={`${hasManyFilters ? 'max-h-32 overflow-y-auto pr-1' : ''} scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100`}>
+        <div className="flex flex-wrap gap-1.5 justify-center">
+          {filters.map((v, idx) => {
+            const isActive = selected === v;
+            const color = colorPalette[idx % colorPalette.length] || filledColor;
+            const count = showCount ? ((countMap && countMap[v]) || 0) : null;
+            
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setFilter(v)}
+                className="text-xs px-2.5 py-1 rounded-full border transition-all hover:scale-105 active:scale-95 flex items-center gap-1"
                 style={{
-                  background: isActive ? "rgba(255,255,255,0.2)" : countBg,
-                  color: isActive ? "#fff" : color
+                  background: isActive ? color : "transparent",
+                  color: isActive ? "#fff" : color,
+                  borderColor: color,
+                  fontWeight: isActive ? 600 : 500,
+                  boxShadow: isActive ? `0 2px 4px ${color}40` : "none",
+                  opacity: count === 0 ? 0.6 : 1,
                 }}
+                title={v}
               >
-                {(countMap && countMap[v]) || 0}
-              </span>
-            )}
-          </button>
-        );
-      })}
+                <span className="truncate max-w-[120px]">{v}</span>
+                {showCount && count !== null && (
+                  <span
+                    className="flex-shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: isActive ? "rgba(255,255,255,0.25)" : countBg,
+                      color: isActive ? "#fff" : color
+                    }}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -402,23 +420,39 @@ export default function UserStatsCard({
         display: false // hide legend, we use clickable labels below chart
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
         titleColor: 'white',
         bodyColor: 'white',
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        borderWidth: 1
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        padding: 12,
+        titleFont: { size: 13, weight: 'bold' },
+        bodyFont: { size: 12 },
+        cornerRadius: 8,
+        displayColors: true
       }
     },
     scales: {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
+          color: 'rgba(0, 0, 0, 0.08)',
+          drawBorder: false
+        },
+        ticks: {
+          font: { size: 11 },
+          color: '#6b7280'
         }
       },
       x: {
         grid: {
           display: false
+        },
+        ticks: {
+          font: { size: 11 },
+          color: '#6b7280',
+          maxRotation: 45,
+          minRotation: 0
         }
       }
     }
@@ -430,9 +464,25 @@ export default function UserStatsCard({
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
         titleColor: 'white',
-        bodyColor: 'white'
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        padding: 12,
+        titleFont: { size: 13, weight: 'bold' },
+        bodyFont: { size: 12 },
+        cornerRadius: 8,
+        displayColors: true,
+        callbacks: {
+          label: function(context) {
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+            return `${label}: ${value} (${percentage}%)`;
+          }
+        }
       }
     },
     onClick: () => { }
@@ -442,26 +492,39 @@ export default function UserStatsCard({
   const createRolesByDepartmentChart = (data) => {
     const departments = activeDepartmentList;
     const roles = ['campus_admin', 'faculty'];
-    if (!data || typeof data !== 'object') {
+    
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
       // Return empty chart data if data is invalid
       return {
-        labels: departments,
+        labels: departments.length > 0 ? departments : ['No Departments'],
         datasets: roles.map(role => ({
           label: roleConfig[role]?.label || role,
-          data: departments.map(() => 0),
+          data: departments.length > 0 ? departments.map(() => 0) : [0],
           backgroundColor: chartColors[role],
           borderColor: chartColors[role],
           borderWidth: 1
         }))
       };
     }
+    
+    // Filter out departments with zero counts for better visualization
+    const departmentsWithData = departments.filter(dept => {
+      const deptData = data[dept];
+      if (!deptData || typeof deptData !== 'object') return false;
+      return (deptData.campus_admin || 0) + (deptData.faculty || 0) > 0;
+    });
+    
+    const finalDepartments = departmentsWithData.length > 0 ? departmentsWithData : departments.slice(0, 10);
+    
     return {
-      labels: departments,
+      labels: finalDepartments,
       datasets: roles.map(role => ({
         label: roleConfig[role]?.label || role,
-        data: departments.map(department => {
+        data: finalDepartments.map(department => {
           const deptData = data[department];
-          return (deptData && typeof deptData === 'object' && deptData[role]) ? deptData[role] : 0;
+          if (!deptData || typeof deptData !== 'object') return 0;
+          const value = deptData[role];
+          return typeof value === 'number' ? value : 0;
         }),
         backgroundColor: chartColors[role],
         borderColor: chartColors[role],
@@ -471,28 +534,41 @@ export default function UserStatsCard({
   };
 
   const createRolesByLocationChart = (data, allLocations) => {
-    const locations = allLocations;
+    const locations = Array.isArray(allLocations) ? allLocations : [];
     const roles = ['campus_admin', 'faculty'];
-    if (!data || typeof data !== 'object') {
+    
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
       // Return empty chart data if data is invalid
       return {
-        labels: locations,
+        labels: locations.length > 0 ? locations : ['No Data'],
         datasets: roles.map(role => ({
           label: roleConfig[role]?.label || role,
-          data: locations.map(() => 0),
+          data: locations.length > 0 ? locations.map(() => 0) : [0],
           backgroundColor: chartColors[role],
           borderColor: chartColors[role],
           borderWidth: 1
         }))
       };
     }
+    
+    // Filter out locations with zero counts for better visualization
+    const locationsWithData = locations.filter(location => {
+      const locationData = data[location];
+      if (!locationData || typeof locationData !== 'object') return false;
+      return (locationData.campus_admin || 0) + (locationData.faculty || 0) > 0;
+    });
+    
+    const finalLocations = locationsWithData.length > 0 ? locationsWithData : locations.slice(0, 15);
+    
     return {
-      labels: locations,
+      labels: finalLocations,
       datasets: roles.map(role => ({
         label: roleConfig[role]?.label || role,
-        data: locations.map(location => {
+        data: finalLocations.map(location => {
           const locationData = data[location];
-          return (locationData && typeof locationData === 'object' && locationData[role]) ? locationData[role] : 0;
+          if (!locationData || typeof locationData !== 'object') return 0;
+          const value = locationData[role];
+          return typeof value === 'number' ? value : 0;
         }),
         backgroundColor: chartColors[role],
         borderColor: chartColors[role],
@@ -874,7 +950,7 @@ export default function UserStatsCard({
                 <div className="grid grid-cols-1 gap-6">
                   <AnalyticsChart
                     type="bar"
-                    data={createRolesByLocationChart(statistics.rolesByCollege, allColleges)}
+                    data={createRolesByLocationChart(statistics.rolesByCollege || {}, allColleges)}
                     options={chartOptions}
                     title="Interactive Role Distribution by College"
                     icon={Target}
