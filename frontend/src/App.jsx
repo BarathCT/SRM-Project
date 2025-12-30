@@ -23,12 +23,11 @@ function AppContent() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
   const [showSplash, setShowSplash] = useState(() => {
-    // Show splash only on root path and if not shown in this navigation session
-    if (window.location.pathname !== '/') {
-      return false;
-    }
+    // Always show splash on initial app load (root path) if not shown in this session
+    // This ensures the splash screen appears immediately when the PWA opens
     const splashShown = sessionStorage.getItem('splashShown');
-    return !splashShown;
+    const isInitialLoad = window.location.pathname === '/' && !splashShown;
+    return isInitialLoad;
   });
 
   // Check if user is authenticated and not an admin (for PWA banner)
@@ -44,6 +43,7 @@ function AppContent() {
   }, [showSplash, location.pathname]);
 
   // Show splash screen on initial load (only on root path)
+  // This ensures immediate display before any routing happens
   if (showSplash && location.pathname === '/') {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }

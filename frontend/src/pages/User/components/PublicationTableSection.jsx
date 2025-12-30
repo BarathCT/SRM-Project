@@ -167,67 +167,37 @@ export default function PublicationTableSection({
       )}
 
       {activeTab === "bookChapters" && (
-        <>
-          <BookChaptersTable
-            chapters={chapters}
-            selectedChapters={selectedChapters}
-            selectAll={selectAllChapters}
-            onToggleSelectAll={onToggleSelectAllChapters}
-            onToggleSelect={onToggleSelectChapter}
-            expandedIndex={expandedChapter}
-            onToggleExpand={onToggleExpandChapter}
-            onEdit={onEditChapter}
-            onDelete={onDeleteChapter}
-            deletingId={deletingChapterId}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={onClearFilters}
-          />
-          {chaptersPagination && (
-            <Pagination
-              page={chaptersPagination.page}
-              totalPages={chaptersPagination.totalPages}
-              total={chaptersPagination.total}
-              limit={chaptersPagination.limit}
-              hasNextPage={chaptersPagination.hasNextPage}
-              hasPrevPage={chaptersPagination.hasPrevPage}
-              onPageChange={onChaptersPageChange}
-              onLimitChange={onChaptersLimitChange}
-              loading={loadingChapters}
-            />
-          )}
-        </>
+        <BookChaptersTable
+          chapters={chapters}
+          selectedChapters={selectedChapters}
+          selectAll={selectAllChapters}
+          onToggleSelectAll={onToggleSelectAllChapters}
+          onToggleSelect={onToggleSelectChapter}
+          expandedIndex={expandedChapter}
+          onToggleExpand={onToggleExpandChapter}
+          onEdit={onEditChapter}
+          onDelete={onDeleteChapter}
+          deletingId={deletingChapterId}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={onClearFilters}
+        />
       )}
 
       {activeTab === "conferencePapers" && (
-        <>
-          <ConferencePapersTable
-            papers={conference}
-            selectedPapers={selectedConference}
-            selectAll={selectAllConference}
-            onToggleSelectAll={onToggleSelectAllConference}
-            onToggleSelect={onToggleSelectConference}
-            expandedIndex={expandedConference}
-            onToggleExpand={onToggleExpandConference}
-            onEdit={onEditConference}
-            onDelete={onDeleteConference}
-            deletingId={deletingConferenceId}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={onClearFilters}
-          />
-          {conferencePagination && (
-            <Pagination
-              page={conferencePagination.page}
-              totalPages={conferencePagination.totalPages}
-              total={conferencePagination.total}
-              limit={conferencePagination.limit}
-              hasNextPage={conferencePagination.hasNextPage}
-              hasPrevPage={conferencePagination.hasPrevPage}
-              onPageChange={onConferencePageChange}
-              onLimitChange={onConferenceLimitChange}
-              loading={loadingConference}
-            />
-          )}
-        </>
+        <ConferencePapersTable
+          papers={conference}
+          selectedPapers={selectedConference}
+          selectAll={selectAllConference}
+          onToggleSelectAll={onToggleSelectAllConference}
+          onToggleSelect={onToggleSelectConference}
+          expandedIndex={expandedConference}
+          onToggleExpand={onToggleExpandConference}
+          onEdit={onEditConference}
+          onDelete={onDeleteConference}
+          deletingId={deletingConferenceId}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={onClearFilters}
+        />
       )}
     </>
   );

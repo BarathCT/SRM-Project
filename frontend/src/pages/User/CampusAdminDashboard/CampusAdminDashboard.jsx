@@ -29,7 +29,6 @@ import UserFinderSidebar from "../components/UserFinderSidebar";
 import { SUBJECT_AREAS } from "@/utils/subjectAreas";
 import api from '@/lib/api';
 import { PageLoader } from '@/components/ui/loading';
-import { Pagination } from '@/components/ui/pagination';
 
 /* Local debounce hook to reduce filtering cost while typing */
 function useDebouncedValue(value, delay = 250) {
@@ -1349,20 +1348,6 @@ const CampusAdminDashboard = () => {
                       canEditPaper={canEditPaper}
                       canDeletePaper={canDeletePaper}
                     />
-                    <Pagination
-                      page={institutePapersPagination.page}
-                      totalPages={institutePapersPagination.totalPages}
-                      total={institutePapersPagination.total}
-                      limit={institutePapersPagination.limit}
-                      hasNextPage={institutePapersPagination.hasNextPage}
-                      hasPrevPage={institutePapersPagination.hasPrevPage}
-                      onPageChange={(page) => fetchInstitutePapers(currentUser, page)}
-                      onLimitChange={(limit) => {
-                        setInstitutePapersPagination(prev => ({ ...prev, limit }));
-                        fetchInstitutePapers(currentUser, 1);
-                      }}
-                      loading={loading}
-                    />
                   </>
                 )}
               </div>
@@ -1435,20 +1420,6 @@ const CampusAdminDashboard = () => {
                 currentUser={currentUser}
                 canEditPaper={canEditPaper}
                 canDeletePaper={canDeletePaper}
-              />
-              <Pagination
-                page={myPapersPagination.page}
-                totalPages={myPapersPagination.totalPages}
-                total={myPapersPagination.total}
-                limit={myPapersPagination.limit}
-                hasNextPage={myPapersPagination.hasNextPage}
-                hasPrevPage={myPapersPagination.hasPrevPage}
-                onPageChange={(page) => fetchMyPapers(page)}
-                onLimitChange={(limit) => {
-                  setMyPapersPagination(prev => ({ ...prev, limit }));
-                  fetchMyPapers(1);
-                }}
-                loading={loading}
               />
             </TabsContent>
           </Tabs>

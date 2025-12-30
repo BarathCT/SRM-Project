@@ -224,6 +224,11 @@ export default function UserStatsCard({
     try {
       setStatsLoading(true);
       const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.error("No authentication token found");
+        return;
+      }
 
       // Build query params
       const params = new URLSearchParams();
@@ -234,12 +239,40 @@ export default function UserStatsCard({
       if (filters.search) params.append('search', filters.search);
 
       const response = await axios.get(`${API_BASE_URL}/api/admin/stats?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000 // 10 second timeout
       });
 
-      setStatistics(response.data);
+      // Validate response data structure
+      if (response.data && typeof response.data === 'object') {
+        setStatistics({
+          totalUsers: response.data.totalUsers || 0,
+          activeUsers: response.data.activeUsers || 0,
+          roleStats: response.data.roleStats || { super_admin: 0, campus_admin: 0, faculty: 0, total: 0 },
+          collegeDistribution: Array.isArray(response.data.collegeDistribution) ? response.data.collegeDistribution : [],
+          instituteDistribution: Array.isArray(response.data.instituteDistribution) ? response.data.instituteDistribution : [],
+          departmentDistribution: Array.isArray(response.data.departmentDistribution) ? response.data.departmentDistribution : [],
+          rolesByCollege: response.data.rolesByCollege && typeof response.data.rolesByCollege === 'object' ? response.data.rolesByCollege : {},
+          rolesByInstitute: response.data.rolesByInstitute && typeof response.data.rolesByInstitute === 'object' ? response.data.rolesByInstitute : {},
+          rolesByDepartment: response.data.rolesByDepartment && typeof response.data.rolesByDepartment === 'object' ? response.data.rolesByDepartment : {}
+        });
+      } else {
+        console.error("Invalid response data structure:", response.data);
+      }
     } catch (error) {
       console.error("Failed to fetch user stats:", error);
+      // Reset to empty state on error
+      setStatistics({
+        totalUsers: 0,
+        activeUsers: 0,
+        roleStats: { super_admin: 0, campus_admin: 0, faculty: 0, total: 0 },
+        collegeDistribution: [],
+        instituteDistribution: [],
+        departmentDistribution: [],
+        rolesByCollege: {},
+        rolesByInstitute: {},
+        rolesByDepartment: {}
+      });
     } finally {
       setStatsLoading(false);
     }
@@ -409,11 +442,27 @@ export default function UserStatsCard({
   const createRolesByDepartmentChart = (data) => {
     const departments = activeDepartmentList;
     const roles = ['campus_admin', 'faculty'];
+    if (!data || typeof data !== 'object') {
+      // Return empty chart data if data is invalid
+      return {
+        labels: departments,
+        datasets: roles.map(role => ({
+          label: roleConfig[role]?.label || role,
+          data: departments.map(() => 0),
+          backgroundColor: chartColors[role],
+          borderColor: chartColors[role],
+          borderWidth: 1
+        }))
+      };
+    }
     return {
       labels: departments,
       datasets: roles.map(role => ({
         label: roleConfig[role]?.label || role,
-        data: departments.map(department => data[department][role] || 0),
+        data: departments.map(department => {
+          const deptData = data[department];
+          return (deptData && typeof deptData === 'object' && deptData[role]) ? deptData[role] : 0;
+        }),
         backgroundColor: chartColors[role],
         borderColor: chartColors[role],
         borderWidth: 1
@@ -424,11 +473,27 @@ export default function UserStatsCard({
   const createRolesByLocationChart = (data, allLocations) => {
     const locations = allLocations;
     const roles = ['campus_admin', 'faculty'];
+    if (!data || typeof data !== 'object') {
+      // Return empty chart data if data is invalid
+      return {
+        labels: locations,
+        datasets: roles.map(role => ({
+          label: roleConfig[role]?.label || role,
+          data: locations.map(() => 0),
+          backgroundColor: chartColors[role],
+          borderColor: chartColors[role],
+          borderWidth: 1
+        }))
+      };
+    }
     return {
       labels: locations,
       datasets: roles.map(role => ({
         label: roleConfig[role]?.label || role,
-        data: locations.map(location => data[location]?.[role] || 0),
+        data: locations.map(location => {
+          const locationData = data[location];
+          return (locationData && typeof locationData === 'object' && locationData[role]) ? locationData[role] : 0;
+        }),
         backgroundColor: chartColors[role],
         borderColor: chartColors[role],
         borderWidth: 1
@@ -436,38 +501,64 @@ export default function UserStatsCard({
     };
   };
 
-  const createPieData = (distribution) => ({
-    labels: distribution.map(item => item.label),
-    datasets: [{
-      data: distribution.map(item => item.value),
-      backgroundColor: extendedColors.slice(0, distribution.length),
-      borderWidth: 2,
-      borderColor: '#ffffff'
-    }]
-  });
+  const createPieData = (distribution) => {
+    // Handle empty or invalid distribution
+    if (!Array.isArray(distribution) || distribution.length === 0) {
+      return {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: [],
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      };
+    }
+    return {
+      labels: distribution.map(item => item?.label || 'Unknown'),
+      datasets: [{
+        data: distribution.map(item => item?.value || 0),
+        backgroundColor: extendedColors.slice(0, distribution.length),
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    };
+  };
 
   // COUNT MAPS for all chart filter groups
   const collegeCountMap = useMemo(() => {
     const map = {};
-    statistics.collegeDistribution.forEach(item => {
-      map[item.label] = item.value;
-    });
+    if (Array.isArray(statistics.collegeDistribution)) {
+      statistics.collegeDistribution.forEach(item => {
+        if (item && item.label) {
+          map[item.label] = item.value || 0;
+        }
+      });
+    }
     return map;
   }, [statistics.collegeDistribution]);
 
   const instituteCountMap = useMemo(() => {
     const map = {};
-    statistics.instituteDistribution.forEach(item => {
-      map[item.label] = item.value;
-    });
+    if (Array.isArray(statistics.instituteDistribution)) {
+      statistics.instituteDistribution.forEach(item => {
+        if (item && item.label) {
+          map[item.label] = item.value || 0;
+        }
+      });
+    }
     return map;
   }, [statistics.instituteDistribution]);
 
   const departmentCountMap = useMemo(() => {
     const map = {};
-    statistics.departmentDistribution.forEach(item => {
-      map[item.label] = item.value;
-    });
+    if (Array.isArray(statistics.departmentDistribution)) {
+      statistics.departmentDistribution.forEach(item => {
+        if (item && item.label) {
+          map[item.label] = item.value || 0;
+        }
+      });
+    }
     return map;
   }, [statistics.departmentDistribution]);
 
@@ -477,33 +568,37 @@ export default function UserStatsCard({
     const { rolesByCollege, rolesByInstitute } = statistics;
 
     // Process Institutes
-    Object.entries(rolesByInstitute || {}).forEach(([institute, roles]) => {
-      // Skip if institute is "N/A" or empty
-      if (!institute || institute === "N/A") return;
-      
-      // Find college for this institute
-      const collegeOption = COLLEGE_OPTIONS.find(c =>
-        c.institutes && c.institutes.some(i => i.name === institute)
-      );
-      const collegeName = collegeOption ? collegeOption.name : null;
-      
-      // Only add if we found a valid college
-      if (collegeName) {
-        if (!tree[collegeName]) tree[collegeName] = {};
-        tree[collegeName][institute] = roles || {};
-      }
-    });
+    if (rolesByInstitute && typeof rolesByInstitute === 'object') {
+      Object.entries(rolesByInstitute).forEach(([institute, roles]) => {
+        // Skip if institute is "N/A" or empty
+        if (!institute || institute === "N/A") return;
+        
+        // Find college for this institute
+        const collegeOption = COLLEGE_OPTIONS.find(c =>
+          c.institutes && c.institutes.some(i => i.name === institute)
+        );
+        const collegeName = collegeOption ? collegeOption.name : null;
+        
+        // Only add if we found a valid college
+        if (collegeName) {
+          if (!tree[collegeName]) tree[collegeName] = {};
+          tree[collegeName][institute] = roles || {};
+        }
+      });
+    }
 
     // Process non-institute colleges
-    Object.entries(rolesByCollege || {}).forEach(([college, roles]) => {
-      // Skip if college is "N/A" or empty
-      if (!college || college === "N/A") return;
-      
-      if (collegesWithoutInstitutes.includes(college)) {
-        if (!tree[college]) tree[college] = {};
-        tree[college][college] = roles || {};
-      }
-    });
+    if (rolesByCollege && typeof rolesByCollege === 'object') {
+      Object.entries(rolesByCollege).forEach(([college, roles]) => {
+        // Skip if college is "N/A" or empty
+        if (!college || college === "N/A") return;
+        
+        if (collegesWithoutInstitutes.includes(college)) {
+          if (!tree[college]) tree[college] = {};
+          tree[college][college] = roles || {};
+        }
+      });
+    }
 
     return tree;
   }, [statistics]);
@@ -512,8 +607,13 @@ export default function UserStatsCard({
   const showCollegeHierarchicalTree =
     currentUserRole === 'super_admin' && filters.role !== 'super_admin';
 
-  const collegeSummaries = statistics.rolesByCollege
-    ? Object.keys(statistics.rolesByCollege).map(college => {
+  const collegeSummaries = useMemo(() => {
+    if (!statistics.rolesByCollege || typeof statistics.rolesByCollege !== 'object') {
+      return [];
+    }
+    return Object.keys(statistics.rolesByCollege)
+      .filter(college => college && college !== "N/A")
+      .map(college => {
         const roles = statistics.rolesByCollege[college] || {};
         return (
           <SummaryCard
@@ -527,8 +627,8 @@ export default function UserStatsCard({
             isSelected={selectedLocation === college}
           />
         );
-      })
-    : [];
+      });
+  }, [statistics.rolesByCollege, selectedLocation, handleLocationClick]);
 
   if (parentLoading || statsLoading) {
     return (
@@ -602,7 +702,11 @@ export default function UserStatsCard({
             </div>
           )}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full grid-cols-${chartTabs.length} mb-6 bg-gray-50 p-1 rounded-xl`}>
+            <TabsList className={`grid w-full mb-6 bg-gray-50 p-1 rounded-xl ${
+              chartTabs.length === 2 ? 'grid-cols-2' :
+              chartTabs.length === 3 ? 'grid-cols-3' :
+              chartTabs.length === 4 ? 'grid-cols-4' : 'grid-cols-2'
+            }`}>
               {chartTabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value} className="flex items-center space-x-2 rounded-lg">
                   <tab.icon className="w-4 h-4" />
@@ -661,15 +765,7 @@ export default function UserStatsCard({
                   <>
                     <AnalyticsChart
                       type="pie"
-                      data={createPieData(
-                        ALL_COLLEGE_NAMES.map(college => ({
-                          label: college,
-                          value: users.filter(u =>
-                            (filters.role === 'all' || u.role === filters.role) &&
-                            u.college === college
-                          ).length
-                        }))
-                      )}
+                      data={createPieData(statistics.collegeDistribution || [])}
                       options={pieOptions}
                       title="College Distribution"
                       icon={BarChart3}
@@ -690,15 +786,14 @@ export default function UserStatsCard({
                       <AnalyticsChart
                         type="pie"
                         data={createPieData(
-                          activeInstituteList.map(inst => ({
-                            label: inst,
-                            value: users.filter(
-                              u =>
-                                (filters.college === "all" || u.college === filters.college) &&
-                                u.institute === inst &&
-                                u.role !== 'super_admin'
-                            ).length
-                          }))
+                          activeInstituteList.map(inst => {
+                            // Find the count from statistics.instituteDistribution
+                            const instData = statistics.instituteDistribution?.find(item => item.label === inst);
+                            return {
+                              label: inst,
+                              value: instData?.value || 0
+                            };
+                          }).filter(item => item.value > 0) // Only show institutes with users
                         )}
                         options={pieOptions}
                         title={

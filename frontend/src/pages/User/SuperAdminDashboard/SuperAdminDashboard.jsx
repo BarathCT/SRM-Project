@@ -79,6 +79,8 @@ export default function SuperAdminDashboard() {
   const [scopePapers, setScopePapers] = useState([]);
   const [scopeLoading, setScopeLoading] = useState(false);
   const [scopePapersTotal, setScopePapersTotal] = useState(0);
+  const [papersPage, setPapersPage] = useState(1);
+  const [papersLimit] = useState(15);
 
   // Book Chapters state
   const [scopeBookChapters, setScopeBookChapters] = useState([]);
@@ -184,19 +186,11 @@ export default function SuperAdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load scope papers whenever *publication* filters change (college/institute)
+  // Load scope papers whenever *publication* filters change (college/institute) or pagination changes
   useEffect(() => {
     if (!users.length) return;
     const fetchScopePapers = async () => {
       setScopeLoading(true);
-      setScopePapers([]);
-      setScopePapersTotal(0);
-      setExpanded(null);
-      setSelectedPapers(new Set());
-      setSelectAll(false);
-      // Reset pagination for other types when switching
-      setChaptersPage(1);
-      setConferencePage(1);
       try {
         const token = localStorage.getItem("token");
         // Build (college,institute) pairs
@@ -224,33 +218,69 @@ export default function SuperAdminDashboard() {
         } else {
           pairs = [{ college: pubFilters.selectedCollege, institute: pubFilters.selectedInstitute }];
         }
-        // Fetch for each pair
+        
+        // Fetch ALL pages for each pair to get complete data
         const all = [];
         let totalCount = 0;
+        
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
-            const res = await api.get('/papers/institute', {
-              headers: { Authorization: `Bearer ${token}` },
-              params: { college, institute },
-            });
-            // Handle paginated response
-            const result = res.data;
-            if (result.pagination) {
-              all.push(...(result.data || []));
-              // Sum up total counts from each pair
-              totalCount += result.pagination.total || 0;
-            } else {
-              all.push(...(result || []));
-              // If no pagination, count the items
-              totalCount += Array.isArray(result) ? result.length : 0;
+            let page = 1;
+            let hasMore = true;
+            let pairTotal = 0;
+            const pairPapers = [];
+            
+            // Fetch all pages for this college/institute pair
+            while (hasMore) {
+              try {
+                const res = await api.get('/papers/institute', {
+                  headers: { Authorization: `Bearer ${token}` },
+                  params: { 
+                    college, 
+                    institute,
+                    page,
+                    limit: 100 // Fetch 100 per page to reduce API calls
+                  },
+                });
+                
+                const result = res.data;
+                if (result.pagination) {
+                  const pageData = result.data || [];
+                  pairPapers.push(...pageData);
+                  pairTotal = result.pagination.total || 0;
+                  
+                  // Check if there are more pages
+                  const totalPages = result.pagination.totalPages || 1;
+                  hasMore = page < totalPages;
+                  page++;
+                } else {
+                  // Legacy response - assume all data in one response
+                  const pageData = Array.isArray(result) ? result : [];
+                  pairPapers.push(...pageData);
+                  pairTotal = pageData.length;
+                  hasMore = false;
+                }
+              } catch (err) {
+                console.error(`Error fetching page ${page} for ${college}/${institute}:`, err);
+                hasMore = false;
+              }
             }
+            
+            all.push(...pairPapers);
+            totalCount += pairTotal;
           })
         );
+        
         setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         setScopePapersTotal(totalCount);
+        setExpanded(null);
+        setSelectedPapers(new Set());
+        setSelectAll(false);
+        setPapersPage(1); // Reset to first page when scope changes
       } catch (error) {
-        // Error loading - UI shows loading state, no need for toast
         console.error("Failed to load publications for scope:", error);
+        setScopePapers([]);
+        setScopePapersTotal(0);
       } finally {
         setScopeLoading(false);
       }
