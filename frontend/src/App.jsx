@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import Login from './pages/Login/Login';
 import Navbar from './components/Navbar';
 import UserManagement from './pages/Admin/UserManagement/UserManagement';
@@ -16,15 +17,36 @@ import AnalyticsPage from './pages/User/Analytics/AnalyticsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
 import PWAInstallBanner from './components/PWAInstallBanner';
+import SplashScreen from './components/SplashScreen';
 
 function AppContent() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
+  const [showSplash, setShowSplash] = useState(() => {
+    // Show splash only on root path and if not shown in this navigation session
+    if (window.location.pathname !== '/') {
+      return false;
+    }
+    const splashShown = sessionStorage.getItem('splashShown');
+    return !splashShown;
+  });
 
   // Check if user is authenticated and not an admin (for PWA banner)
   const isAuthenticated = !!localStorage.getItem('token');
   const user = isAuthenticated ? JSON.parse(localStorage.getItem('user') || '{}') : null;
   const showPWABanner = isAuthenticated && !isLoginPage && user?.role !== 'super_admin';
+
+  useEffect(() => {
+    // Mark splash as shown in this session when it displays
+    if (showSplash && location.pathname === '/') {
+      sessionStorage.setItem('splashShown', 'true');
+    }
+  }, [showSplash, location.pathname]);
+
+  // Show splash screen on initial load (only on root path)
+  if (showSplash && location.pathname === '/') {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
 
   return (
     <>
@@ -32,6 +54,9 @@ function AppContent() {
       {/* PWA Install Banner - only for authenticated non-admin users */}
       {showPWABanner && <PWAInstallBanner />}
       <Routes>
+        {/* Splash screen route */}
+        <Route path="/splash" element={<SplashScreen />} />
+        
         {/* Public route */}
         <Route path="/login" element={<Login />} />
 
