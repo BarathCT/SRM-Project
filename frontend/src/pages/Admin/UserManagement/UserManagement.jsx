@@ -11,7 +11,6 @@ import UserHeader from './components/UserHeader';
 import UserStatsCard from './components/UserStatsCard';
 import BulkUploadDialog from './components/BulkUpload/BulkUploadDialog';
 import LogDialog from './components/LogDialog';
-import { Pagination } from '@/components/ui/pagination';
 import { useDebounce } from '@/hooks/useDebounce';
 
 import {
@@ -156,59 +155,77 @@ export default function UserManagement() {
     applyFilters();
   }, [applyFilters]);
 
-  // Fetch users based on current user role
+  // Fetch users based on current user role - fetch all pages for client-side pagination
   const fetchUsers = async (user, page = 1) => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      let url = `${API_BASE_URL}/api/admin/users`;
-      const params = new URLSearchParams();
+      
+      // Fetch ALL pages to get complete data for client-side pagination
+      let allUsers = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        let url = `${API_BASE_URL}/api/admin/users`;
+        const params = new URLSearchParams();
 
-      // Add pagination params
-      params.append('page', page);
-      params.append('limit', pagination.limit);
+        // Add pagination params
+        params.append('page', currentPage);
+        params.append('limit', 100); // Fetch 100 per page to reduce API calls
 
-      // Add filters based on user role
-      if (user.role === 'campus_admin') {
-        params.append('college', user.college);
-      }
-
-      // Append params to URL
-      url += `?${params.toString()}`;
-
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+        // Add filters based on user role
+        if (user.role === 'campus_admin') {
+          params.append('college', user.college);
         }
-      });
 
-      // Handle response
-      const contentType = res.headers.get('content-type');
-      let data;
-      if (contentType?.includes('application/json')) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        throw new Error(`Server did not return JSON. Response: ${text}`);
-      }
+        // Append params to URL
+        url += `?${params.toString()}`;
 
-      // Handle paginated response
-      if (data.pagination) {
-        setUsers(data.data || []);
-        setPagination(data.pagination);
-      } else if (Array.isArray(data)) {
-        // Legacy response format
-        setUsers(data);
-        setPagination(prev => ({
-          ...prev,
-          total: data.length,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPrevPage: false
-        }));
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        // Handle response
+        const contentType = res.headers.get('content-type');
+        let data;
+        if (contentType?.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(`Server did not return JSON. Response: ${text}`);
+        }
+
+        // Handle paginated response
+        if (data.pagination) {
+          allUsers.push(...(data.data || []));
+          totalCount = data.pagination.total || 0;
+          const totalPages = data.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else if (Array.isArray(data)) {
+          // Legacy response format - assume all data in one response
+          allUsers.push(...data);
+          totalCount = data.length;
+          hasMore = false;
+        } else {
+          hasMore = false;
+        }
       }
+      
+      setUsers(allUsers);
+      setPagination(prev => ({
+        ...prev,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / 15), // For display purposes
+        hasNextPage: false,
+        hasPrevPage: false
+      }));
     } catch (err) {
       console.error('Fetch users error:', err);
       console.error('Failed to fetch users:', err);
@@ -559,21 +576,6 @@ export default function UserManagement() {
         setOpenDialog={setOpenDialog}
       />
 
-      {/* Pagination */}
-      <Pagination
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        hasNextPage={pagination.hasNextPage}
-        hasPrevPage={pagination.hasPrevPage}
-        onPageChange={(page) => fetchUsers(currentUser, page)}
-        onLimitChange={(limit) => {
-          setPagination(prev => ({ ...prev, limit }));
-          fetchUsers(currentUser, 1);
-        }}
-        loading={isLoading}
-      />
 
       {/* Add/Edit User Dialog */}
       <AddUserDialog

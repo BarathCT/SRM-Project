@@ -1,4 +1,4 @@
-import { User, Edit, Trash2, Users, Plus, X, Mail, BadgeCheck, Shield, Building2, Layers } from 'lucide-react';
+import { User, Edit, Trash2, Users, Plus, X, Mail, BadgeCheck, Shield, Building2, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ import {
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
+import { useState, useMemo, useEffect } from 'react';
 
 export default function UserTable({
   users,
@@ -69,6 +70,94 @@ export default function UserTable({
 
   const currentUserRole = currentUser?.role || 'super_admin';
 
+  // Pagination
+  const PER_PAGE = 15;
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filteredUsers]);
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredUsers.length / PER_PAGE)),
+    [filteredUsers.length]
+  );
+
+  const displayedUsers = useMemo(() => {
+    const start = (page - 1) * PER_PAGE;
+    const end = start + PER_PAGE;
+    return filteredUsers.slice(start, end);
+  }, [filteredUsers, page]);
+
+  // Pagination Controls Component
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+    const MAX_NUMBERS = 7;
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    if (totalPages <= MAX_NUMBERS) {
+      for (let i = 1; i <= totalPages; i++) push(i);
+    } else {
+      const left = Math.max(2, page - 1);
+      const right = Math.min(totalPages - 1, page + 1);
+      push(1);
+      if (left > 2) push("left-ellipsis");
+      for (let i = left; i <= right; i++) push(i);
+      if (right < totalPages - 1) push("right-ellipsis");
+      push(totalPages);
+    }
+
+    return (
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+        <div className="text-sm text-gray-700">
+          Showing <span className="font-semibold">{(page - 1) * PER_PAGE + 1}</span> to{' '}
+          <span className="font-semibold">{Math.min(page * PER_PAGE, filteredUsers.length)}</span> of{' '}
+          <span className="font-semibold">{filteredUsers.length}</span> results
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-blue-200"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {pages.map((p, idx) =>
+            typeof p === "number" ? (
+              <Button
+                key={idx}
+                variant={p === page ? "default" : "outline"}
+                size="sm"
+                className={
+                  p === page ? "bg-blue-600 text-white" : "border-blue-200"
+                }
+                onClick={() => setPage(p)}
+              >
+                {p}
+              </Button>
+            ) : (
+              <span key={idx} className="px-2 text-gray-500 select-none">
+                …
+              </span>
+            )
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-blue-200"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="rounded-lg border border-gray-200 overflow-hidden">
       <Table className="min-w-full">
@@ -112,8 +201,8 @@ export default function UserTable({
                 </TableCell>
               </TableRow>
             ))
-          ) : filteredUsers.length > 0 ? (
-            filteredUsers.map((user) => (
+          ) : displayedUsers.length > 0 ? (
+            displayedUsers.map((user) => (
               <TableRow key={user._id} className="hover:bg-gray-50/50">
                 <TableCell>
                   <div className="flex items-center space-x-3">
@@ -249,6 +338,7 @@ export default function UserTable({
           )}
         </TableBody>
       </Table>
+      <PaginationControls />
     </div>
   );
 }

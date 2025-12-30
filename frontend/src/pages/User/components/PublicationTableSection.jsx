@@ -3,7 +3,6 @@ import { FileText, BookOpen, Presentation } from "lucide-react";
 import PublicationsTable from "./PublicationTable/PublicationsTable";
 import BookChaptersTable from "./PublicationTable/BookChaptersTable";
 import ConferencePapersTable from "./PublicationTable/ConferencePapersTable";
-import { Pagination } from "@/components/ui/pagination";
 
 const ICONS = {
   papers: FileText,
@@ -128,42 +127,27 @@ export default function PublicationTableSection({
 
       {/* Tables with Pagination */}
       {activeTab === "papers" && (
-        <>
-          <PublicationsTable
-            papers={papers}
-            selectedPapers={selectedPapers}
-            selectAll={selectAllPapers}
-            onToggleSelectAll={onToggleSelectAllPapers}
-            onToggleSelect={onToggleSelectPaper}
-            expandedIndex={expandedPaper}
-            onToggleExpand={onToggleExpandPaper}
-            onEdit={onEditPaper}
-            onDelete={onDeletePaper}
-            deletingId={deletingPaperId}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={onClearFilters}
-            showAuthorInfo={showAuthorInfo}
-            users={users}
-            currentUser={currentUser}
-            canEditPaper={canEditPaper}
-            canDeletePaper={canDeletePaper}
-            onUpdatePaper={onUpdatePaper}
-            isUpdatingPaper={isUpdatingPaper}
-          />
-          {papersPagination && (
-            <Pagination
-              page={papersPagination.page}
-              totalPages={papersPagination.totalPages}
-              total={papersPagination.total}
-              limit={papersPagination.limit}
-              hasNextPage={papersPagination.hasNextPage}
-              hasPrevPage={papersPagination.hasPrevPage}
-              onPageChange={onPapersPageChange}
-              onLimitChange={onPapersLimitChange}
-              loading={loadingPapers}
-            />
-          )}
-        </>
+        <PublicationsTable
+          papers={papers}
+          selectedPapers={selectedPapers}
+          selectAll={selectAllPapers}
+          onToggleSelectAll={onToggleSelectAllPapers}
+          onToggleSelect={onToggleSelectPaper}
+          expandedIndex={expandedPaper}
+          onToggleExpand={onToggleExpandPaper}
+          onEdit={onEditPaper}
+          onDelete={onDeletePaper}
+          deletingId={deletingPaperId}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={onClearFilters}
+          showAuthorInfo={showAuthorInfo}
+          users={users}
+          currentUser={currentUser}
+          canEditPaper={canEditPaper}
+          canDeletePaper={canDeletePaper}
+          onUpdatePaper={onUpdatePaper}
+          isUpdatingPaper={isUpdatingPaper}
+        />
       )}
 
       {activeTab === "bookChapters" && (
