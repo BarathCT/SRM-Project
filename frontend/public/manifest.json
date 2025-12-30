@@ -7,8 +7,8 @@
   "display": "standalone",
   "display_override": ["window-controls-overlay"],
   "orientation": "any",
-  "theme_color": "#1a1a2e",
-  "background_color": "#1a1a2e",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
   "launch_handler": {
     "client_mode": "focus-existing"
   },

@@ -21,6 +21,14 @@ export default function AnalyticsChart({
 }) {
   const ChartComponent = chartMap[type];
 
+  // Check if data is empty
+  const isEmpty = !data || 
+    !data.labels || 
+    data.labels.length === 0 || 
+    !data.datasets || 
+    data.datasets.length === 0 ||
+    (data.datasets[0] && (!data.datasets[0].data || data.datasets[0].data.every(val => val === 0 || !val)));
+
   return (
     <div className={`bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-200 ${className}`}>
       <h5 className="font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
@@ -33,7 +41,16 @@ export default function AnalyticsChart({
         )}
       </h5>
       <div className={type === 'bar' ? 'h-64 sm:h-72 lg:h-80' : 'h-64 sm:h-72 lg:h-80 relative'}>
-        <ChartComponent data={data} options={options} />
+        {isEmpty ? (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            <div className="text-center">
+              <p className="font-medium">No data available</p>
+              <p className="text-xs mt-1">Try adjusting your filters</p>
+            </div>
+          </div>
+        ) : (
+          <ChartComponent data={data} options={options} />
+        )}
       </div>
       {children}
     </div>

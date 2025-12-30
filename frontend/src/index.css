@@ -132,13 +132,17 @@
     @apply overflow-x-hidden;
     width: 100%;
     max-width: 100vw;
+    background-color: #ffffff;
   }
   body {
     @apply bg-background text-foreground font-sans;
+    background-color: #ffffff !important;
   }
   #root {
     @apply overflow-x-hidden;
     width: 100%;
     max-width: 100vw;
+    background-color: #ffffff;
+    min-height: 100vh;
   }
 }

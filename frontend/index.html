@@ -7,7 +7,7 @@
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="theme-color" content="#ffffff" />
 
   <!-- Apple PWA Meta Tags -->
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.jpg" />
@@ -23,6 +23,26 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scholar sync</title>
+  <style>
+    /* Immediate white background to prevent any flash */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
+      overflow: hidden;
+    }
+    #root {
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
+    }
+    /* Prevent flash of unstyled content */
+    body:not(.loaded) {
+      background-color: #ffffff !important;
+    }
+  </style>
 </head>
 
 <body>
