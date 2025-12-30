@@ -22,12 +22,17 @@ export default function AnalyticsChart({
   const ChartComponent = chartMap[type];
 
   // Check if data is empty
+  // For bar charts, check if ANY dataset has non-zero values (not all datasets need to have data)
   const isEmpty = !data || 
     !data.labels || 
     data.labels.length === 0 || 
     !data.datasets || 
     data.datasets.length === 0 ||
-    (data.datasets[0] && (!data.datasets[0].data || data.datasets[0].data.every(val => val === 0 || !val)));
+    (data.datasets.every(dataset => 
+      !dataset.data || 
+      dataset.data.length === 0 || 
+      dataset.data.every(val => val === 0 || !val)
+    ));
 
   return (
     <div className={`bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${className}`}>

@@ -195,47 +195,109 @@ const CampusAdminDashboard = () => {
     }
   };
 
-  const fetchInstitutePapers = async (user, page = 1) => {
+  const fetchInstitutePapers = async (user) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await api.get('/papers/institute', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { college: user.college, institute: user.institute, page, limit: institutePapersPagination.limit },
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setInstitutePapers(result.data || []);
-        setInstitutePapersPagination(result.pagination);
-      } else {
-        setInstitutePapers(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allPapers = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/papers/institute', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            college: user.college, 
+            institute: user.institute, 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          },
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allPapers.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allPapers.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      const sortedPapers = allPapers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setInstitutePapers(sortedPapers);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = sortedPapers.length > 0 ? sortedPapers.length : totalCount;
+      setInstitutePapersPagination({
+        page: 1,
+        limit: 15,
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch (error) {
       console.error("Fetch institute papers error:", error);
       setInstitutePapers([]);
     }
   };
 
-  const fetchMyPapers = async (page = 1) => {
+  const fetchMyPapers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await api.get('/papers/my', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: myPapersPagination.limit },
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setMyPapers(result.data || []);
-        setMyPapersPagination(result.pagination);
-      } else {
-        setMyPapers(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allPapers = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/papers/my', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          },
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allPapers.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allPapers.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      const sortedPapers = allPapers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setMyPapers(sortedPapers);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = sortedPapers.length > 0 ? sortedPapers.length : totalCount;
+      setMyPapersPagination({
+        page: 1,
+        limit: 15,
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch (error) {
       console.error("Fetch my papers error:", error);
       setMyPapers([]);
     }
   };
 
-  const fetchInstituteBookChapters = async (user, page = 1) => {
+  const fetchInstituteBookChapters = async (user) => {
     try {
       const token = localStorage.getItem("token");
       
@@ -269,12 +331,15 @@ const CampusAdminDashboard = () => {
         }
       }
       
-      setInstituteBookChapters(allChapters);
+      const sortedChapters = allChapters.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setInstituteBookChapters(sortedChapters);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = sortedChapters.length > 0 ? sortedChapters.length : totalCount;
       setInstituteChaptersPagination({
         page: 1,
         limit: 15,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / 15),
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
         hasNextPage: false,
         hasPrevPage: false
       });
@@ -283,7 +348,7 @@ const CampusAdminDashboard = () => {
     }
   };
 
-  const fetchMyBookChapters = async (page = 1) => {
+  const fetchMyBookChapters = async () => {
     try {
       const token = localStorage.getItem("token");
       
@@ -315,12 +380,15 @@ const CampusAdminDashboard = () => {
         }
       }
       
-      setMyBookChapters(allChapters);
+      const sortedChapters = allChapters.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setMyBookChapters(sortedChapters);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = sortedChapters.length > 0 ? sortedChapters.length : totalCount;
       setMyChaptersPagination({
         page: 1,
         limit: 15,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / 15),
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
         hasNextPage: false,
         hasPrevPage: false
       });
@@ -329,7 +397,7 @@ const CampusAdminDashboard = () => {
     }
   };
 
-  const fetchInstituteConference = async (user, page = 1) => {
+  const fetchInstituteConference = async (user) => {
     try {
       const token = localStorage.getItem("token");
       
@@ -363,12 +431,15 @@ const CampusAdminDashboard = () => {
         }
       }
       
-      setInstituteConference(allConference);
+      const sortedConference = allConference.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setInstituteConference(sortedConference);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = sortedConference.length > 0 ? sortedConference.length : totalCount;
       setInstituteConferencePagination({
         page: 1,
         limit: 15,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / 15),
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
         hasNextPage: false,
         hasPrevPage: false
       });
@@ -377,7 +448,7 @@ const CampusAdminDashboard = () => {
     }
   };
 
-  const fetchMyConference = async (page = 1) => {
+  const fetchMyConference = async () => {
     try {
       const token = localStorage.getItem("token");
       
@@ -409,12 +480,15 @@ const CampusAdminDashboard = () => {
         }
       }
       
-      setMyConference(allConference);
+      const sortedConference = allConference.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setMyConference(sortedConference);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = sortedConference.length > 0 ? sortedConference.length : totalCount;
       setMyConferencePagination({
         page: 1,
         limit: 15,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / 15),
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
         hasNextPage: false,
         hasPrevPage: false
       });
@@ -1214,16 +1288,8 @@ const CampusAdminDashboard = () => {
             }}
             deletingChapterId={deletingChapterId}
             chaptersPagination={activeTab === "institute" ? instituteChaptersPagination : myChaptersPagination}
-            onChaptersPageChange={(page) => activeTab === "institute" ? fetchInstituteBookChapters(currentUser, page) : fetchMyBookChapters(page)}
-            onChaptersLimitChange={(limit) => {
-              if (activeTab === "institute") {
-                setInstituteChaptersPagination(prev => ({ ...prev, limit }));
-                fetchInstituteBookChapters(currentUser, 1);
-              } else {
-                setMyChaptersPagination(prev => ({ ...prev, limit }));
-                fetchMyBookChapters(1);
-              }
-            }}
+            onChaptersPageChange={() => {}} // Handled internally by table component
+            onChaptersLimitChange={() => {}} // Handled internally by table component
             loadingChapters={loading}
             // Conference props
             conference={activeTab === "institute" ? instituteConference : myConference}
@@ -1263,16 +1329,8 @@ const CampusAdminDashboard = () => {
             }}
             deletingConferenceId={deletingConferenceId}
             conferencePagination={activeTab === "institute" ? instituteConferencePagination : myConferencePagination}
-            onConferencePageChange={(page) => activeTab === "institute" ? fetchInstituteConference(currentUser, page) : fetchMyConference(page)}
-            onConferenceLimitChange={(limit) => {
-              if (activeTab === "institute") {
-                setInstituteConferencePagination(prev => ({ ...prev, limit }));
-                fetchInstituteConference(currentUser, 1);
-              } else {
-                setMyConferencePagination(prev => ({ ...prev, limit }));
-                fetchMyConference(1);
-              }
-            }}
+            onConferencePageChange={() => {}} // Handled internally by table component
+            onConferenceLimitChange={() => {}} // Handled internally by table component
             loadingConference={loading}
             // Common props
             hasActiveFilters={false}

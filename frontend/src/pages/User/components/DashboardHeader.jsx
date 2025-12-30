@@ -134,7 +134,7 @@ export default function DashboardHeader({
                 type="button"
               >
                 <BarChart3 className="h-4 w-4" />
-                <span className="font-medium text-xs sm:text-sm">Analytics</span>
+                <span className="font-medium text-xs sm:text-sm max-[375px]:hidden">Analytics</span>
               </button>
               {/* Finder Button */}
               <button
@@ -144,8 +144,7 @@ export default function DashboardHeader({
                 type="button"
               >
                 <Search className="h-4 w-4" />
-                <span className="font-medium text-xs sm:text-sm hidden xs:inline sm:inline">Find Faculty</span>
-                <span className="font-medium text-xs sm:hidden xs:hidden">Find</span>
+                <span className="font-medium text-xs sm:text-sm hidden min-[425px]:inline">Find</span>
               </button>
             </>
           )}

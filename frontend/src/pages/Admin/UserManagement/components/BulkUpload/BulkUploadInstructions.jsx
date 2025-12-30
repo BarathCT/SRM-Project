@@ -16,7 +16,8 @@ export default function BulkUploadInstructions({
   downloadTemplate,
   trigger
 }) {
-  const { role } = currentUser;
+  const safeUser = currentUser || {};
+  const { role } = safeUser;
 
   return (
     <Dialog>

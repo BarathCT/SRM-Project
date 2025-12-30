@@ -16,6 +16,7 @@ import {
   collegeOptions,
   getDepartments,
   getAllDepartmentNames,
+  getInstitutesForCollege,
 } from '@/utils/collegeData';
 
 export default function UserFilters({
@@ -95,13 +96,13 @@ export default function UserFilters({
   }, [availableColleges, availableInstitutes, availableDepartments]);
 
   return (
-    <div className="bg-white p-4 rounded-lg border border-gray-200">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <Filter className="h-5 w-5 text-blue-600" />
-          <h3 className="font-medium">Filters</h3>
+    <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-4">
+        <div className="flex items-center gap-2 sm:space-x-2">
+          <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 shrink-0" />
+          <h3 className="font-medium text-sm sm:text-base">Filters</h3>
           {hasActiveFilters && (
-            <Badge variant="secondary" className="px-2 py-0.5">
+            <Badge variant="secondary" className="px-2 py-0.5 text-xs">
               {activeFilterCount} active
             </Badge>
           )}
@@ -111,19 +112,20 @@ export default function UserFilters({
             variant="ghost"
             size="sm"
             onClick={resetFilters}
-            className="text-gray-500 hover:text-gray-700 h-8 px-3"
+            className="text-gray-500 hover:text-gray-700 h-9 sm:h-8 px-3 text-xs sm:text-sm self-start sm:self-auto w-full sm:w-auto"
           >
-            <X className="h-4 w-4 mr-1" />
-            Clear all
+            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-1" />
+            <span className="hidden sm:inline">Clear all</span>
+            <span className="sm:hidden">Clear Filters</span>
           </Button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Search Input */}
-        <div className="space-y-2">
-          <Label htmlFor="search" className="flex items-center text-sm">
-            <Search className="h-4 w-4 mr-2 text-gray-500" />
+      <div className="space-y-3 sm:space-y-4">
+        {/* Search Input - Full Width */}
+        <div className="space-y-1.5 sm:space-y-2">
+          <Label htmlFor="search" className="flex items-center text-xs sm:text-sm font-medium">
+            <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-500 shrink-0" />
             Search
           </Label>
           <Input
@@ -131,71 +133,74 @@ export default function UserFilters({
             placeholder="Name, email, or faculty ID"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
+            className="w-full h-10 sm:h-10 text-sm"
           />
         </div>
 
-        {/* College filter (only for super admin) */}
-        {shouldShowCollegeFilter && (
-          <div className="space-y-2">
-            <Label htmlFor="filter-college" className="flex items-center text-sm">
-              <Building className="h-4 w-4 mr-2 text-gray-500" />
-              College
+        {/* College and Role - Single Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {/* College filter (only for super admin) */}
+          {shouldShowCollegeFilter && (
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="filter-college" className="flex items-center text-xs sm:text-sm font-medium">
+                <Building className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-500 shrink-0" />
+                College
+              </Label>
+              <Select
+                value={filters.college}
+                onValueChange={(value) => {
+                  setFilters({ 
+                    ...filters, 
+                    college: value,
+                    institute: 'all', // Reset institute when college changes
+                    department: 'all' // Reset department when college changes
+                  });
+                }}
+              >
+                <SelectTrigger className="h-10 sm:h-10 text-sm">
+                  <SelectValue placeholder="All colleges" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All colleges</SelectItem>
+                  {dynamicFilterOptions.colleges.map(college => (
+                    <SelectItem key={college} value={college}>
+                      {college}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Role filter */}
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="filter-role" className="flex items-center text-xs sm:text-sm font-medium">
+              <UserIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-500 shrink-0" />
+              Role
             </Label>
             <Select
-              value={filters.college}
-              onValueChange={(value) => {
-                setFilters({ 
-                  ...filters, 
-                  college: value,
-                  institute: 'all', // Reset institute when college changes
-                  department: 'all' // Reset department when college changes
-                });
-              }}
+              value={filters.role}
+              onValueChange={(value) => setFilters({ ...filters, role: value })}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="All colleges" />
+              <SelectTrigger className="h-10 sm:h-10 text-sm">
+                <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All colleges</SelectItem>
-                {dynamicFilterOptions.colleges.map(college => (
-                  <SelectItem key={college} value={college}>
-                    {college}
+                {roleDropdownOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        )}
-
-        {/* Role filter */}
-        <div className="space-y-2">
-          <Label htmlFor="filter-role" className="flex items-center text-sm">
-            <UserIcon className="h-4 w-4 mr-2 text-gray-500" />
-            Role
-          </Label>
-          <Select
-            value={filters.role}
-            onValueChange={(value) => setFilters({ ...filters, role: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All roles" />
-            </SelectTrigger>
-            <SelectContent>
-              {roleDropdownOptions.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Institute filter: only show when college is selected and has institutes */}
         {shouldShowInstituteFilter && filters.college !== 'all' && !collegesWithoutInstitutes.includes(filters.college) && (
-          <div className="space-y-2">
-            <Label htmlFor="filter-institute" className="flex items-center text-sm">
-              <Layers className="h-4 w-4 mr-2 text-gray-500" />
+          <div className="space-y-1.5 sm:space-y-2 w-full">
+            <Label htmlFor="filter-institute" className="flex items-center text-xs sm:text-sm font-medium">
+              <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-500 shrink-0" />
               Institute
             </Label>
             <Select
@@ -208,7 +213,7 @@ export default function UserFilters({
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-10 sm:h-10 text-sm">
                 <SelectValue placeholder="All institutes" />
               </SelectTrigger>
               <SelectContent>
@@ -231,16 +236,16 @@ export default function UserFilters({
           if (isCampusAdmin) {
             if (campusAdminDepartments.length === 0) return null;
             return (
-              <div className="space-y-2">
-                <Label htmlFor="filter-department" className="flex items-center text-sm">
-                  <Layers className="h-4 w-4 mr-2 text-gray-500" />
+              <div className="space-y-1.5 sm:space-y-2 w-full">
+                <Label htmlFor="filter-department" className="flex items-center text-xs sm:text-sm font-medium">
+                  <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-500 shrink-0" />
                   Department
                 </Label>
                 <Select
                   value={filters.department}
                   onValueChange={(value) => setFilters({ ...filters, department: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 sm:h-10 text-sm">
                     <SelectValue placeholder="All departments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -264,16 +269,16 @@ export default function UserFilters({
             const depts = getDepartments(filters.college, null).filter(d => d && d !== 'N/A');
             if (depts.length === 0) return null;
             return (
-              <div className="space-y-2">
-                <Label htmlFor="filter-department" className="flex items-center text-sm">
-                  <Layers className="h-4 w-4 mr-2 text-gray-500" />
+              <div className="space-y-1.5 sm:space-y-2 w-full">
+                <Label htmlFor="filter-department" className="flex items-center text-xs sm:text-sm font-medium">
+                  <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-500 shrink-0" />
                   Department
                 </Label>
                 <Select
                   value={filters.department}
                   onValueChange={(value) => setFilters({ ...filters, department: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 sm:h-10 text-sm">
                     <SelectValue placeholder="All departments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -293,16 +298,16 @@ export default function UserFilters({
           const depts = getDepartments(filters.college, filters.institute).filter(d => d && d !== 'N/A');
           if (depts.length === 0) return null;
           return (
-            <div className="space-y-2">
-              <Label htmlFor="filter-department" className="flex items-center text-sm">
-                <Layers className="h-4 w-4 mr-2 text-gray-500" />
+            <div className="space-y-1.5 sm:space-y-2 w-full">
+              <Label htmlFor="filter-department" className="flex items-center text-xs sm:text-sm font-medium">
+                <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-500 shrink-0" />
                 Department
               </Label>
               <Select
                 value={filters.department}
                 onValueChange={(value) => setFilters({ ...filters, department: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 sm:h-10 text-sm">
                   <SelectValue placeholder="All departments" />
                 </SelectTrigger>
                 <SelectContent>
@@ -319,64 +324,85 @@ export default function UserFilters({
         })()}
       </div>
 
-      {/* Active filters display */}
+      {/* Active filters display - Mobile Optimized */}
       {hasActiveFilters && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {filters.role !== 'all' && (
-            <Badge variant="outline" className="px-3 py-1">
-              Role: {filters.role.charAt(0).toUpperCase() + filters.role.slice(1).replace('_', ' ')}
-              <button 
-                onClick={() => setFilters({ ...filters, role: 'all' })}
-                className="ml-2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.college !== 'all' && !isCampusAdmin && (
-            <Badge variant="outline" className="px-3 py-1">
-              College: {filters.college}
-              <button 
-                onClick={() => setFilters({ ...filters, college: 'all' })}
-                className="ml-2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.institute !== 'all' && !isCampusAdmin && (
-            <Badge variant="outline" className="px-3 py-1">
-              Institute: {filters.institute}
-              <button 
-                onClick={() => setFilters({ ...filters, institute: 'all' })}
-                className="ml-2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.department !== 'all' && (
-            <Badge variant="outline" className="px-3 py-1">
-              Department: {filters.department}
-              <button 
-                onClick={() => setFilters({ ...filters, department: 'all' })}
-                className="ml-2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {searchTerm && (
-            <Badge variant="outline" className="px-3 py-1">
-              Search: "{searchTerm}"
-              <button 
-                onClick={() => setSearchTerm('')}
-                className="ml-2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1.5 w-full sm:w-auto mb-1 sm:mb-0">
+              <Filter className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              Active:
+            </span>
+            {filters.role !== 'all' && (
+              <Badge variant="outline" className="px-2.5 sm:px-3 py-1.5 sm:py-1 text-xs h-7 sm:h-6 flex items-center gap-1.5">
+                <span className="hidden sm:inline">Role: </span>
+                <span className="sm:hidden">R: </span>
+                {filters.role.charAt(0).toUpperCase() + filters.role.slice(1).replace('_', ' ')}
+                <button 
+                  onClick={() => setFilters({ ...filters, role: 'all' })}
+                  className="ml-0.5 sm:ml-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                  aria-label="Remove role filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.college !== 'all' && !isCampusAdmin && (
+              <Badge variant="outline" className="px-2.5 sm:px-3 py-1.5 sm:py-1 text-xs h-7 sm:h-6 flex items-center gap-1.5 max-w-full">
+                <span className="hidden sm:inline">College: </span>
+                <span className="sm:hidden">C: </span>
+                <span className="truncate max-w-[120px] sm:max-w-none">{filters.college}</span>
+                <button 
+                  onClick={() => setFilters({ ...filters, college: 'all' })}
+                  className="ml-0.5 sm:ml-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-0.5 transition-colors shrink-0"
+                  aria-label="Remove college filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.institute !== 'all' && !isCampusAdmin && (
+              <Badge variant="outline" className="px-2.5 sm:px-3 py-1.5 sm:py-1 text-xs h-7 sm:h-6 flex items-center gap-1.5 max-w-full">
+                <span className="hidden sm:inline">Institute: </span>
+                <span className="sm:hidden">I: </span>
+                <span className="truncate max-w-[120px] sm:max-w-none">{filters.institute}</span>
+                <button 
+                  onClick={() => setFilters({ ...filters, institute: 'all' })}
+                  className="ml-0.5 sm:ml-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-0.5 transition-colors shrink-0"
+                  aria-label="Remove institute filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.department !== 'all' && (
+              <Badge variant="outline" className="px-2.5 sm:px-3 py-1.5 sm:py-1 text-xs h-7 sm:h-6 flex items-center gap-1.5 max-w-full">
+                <span className="hidden sm:inline">Department: </span>
+                <span className="sm:hidden">Dept: </span>
+                <span className="truncate max-w-[120px] sm:max-w-none">{filters.department}</span>
+                <button 
+                  onClick={() => setFilters({ ...filters, department: 'all' })}
+                  className="ml-0.5 sm:ml-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-0.5 transition-colors shrink-0"
+                  aria-label="Remove department filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {searchTerm && (
+              <Badge variant="outline" className="px-2.5 sm:px-3 py-1.5 sm:py-1 text-xs h-7 sm:h-6 flex items-center gap-1.5 max-w-full">
+                <span className="hidden sm:inline">Search: </span>
+                <span className="sm:hidden">S: </span>
+                <span className="truncate max-w-[100px] sm:max-w-none">"{searchTerm.length > 15 ? searchTerm.substring(0, 15) + '...' : searchTerm}"</span>
+                <button 
+                  onClick={() => setSearchTerm('')}
+                  className="ml-0.5 sm:ml-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-0.5 transition-colors shrink-0"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
         </div>
       )}
     </div>

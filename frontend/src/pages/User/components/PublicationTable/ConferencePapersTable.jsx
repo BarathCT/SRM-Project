@@ -31,11 +31,10 @@ import {
     X,
     MapPin,
     Calendar,
-    ChevronLeft,
-    ChevronRight,
     ArrowLeft,
 } from "lucide-react";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
+import Pagination from "@/components/Pagination";
 
 export default function ConferencePapersTable({
     papers,
@@ -95,67 +94,6 @@ export default function ConferencePapersTable({
         });
     };
 
-    // Pagination Controls
-    const PaginationControls = () => {
-        if (totalPages <= 1) return null;
-        const MAX_NUMBERS = 7;
-        const pages = [];
-        const push = (p) => pages.push(p);
-
-        if (totalPages <= MAX_NUMBERS) {
-            for (let i = 1; i <= totalPages; i++) push(i);
-        } else {
-            const left = Math.max(2, page - 1);
-            const right = Math.min(totalPages - 1, page + 1);
-            push(1);
-            if (left > 2) push("left-ellipsis");
-            for (let i = left; i <= right; i++) push(i);
-            if (right < totalPages - 1) push("right-ellipsis");
-            push(totalPages);
-        }
-
-        return (
-            <div className="flex items-center gap-1">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-blue-200"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                >
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                {pages.map((p, idx) =>
-                    typeof p === "number" ? (
-                        <Button
-                            key={idx}
-                            variant={p === page ? "default" : "outline"}
-                            size="sm"
-                            className={
-                                p === page ? "bg-blue-600 text-white" : "border-blue-200"
-                            }
-                            onClick={() => setPage(p)}
-                        >
-                            {p}
-                        </Button>
-                    ) : (
-                        <span key={idx} className="px-2 text-gray-500 select-none">
-                            …
-                        </span>
-                    )
-                )}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-blue-200"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                >
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
-        );
-    };
 
     return (
         <>
@@ -621,13 +559,14 @@ export default function ConferencePapersTable({
                         </div>
 
                         {/* Pagination Footer */}
-                        <div className="flex items-center justify-between p-4 border-t border-blue-100 bg-white-50">
-                            <p className="text-sm text-gray-600">
-                                Showing {papers.length === 0 ? 0 : (page - 1) * PER_PAGE + 1}–
-                                {Math.min(page * PER_PAGE, papers.length)} of {papers.length}
-                            </p>
-                            <PaginationControls />
-                        </div>
+                        <Pagination
+                            page={page}
+                            totalPages={totalPages}
+                            total={papers.length}
+                            perPage={PER_PAGE}
+                            onPageChange={setPage}
+                            className="border-t border-blue-100"
+                        />
                     </>
                 )}
             </CardContent>

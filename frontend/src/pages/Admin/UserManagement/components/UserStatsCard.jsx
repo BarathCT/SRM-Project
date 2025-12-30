@@ -234,6 +234,13 @@ export default function UserStatsCard({
     rolesByDepartment: {}
   });
 
+  // Store unfiltered statistics for count maps (so counts don't become zero when filtering)
+  const [unfilteredStatistics, setUnfilteredStatistics] = useState({
+    collegeDistribution: [],
+    instituteDistribution: [],
+    departmentDistribution: []
+  });
+
   const currentUserRole = currentUser?.role || 'super_admin';
   const isCampusAdmin = currentUserRole === 'campus_admin';
 
@@ -263,7 +270,7 @@ export default function UserStatsCard({
 
       // Validate response data structure
       if (response.data && typeof response.data === 'object') {
-        setStatistics({
+        const newStats = {
           totalUsers: response.data.totalUsers || 0,
           activeUsers: response.data.activeUsers || 0,
           roleStats: response.data.roleStats || { super_admin: 0, campus_admin: 0, faculty: 0, total: 0 },
@@ -273,7 +280,18 @@ export default function UserStatsCard({
           rolesByCollege: response.data.rolesByCollege && typeof response.data.rolesByCollege === 'object' ? response.data.rolesByCollege : {},
           rolesByInstitute: response.data.rolesByInstitute && typeof response.data.rolesByInstitute === 'object' ? response.data.rolesByInstitute : {},
           rolesByDepartment: response.data.rolesByDepartment && typeof response.data.rolesByDepartment === 'object' ? response.data.rolesByDepartment : {}
-        });
+        };
+        setStatistics(newStats);
+        
+        // Store unfiltered statistics only when no filters are applied (for count maps)
+        const hasFilters = filters.role !== 'all' || filters.college !== 'all' || filters.institute !== 'all' || filters.department !== 'all' || filters.search;
+        if (!hasFilters) {
+          setUnfilteredStatistics({
+            collegeDistribution: newStats.collegeDistribution,
+            instituteDistribution: newStats.instituteDistribution,
+            departmentDistribution: newStats.departmentDistribution
+          });
+        }
       } else {
         console.error("Invalid response data structure:", response.data);
       }
@@ -493,13 +511,16 @@ export default function UserStatsCard({
     const departments = activeDepartmentList;
     const roles = ['campus_admin', 'faculty'];
     
-    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+    // Check if data exists and has any actual values
+    const hasData = data && typeof data === 'object' && Object.keys(data).length > 0;
+    
+    if (!hasData) {
       // Return empty chart data if data is invalid
       return {
-        labels: departments.length > 0 ? departments : ['No Departments'],
+        labels: departments.length > 0 ? departments.slice(0, 10) : ['No Departments'],
         datasets: roles.map(role => ({
           label: roleConfig[role]?.label || role,
-          data: departments.length > 0 ? departments.map(() => 0) : [0],
+          data: departments.length > 0 ? departments.slice(0, 10).map(() => 0) : [0],
           backgroundColor: chartColors[role],
           borderColor: chartColors[role],
           borderWidth: 1
@@ -507,14 +528,55 @@ export default function UserStatsCard({
       };
     }
     
-    // Filter out departments with zero counts for better visualization
-    const departmentsWithData = departments.filter(dept => {
-      const deptData = data[dept];
+    // Check if there's any actual data (non-zero values) in the entire data object
+    const hasAnyData = Object.values(data).some(deptData => {
       if (!deptData || typeof deptData !== 'object') return false;
       return (deptData.campus_admin || 0) + (deptData.faculty || 0) > 0;
     });
     
-    const finalDepartments = departmentsWithData.length > 0 ? departmentsWithData : departments.slice(0, 10);
+    // If there's data but not in activeDepartmentList, use all departments from data
+    if (hasAnyData) {
+      const allDepartmentsWithData = Object.keys(data).filter(dept => {
+        const deptData = data[dept];
+        if (!deptData || typeof deptData !== 'object') return false;
+        return (deptData.campus_admin || 0) + (deptData.faculty || 0) > 0;
+      });
+      
+      // Filter departments: prefer those with data from activeDepartmentList, 
+      // but also include any departments from data that have values
+      const departmentsWithData = departments.filter(dept => {
+        const deptData = data[dept];
+        if (!deptData || typeof deptData !== 'object') return false;
+        return (deptData.campus_admin || 0) + (deptData.faculty || 0) > 0;
+      });
+      
+      // Combine: use active departments with data first, then add any other departments with data
+      const combinedDepartments = [...new Set([...departmentsWithData, ...allDepartmentsWithData])];
+      
+      // Use departments with data if available, otherwise use first 10 departments
+      const finalDepartments = combinedDepartments.length > 0 
+        ? combinedDepartments.slice(0, 20) // Limit to 20 for performance
+        : (departments.length > 0 ? departments.slice(0, 10) : ['No Departments']);
+      
+      return {
+        labels: finalDepartments,
+        datasets: roles.map(role => ({
+          label: roleConfig[role]?.label || role,
+          data: finalDepartments.map(department => {
+            const deptData = data[department];
+            if (!deptData || typeof deptData !== 'object') return 0;
+            const value = deptData[role];
+            return typeof value === 'number' ? value : 0;
+          }),
+          backgroundColor: chartColors[role],
+          borderColor: chartColors[role],
+          borderWidth: 1
+        }))
+      };
+    }
+    
+    // No data at all - return empty chart
+    const finalDepartments = departments.length > 0 ? departments.slice(0, 10) : ['No Departments'];
     
     return {
       labels: finalDepartments,
@@ -577,7 +639,7 @@ export default function UserStatsCard({
     };
   };
 
-  const createPieData = (distribution) => {
+  const createPieData = (distribution, selectedLabel = null) => {
     // Handle empty or invalid distribution
     if (!Array.isArray(distribution) || distribution.length === 0) {
       return {
@@ -590,53 +652,76 @@ export default function UserStatsCard({
         }]
       };
     }
+    
+    // If a label is selected, highlight it and gray out others
+    const colors = distribution.map((item, index) => {
+      const label = item?.label || 'Unknown';
+      const originalColor = extendedColors[index % extendedColors.length];
+      
+      if (selectedLabel && selectedLabel !== 'all') {
+        // Highlight selected segment, gray out others
+        return label === selectedLabel ? originalColor : '#d1d5db'; // gray-300
+      }
+      
+      return originalColor;
+    });
+    
     return {
       labels: distribution.map(item => item?.label || 'Unknown'),
       datasets: [{
         data: distribution.map(item => item?.value || 0),
-        backgroundColor: extendedColors.slice(0, distribution.length),
+        backgroundColor: colors,
         borderWidth: 2,
         borderColor: '#ffffff'
       }]
     };
   };
 
-  // COUNT MAPS for all chart filter groups
+  // COUNT MAPS for all chart filter groups - use unfiltered statistics so counts don't become zero
   const collegeCountMap = useMemo(() => {
     const map = {};
-    if (Array.isArray(statistics.collegeDistribution)) {
-      statistics.collegeDistribution.forEach(item => {
+    const distribution = unfilteredStatistics.collegeDistribution.length > 0 
+      ? unfilteredStatistics.collegeDistribution 
+      : statistics.collegeDistribution;
+    if (Array.isArray(distribution)) {
+      distribution.forEach(item => {
         if (item && item.label) {
           map[item.label] = item.value || 0;
         }
       });
     }
     return map;
-  }, [statistics.collegeDistribution]);
+  }, [unfilteredStatistics.collegeDistribution, statistics.collegeDistribution]);
 
   const instituteCountMap = useMemo(() => {
     const map = {};
-    if (Array.isArray(statistics.instituteDistribution)) {
-      statistics.instituteDistribution.forEach(item => {
+    const distribution = unfilteredStatistics.instituteDistribution.length > 0 
+      ? unfilteredStatistics.instituteDistribution 
+      : statistics.instituteDistribution;
+    if (Array.isArray(distribution)) {
+      distribution.forEach(item => {
         if (item && item.label) {
           map[item.label] = item.value || 0;
         }
       });
     }
     return map;
-  }, [statistics.instituteDistribution]);
+  }, [unfilteredStatistics.instituteDistribution, statistics.instituteDistribution]);
 
   const departmentCountMap = useMemo(() => {
     const map = {};
-    if (Array.isArray(statistics.departmentDistribution)) {
-      statistics.departmentDistribution.forEach(item => {
+    const distribution = unfilteredStatistics.departmentDistribution.length > 0 
+      ? unfilteredStatistics.departmentDistribution 
+      : statistics.departmentDistribution;
+    if (Array.isArray(distribution)) {
+      distribution.forEach(item => {
         if (item && item.label) {
           map[item.label] = item.value || 0;
         }
       });
     }
     return map;
-  }, [statistics.departmentDistribution]);
+  }, [unfilteredStatistics.departmentDistribution, statistics.departmentDistribution]);
 
   // College Hierarchical Tree
   const collegeHierarchyData = useMemo(() => {
@@ -796,7 +881,7 @@ export default function UserStatsCard({
                   <>
                     <AnalyticsChart
                       type="pie"
-                      data={createPieData(statistics.departmentDistribution)}
+                      data={createPieData(statistics.departmentDistribution, filters.department)}
                       options={pieOptions}
                       title="Department Distribution"
                       icon={Award}
@@ -841,7 +926,7 @@ export default function UserStatsCard({
                   <>
                     <AnalyticsChart
                       type="pie"
-                      data={createPieData(statistics.collegeDistribution || [])}
+                      data={createPieData(statistics.collegeDistribution || [], filters.college)}
                       options={pieOptions}
                       title="College Distribution"
                       icon={BarChart3}
@@ -869,7 +954,8 @@ export default function UserStatsCard({
                               label: inst,
                               value: instData?.value || 0
                             };
-                          }).filter(item => item.value > 0) // Only show institutes with users
+                          }).filter(item => item.value > 0), // Only show institutes with users
+                          filters.institute
                         )}
                         options={pieOptions}
                         title={
@@ -894,7 +980,7 @@ export default function UserStatsCard({
                     )}
                     <AnalyticsChart
                       type="pie"
-                      data={createPieData(statistics.departmentDistribution)}
+                      data={createPieData(statistics.departmentDistribution, filters.department)}
                       options={pieOptions}
                       title={
                         filters.college === "all"
@@ -1000,7 +1086,7 @@ export default function UserStatsCard({
                     </AnalyticsChart>
                     <AnalyticsChart
                       type="doughnut"
-                      data={createPieData(statistics.instituteDistribution)}
+                      data={createPieData(statistics.instituteDistribution, filters.institute)}
                       options={pieOptions}
                       title="Institute Performance"
                       icon={Network}
@@ -1049,7 +1135,7 @@ export default function UserStatsCard({
                 </AnalyticsChart>
                 <AnalyticsChart
                   type="doughnut"
-                  data={createPieData(statistics.departmentDistribution)}
+                  data={createPieData(statistics.departmentDistribution, filters.department)}
                   options={pieOptions}
                   title="Department Analytics"
                   icon={PieChartIcon}

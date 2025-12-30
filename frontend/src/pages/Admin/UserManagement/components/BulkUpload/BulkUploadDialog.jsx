@@ -9,6 +9,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -19,6 +27,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { useToast } from '@/components/Toast';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import * as XLSX from 'xlsx';
 
 export default function BulkUploadDialog({
@@ -39,6 +48,7 @@ export default function BulkUploadDialog({
   const [showPreUploadErrorDialog, setShowPreUploadErrorDialog] = useState(false);
   const [parsedRows, setParsedRows] = useState([]);
   const { toast } = useToast();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const showRoleSelect = currentUser?.role === 'super_admin';
 
@@ -351,21 +361,9 @@ export default function BulkUploadDialog({
 
   const templateInfo = getTemplateInfo();
 
-  return (
-    <>
-      <Dialog open={open} onOpenChange={handleDialogClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0 border-b pb-4">
-            <DialogTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              Bulk Upload Users
-            </DialogTitle>
-            <DialogDescription>
-              Upload an Excel file with dropdown validation to create multiple users at once.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto px-1">
+  // Shared content component
+  const Content = () => (
+    <div className="flex-1 overflow-y-auto px-1">
             <form onSubmit={handleSubmit} autoComplete="off" className="p-6 space-y-6">
 
               {/* Template Download Section */}
@@ -570,60 +568,296 @@ export default function BulkUploadDialog({
                 )}
               </div>
             </form>
-          </div>
+    </div>
+  );
 
-          {/* Fixed Footer with Action Buttons */}
-          <div className="flex-shrink-0 border-t bg-white p-6">
-            <div className="flex items-center justify-end space-x-3">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={handleDialogClose}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  loading ||
-                  !file ||
-                  (showRoleSelect && !selectedRole)
-                }
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={handleSubmit}
-              >
-                {loading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      />
-                    </svg>
-                    Uploading...
-                  </span>
-                ) : (
-                  <>
-                    <UploadCloud className="h-4 w-4 mr-2" />
-                    Upload Users
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
+  const Footer = () => (
+    <div className="flex-shrink-0 border-t bg-white p-6">
+      <div className="flex items-center justify-end space-x-3">
+        <Button
+          variant="outline"
+          type="button"
+          onClick={handleDialogClose}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={
+            loading ||
+            !file ||
+            (showRoleSelect && !selectedRole)
+          }
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={handleSubmit}
+        >
+          {loading ? (
+            <span className="flex items-center">
+              <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Uploading...
+            </span>
+          ) : (
+            <>
+              <UploadCloud className="h-4 w-4 mr-2" />
+              Upload Users
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <Drawer open={open} onOpenChange={handleDialogClose}>
+          <DrawerContent className="max-h-[90vh] overflow-hidden flex flex-col">
+            <DrawerHeader className="flex-shrink-0 border-b pb-4">
+              <DrawerTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                Bulk Upload Users
+              </DrawerTitle>
+              <DrawerDescription>
+                Upload an Excel file with dropdown validation to create multiple users at once.
+              </DrawerDescription>
+            </DrawerHeader>
+            <Content />
+            <DrawerFooter className="px-0 py-0">
+              <Footer />
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Pre-upload error dialog */}
+        {showPreUploadErrorDialog && (
+          <Dialog open={showPreUploadErrorDialog} onOpenChange={setShowPreUploadErrorDialog}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Some Issues Detected in Your Excel File</DialogTitle>
+                <DialogDescription>
+                  Please review the following problems. You must fix these in your Excel file and upload again.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[60vh] overflow-auto">
+                <table className="min-w-full text-xs border mt-2">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="p-2 border">Excel Row</th>
+                      <th className="p-2 border">Column</th>
+                      <th className="p-2 border">What's Wrong?</th>
+                      <th className="p-2 border">How to Fix</th>
+                      <th className="p-2 border">Entered Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preUploadErrors.map((err, idx) => {
+                      // User-friendly error mapping
+                      let userMsg = '';
+                      let suggestion = '';
+                      // Email
+                      if (err.field === 'email') {
+                        if (err.message.includes('Missing')) {
+                          userMsg = "Email address is missing.";
+                          suggestion = "Enter the user's email in this row.";
+                        } else if (err.message.includes('already exists')) {
+                          userMsg = "This email is already used by another user.";
+                          suggestion = "Check you have not added this user before, or use a different email.";
+                        } else if (err.message.includes('Duplicate email in file')) {
+                          userMsg = "This email appears more than once in your file.";
+                          suggestion = "Each user must have a unique email address.";
+                        } else if (err.message.includes('Invalid email format')) {
+                          userMsg = "This email isn't a valid email address.";
+                          suggestion = "Check for typos, and make sure it looks like 'name@example.com'.";
+                        } else if (err.message.includes('must end with')) {
+                          userMsg = "Email domain does not match the selected college.";
+                          suggestion = "The email must end with the official college domain as shown in the instructions.";
+                        } else if (err.message.includes('Invalid domain for SRM RESEARCH')) {
+                          userMsg = "Email domain is not allowed for SRM RESEARCH.";
+                          suggestion = "Please use one of the allowed email domains for SRM RESEARCH.";
+                        } else {
+                          userMsg = err.message;
+                          suggestion = "-";
+                        }
+                      }
+                      // Faculty ID
+                      else if (err.field === 'facultyId') {
+                        if (err.message.includes('Missing')) {
+                          userMsg = "Faculty ID is missing.";
+                          suggestion = "Type a unique Faculty ID for this user.";
+                        } else if (err.message.includes('already exists')) {
+                          userMsg = "This Faculty ID is already used by another user.";
+                          suggestion = "Every user must have their own unique Faculty ID. Change this Faculty ID.";
+                        } else if (err.message.includes('Duplicate facultyId in file')) {
+                          userMsg = "This Faculty ID appears more than once in your file.";
+                          suggestion = "Each user must have their own Faculty ID.";
+                        } else {
+                          userMsg = err.message;
+                          suggestion = "-";
+                        }
+                      }
+                      // Other fields
+                      else {
+                        userMsg = err.message;
+                        suggestion = "-";
+                      }
+                      // Get entered value
+                      const enteredValue = err.rowData[err.field] || err.rowData[err.field.charAt(0).toUpperCase() + err.field.slice(1)] || '';
+                      return (
+                        <tr key={idx}>
+                          <td className="p-2 border text-center">{err.row}</td>
+                          <td className="p-2 border text-center">{err.field}</td>
+                          <td className="p-2 border text-red-600">{userMsg}</td>
+                          <td className="p-2 border text-gray-800">{suggestion}</td>
+                          <td className="p-2 border text-gray-900">{enteredValue}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <DialogFooter className="mt-4">
+                <Button onClick={() => setShowPreUploadErrorDialog(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={handleDialogClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0 border-b pb-4">
+            <DialogTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Bulk Upload Users
+            </DialogTitle>
+            <DialogDescription>
+              Upload an Excel file with dropdown validation to create multiple users at once.
+            </DialogDescription>
+          </DialogHeader>
+          <Content />
+          <DialogFooter className="px-0 py-0">
+            <Footer />
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pre-upload error dialog */}
+      {showPreUploadErrorDialog && (
+      <Dialog open={showPreUploadErrorDialog} onOpenChange={setShowPreUploadErrorDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Some Issues Detected in Your Excel File</DialogTitle>
+            <DialogDescription>
+              Please review the following problems. You must fix these in your Excel file and upload again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-auto">
+            <table className="min-w-full text-xs border mt-2">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="p-2 border">Excel Row</th>
+                  <th className="p-2 border">Column</th>
+                  <th className="p-2 border">What's Wrong?</th>
+                  <th className="p-2 border">How to Fix</th>
+                  <th className="p-2 border">Entered Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preUploadErrors.map((err, idx) => {
+                  // User-friendly error mapping
+                  let userMsg = '';
+                  let suggestion = '';
+                  // Email
+                  if (err.field === 'email') {
+                    if (err.message.includes('Missing')) {
+                      userMsg = "Email address is missing.";
+                      suggestion = "Enter the user's email in this row.";
+                    } else if (err.message.includes('already exists')) {
+                      userMsg = "This email is already used by another user.";
+                      suggestion = "Check you have not added this user before, or use a different email.";
+                    } else if (err.message.includes('Duplicate email in file')) {
+                      userMsg = "This email appears more than once in your file.";
+                      suggestion = "Each user must have a unique email address.";
+                    } else if (err.message.includes('Invalid email format')) {
+                      userMsg = "This email isn't a valid email address.";
+                      suggestion = "Check for typos, and make sure it looks like 'name@example.com'.";
+                    } else if (err.message.includes('must end with')) {
+                      userMsg = "Email domain does not match the selected college.";
+                      suggestion = "The email must end with the official college domain as shown in the instructions.";
+                    } else if (err.message.includes('Invalid domain for SRM RESEARCH')) {
+                      userMsg = "Email domain is not allowed for SRM RESEARCH.";
+                      suggestion = "Please use one of the allowed email domains for SRM RESEARCH.";
+                    } else {
+                      userMsg = err.message;
+                      suggestion = "-";
+                    }
+                  }
+                  // Faculty ID
+                  else if (err.field === 'facultyId') {
+                    if (err.message.includes('Missing')) {
+                      userMsg = "Faculty ID is missing.";
+                      suggestion = "Type a unique Faculty ID for this user.";
+                    } else if (err.message.includes('already exists')) {
+                      userMsg = "This Faculty ID is already used by another user.";
+                      suggestion = "Every user must have their own unique Faculty ID. Change this Faculty ID.";
+                    } else if (err.message.includes('Duplicate facultyId in file')) {
+                      userMsg = "This Faculty ID appears more than once in your file.";
+                      suggestion = "Each user must have their own Faculty ID.";
+                    } else {
+                      userMsg = err.message;
+                      suggestion = "-";
+                    }
+                  }
+                  // Other fields
+                  else {
+                    userMsg = err.message;
+                    suggestion = "-";
+                  }
+                  // Get entered value
+                  const enteredValue = err.rowData[err.field] || err.rowData[err.field.charAt(0).toUpperCase() + err.field.slice(1)] || '';
+                  return (
+                    <tr key={idx}>
+                      <td className="p-2 border text-center">{err.row}</td>
+                      <td className="p-2 border text-center">{err.field}</td>
+                      <td className="p-2 border text-red-600">{userMsg}</td>
+                      <td className="p-2 border text-gray-800">{suggestion}</td>
+                      <td className="p-2 border text-gray-900">{enteredValue}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button onClick={() => setShowPreUploadErrorDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
 
       {/* Pre-upload error dialog */}
       {showPreUploadErrorDialog && (

@@ -1,29 +1,84 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function LogDialog({ open, onOpenChange }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const isMobileOrTablet = useMediaQuery('(max-width: 1024px)');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setLogs([]);
+      setError(null);
+      return;
+    }
+    
     setLoading(true);
+    setError(null);
 
-    fetch('/api/admin/user-logs', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setLogs(Array.isArray(data) ? data : []);
+    const fetchLogs = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Authentication required');
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/admin/user-logs`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'Failed to fetch logs' }));
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Handle different response structures
+        let logsData = [];
+        if (Array.isArray(data)) {
+          logsData = data;
+        } else if (data.data && Array.isArray(data.data)) {
+          logsData = data.data;
+        } else if (data.logs && Array.isArray(data.logs)) {
+          logsData = data.logs;
+        } else if (data.success && Array.isArray(data.data)) {
+          logsData = data.data;
+        }
+        
+        // Filter out invalid logs and ensure required fields exist
+        logsData = logsData.filter(log => log && (log.action || log.timestamp));
+        
+        // Sort by timestamp descending (most recent first)
+        logsData = logsData.sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return timeB - timeA;
+        });
+
+        setLogs(logsData);
         setLoading(false);
-      })
-      .catch(() => {
+      } catch (err) {
+        console.error('Error fetching user logs:', err);
+        setError(err.message || 'Failed to load logs');
         setLogs([]);
         setLoading(false);
-      });
+      }
+    };
+
+    fetchLogs();
   }, [open]);
 
   // Helper to get changed fields for update logs
@@ -34,21 +89,19 @@ export default function LogDialog({ open, onOpenChange }) {
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl min-w-[900px] border-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 shadow-2xl rounded-xl">
-        <DialogHeader>
-          <DialogTitle>
-            <span className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" className="text-blue-400"><circle cx="12" cy="12" r="10" fill="#e0ecff"/><path d="M12 7v5m0 4h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              User Activity Logs
-            </span>
-          </DialogTitle>
-        </DialogHeader>
-        <div className="max-h-[65vh] overflow-auto rounded-lg border border-gray-100 bg-white shadow-inner mt-2 mb-3">
-          {loading ? (
-            <div className="py-12 text-center text-gray-500 font-medium">Loading logs...</div>
-          ) : (
+  // Shared content component for both Dialog and Sheet
+  const LogsContent = () => (
+    <>
+      <div className={`${isMobileOrTablet ? 'h-full overflow-auto' : 'max-h-[65vh] overflow-auto'} rounded-lg border border-gray-100 bg-white shadow-inner ${isMobileOrTablet ? 'm-2' : 'mt-2 mb-3'}`}>
+        {loading ? (
+          <div className="py-12 text-center text-gray-500 font-medium">Loading logs...</div>
+        ) : error ? (
+          <div className="py-12 text-center">
+            <div className="text-red-600 font-medium mb-2">Error loading logs</div>
+            <div className="text-sm text-gray-500">{error}</div>
+          </div>
+        ) : (
+          <div className={isMobileOrTablet ? 'overflow-x-auto' : ''}>
             <table className="min-w-full text-xs border-separate border-spacing-0">
               <thead>
                 <tr>
@@ -126,7 +179,7 @@ export default function LogDialog({ open, onOpenChange }) {
                     </td>
                   </tr>
                 ))}
-                {logs.length === 0 && !loading && (
+                {logs.length === 0 && !loading && !error && (
                   <tr>
                     <td colSpan={5} className="text-center text-gray-400 py-12 text-lg bg-gray-50">
                       No logs found.
@@ -135,13 +188,63 @@ export default function LogDialog({ open, onOpenChange }) {
                 )}
               </tbody>
             </table>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="secondary" className="bg-gray-700 text-white hover:bg-gray-800" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  // Mobile/Tablet: Full-screen Sheet with back button
+  if (isMobileOrTablet) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent 
+          side="bottom" 
+          className="h-screen w-screen max-w-none rounded-none p-0 flex flex-col gap-0 bg-white [&>button.absolute]:hidden"
+        >
+          <SheetHeader className="px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-white">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-gray-100 -ml-2"
+                onClick={() => onOpenChange(false)}
+              >
+                <ArrowLeft className="h-5 w-5 text-gray-700" />
+              </Button>
+              <SheetTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" className="text-blue-400">
+                  <circle cx="12" cy="12" r="10" fill="#e0ecff"/>
+                  <path d="M12 7v5m0 4h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                User Activity Logs
+              </SheetTitle>
+            </div>
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden bg-gray-50">
+            <LogsContent />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: Dialog
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl min-w-[900px] border-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 shadow-2xl rounded-xl">
+        <DialogHeader>
+          <DialogTitle>
+            <span className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" className="text-blue-400">
+                <circle cx="12" cy="12" r="10" fill="#e0ecff"/>
+                <path d="M12 7v5m0 4h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              User Activity Logs
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+        <LogsContent />
       </DialogContent>
     </Dialog>
   );
