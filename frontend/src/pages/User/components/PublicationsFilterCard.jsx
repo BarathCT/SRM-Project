@@ -250,13 +250,13 @@ export default function PublicationsFilterCard(props) {
             </div>
           </div>
 
-          {/* Main Filters Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          {/* All Filters in Single Row - Multiple Columns */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 mb-4">
             {/* Year Filter */}
             <div>
               <Label htmlFor="year-filter" className="text-xs text-gray-600 mb-1 block">Year</Label>
               <Select value={selectedYear} onValueChange={onYearChange}>
-                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
                   <SelectValue placeholder="All Years" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-blue-200">
@@ -273,7 +273,7 @@ export default function PublicationsFilterCard(props) {
             <div>
               <Label htmlFor="q-rating-filter" className="text-xs text-gray-600 mb-1 block">Q Rating</Label>
               <Select value={selectedQRating} onValueChange={onQRatingChange}>
-                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
                   <SelectValue placeholder="All Q Ratings" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-blue-200">
@@ -290,7 +290,7 @@ export default function PublicationsFilterCard(props) {
             <div>
               <Label htmlFor="pub-type-filter" className="text-xs text-gray-600 mb-1 block">Type</Label>
               <Select value={selectedPublicationType} onValueChange={onPublicationTypeChange}>
-                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-blue-200">
@@ -310,7 +310,7 @@ export default function PublicationsFilterCard(props) {
                 value={selectedSubjectArea} 
                 onValueChange={handleSubjectAreaChange}
               >
-                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
                   <SelectValue placeholder="All Subject Areas" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-blue-200 max-h-[400px] overflow-y-auto">
@@ -326,18 +326,15 @@ export default function PublicationsFilterCard(props) {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Subject Category Filter: only show when Subject Area is selected */}
-          {selectedSubjectArea !== "all" && subjectCategories.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {/* Subject Category Filter: only show when Subject Area is selected */}
+            {selectedSubjectArea !== "all" && subjectCategories.length > 0 && (
               <div>
                 <Label htmlFor="subject-category" className="text-xs text-gray-600 mb-1 block">Subject Category</Label>
                 <Select
                   value={selectedSubjectCategory}
                   onValueChange={onSubjectCategoryChange}
                 >
-                  <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-blue-200 max-h-[400px] overflow-y-auto">
@@ -350,88 +347,84 @@ export default function PublicationsFilterCard(props) {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          )}
+            )}
+            {/* Extended Organizational Filters */}
+            {showExtended && showCollegeSelect && (
+              <div>
+                <Label htmlFor="college-filter" className="text-xs text-gray-600 mb-1 block">College</Label>
+                <Select
+                  value={isCampusAdmin ? currentUser?.college : selectedCollege}
+                  onValueChange={(value) => {
+                    onCollegeChange(value);
+                    onInstituteChange('all');
+                    onDepartmentChange('all');
+                  }}
+                  disabled={isCampusAdmin}
+                >
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
+                    <SelectValue placeholder="All Colleges" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-blue-200">
+                    <SelectItem value="all">All Colleges</SelectItem>
+                    {colleges.filter(c => c !== 'all').map(college => (
+                      <SelectItem key={`college-${college}`} value={college}>{college}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {showExtended && showInstituteSelect && (
+              <div>
+                <Label htmlFor="institute-filter" className="text-xs text-gray-600 mb-1 block">Institute</Label>
+                <Select
+                  value={isCampusAdmin ? currentUser?.institute : selectedInstitute}
+                  onValueChange={(value) => {
+                    onInstituteChange(value);
+                    onDepartmentChange('all');
+                  }}
+                  disabled={isCampusAdmin}
+                >
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
+                    <SelectValue placeholder="All Institutes" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-blue-200">
+                    <SelectItem value="all">All Institutes</SelectItem>
+                    {institutes.filter(i => i !== 'all').map(institute => (
+                      <SelectItem key={`institute-${institute}`} value={institute}>{institute}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {showExtended && showDepartmentSelect && (
+              <div>
+                <Label htmlFor="department-filter" className="text-xs text-gray-600 mb-1 block">
+                  Department
+                </Label>
+                <Select
+                  value={selectedDepartment}
+                  onValueChange={onDepartmentChange}
+                  disabled={
+                    isCampusAdmin
+                      ? !currentUser?.college ||
+                        (!collegesWithoutInstitutes.includes(currentUser.college) && (!currentUser.institute || currentUser.institute === "all"))
+                      : (selectedCollege === 'all' || (showInstituteSelect && selectedInstitute === 'all'))
+                  }
+                >
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-9 sm:h-10 text-xs sm:text-sm w-full">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-blue-200">
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.filter(d => d !== 'all').map(department => (
+                      <SelectItem key={`dept-${department}`} value={department}>{department}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
-          {/* Extended Organizational Filters */}
-          {showExtended && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              {showCollegeSelect && (
-                <div>
-                  <Label htmlFor="college-filter" className="text-xs text-gray-600 mb-1 block">College</Label>
-                  <Select
-                    value={isCampusAdmin ? currentUser?.college : selectedCollege}
-                    onValueChange={(value) => {
-                      onCollegeChange(value);
-                      onInstituteChange('all');
-                      onDepartmentChange('all');
-                    }}
-                    disabled={isCampusAdmin}
-                  >
-                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
-                      <SelectValue placeholder="All Colleges" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-blue-200">
-                      <SelectItem value="all">All Colleges</SelectItem>
-                      {colleges.filter(c => c !== 'all').map(college => (
-                        <SelectItem key={`college-${college}`} value={college}>{college}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {showInstituteSelect && (
-                <div>
-                  <Label htmlFor="institute-filter" className="text-xs text-gray-600 mb-1 block">Institute</Label>
-                  <Select
-                    value={isCampusAdmin ? currentUser?.institute : selectedInstitute}
-                    onValueChange={(value) => {
-                      onInstituteChange(value);
-                      onDepartmentChange('all');
-                    }}
-                    disabled={isCampusAdmin}
-                  >
-                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
-                      <SelectValue placeholder="All Institutes" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-blue-200">
-                      <SelectItem value="all">All Institutes</SelectItem>
-                      {institutes.filter(i => i !== 'all').map(institute => (
-                        <SelectItem key={`institute-${institute}`} value={institute}>{institute}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {showDepartmentSelect && (
-                <div>
-                  <Label htmlFor="department-filter" className="text-xs text-gray-600 mb-1 block">
-                    Department
-                  </Label>
-                  <Select
-                    value={selectedDepartment}
-                    onValueChange={onDepartmentChange}
-                    disabled={
-                      isCampusAdmin
-                        ? !currentUser?.college ||
-                          (!collegesWithoutInstitutes.includes(currentUser.college) && (!currentUser.institute || currentUser.institute === "all"))
-                        : (selectedCollege === 'all' || (showInstituteSelect && selectedInstitute === 'all'))
-                    }
-                  >
-                    <SelectTrigger className="border-blue-200 focus:border-blue-500 bg-white h-10 text-sm w-full">
-                      <SelectValue placeholder="All Departments" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-blue-200">
-                      <SelectItem value="all">All Departments</SelectItem>
-                      {departments.filter(d => d !== 'all').map(department => (
-                        <SelectItem key={`dept-${department}`} value={department}>{department}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Active Filters Badges */}
           {hasActiveFilters && (

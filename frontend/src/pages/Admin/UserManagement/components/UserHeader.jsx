@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { UserCog, UserPlus, Info, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +13,6 @@ export default function UserHeader({
   collegeOptions = [],
 }) {
   const { toast } = useToast();
-  const [showButtons, setShowButtons] = useState(false);
   const safeUser = currentUser || {};
   const college = safeUser.college || '';
   const role = safeUser.role || '';
@@ -109,6 +107,56 @@ export default function UserHeader({
 
   const instructions = getBulkUploadInstructions();
 
+  // Download template function for BulkUploadInstructions
+  const downloadTemplate = async (templateType = null) => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+      let url = `${API_BASE_URL}/api/admin/download-template`;
+
+      if (role === 'super_admin' && templateType) {
+        url += `?templateType=${templateType}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download template');
+      }
+
+      // Get filename from response headers
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'template.xlsx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast.success('Template downloaded! Open in Excel to see dropdown menus.');
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      toast.error('Failed to download template');
+    }
+  };
+
   return (
     <div className="mb-6">
       {/* Header with Info Icon */}
@@ -118,15 +166,21 @@ export default function UserHeader({
           <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
         </div>
         
-        {/* Info Icon Button - Square */}
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-9 w-9 border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-600 rounded-md"
-          onClick={() => setShowButtons(!showButtons)}
-        >
-          <Info className="h-5 w-5" />
-        </Button>
+        {/* Info Icon Button - Opens Instructions Modal */}
+        <BulkUploadInstructions
+          currentUser={currentUser}
+          instructions={instructions}
+          downloadTemplate={downloadTemplate}
+          trigger={
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-600 rounded-md"
+            >
+              <Info className="h-5 w-5" />
+            </Button>
+          }
+        />
       </div>
 
       {/* Badges */}
@@ -151,74 +205,46 @@ export default function UserHeader({
         )}
       </div>
 
-      {/* Action Buttons Row - Shown when info icon is clicked */}
-      {showButtons && (
-        <div className="flex flex-row gap-2 mb-4">
-          {getAvailableRoles().length > 0 && (
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
-              onClick={() => {
-                setOpenDialog(true);
-                setShowButtons(false);
-              }}
-            >
-              <span className="hidden md:inline">
-                <UserPlus className="mr-2 h-4 w-4" />
-              </span>
-              Add User 
-            </Button>
-          )}
+      {/* Action Buttons Row - Always Visible */}
+      <div className="flex flex-row gap-2 mb-4">
+        {getAvailableRoles().length > 0 && (
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+            onClick={() => setOpenDialog(true)}
+          >
+            <span className="hidden md:inline">
+              <UserPlus className="mr-2 h-4 w-4" />
+            </span>
+            Add User 
+          </Button>
+        )}
 
-          {(role === 'super_admin' || role === 'campus_admin') && (
-            <>
-              <Button
-                variant="outline"
-                className="border-blue-600 text-blue-600 hover:bg-blue-50 flex-1 sm:flex-none"
-                onClick={() => {
-                  setOpenBulkDialog(true);
-                  setShowButtons(false);
-                }}
-              >
-                <span className="hidden md:inline">
-                  <FileText className="mr-2 h-4 w-4" />
-                </span>
-                Bulk Upload
-              </Button>
-              
-              {/* Instructions - accessible via BulkUploadInstructions but not shown as a button */}
-              <BulkUploadInstructions
-                currentUser={currentUser}
-                instructions={instructions}
-                trigger={
-                  <Button 
-                    variant="outline" 
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50 hidden"
-                    onClick={() => setShowButtons(false)}
-                  >
-                    Instructions
-                  </Button>
-                }
-              />
-            </>
-          )}
+        {(role === 'super_admin' || role === 'campus_admin') && (
+          <Button
+            variant="outline"
+            className="border-blue-600 text-blue-600 hover:bg-blue-50 flex-1 sm:flex-none"
+            onClick={() => setOpenBulkDialog(true)}
+          >
+            <span className="hidden md:inline">
+              <FileText className="mr-2 h-4 w-4" />
+            </span>
+            Bulk Upload
+          </Button>
+        )}
 
-          {role === 'super_admin' && (
-            <Button
-              variant="outline"
-              className="border-blue-600 text-blue-600 hover:bg-blue-50 flex-1 sm:flex-none"
-              onClick={() => {
-                setShowLogDialog(true);
-                setShowButtons(false);
-              }}
-            >
-              <span className="hidden md:inline">
-                <FileText className="mr-2 h-4 w-4" />
-              </span>
-              Logs
-            </Button>
-          )}
-        </div>
-      )}
+        {role === 'super_admin' && (
+          <Button
+            variant="outline"
+            className="border-blue-600 text-blue-600 hover:bg-blue-50 flex-1 sm:flex-none"
+            onClick={() => setShowLogDialog(true)}
+          >
+            <span className="hidden md:inline">
+              <FileText className="mr-2 h-4 w-4" />
+            </span>
+            Logs
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

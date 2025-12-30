@@ -94,35 +94,65 @@ const FacultyDashboard = () => {
 
   // Fetch all data on mount
   useEffect(() => {
-    fetchPapers(1);
-    fetchBookChapters(1);
-    fetchConferencePapers(1);
+    fetchPapers();
+    fetchBookChapters();
+    fetchConferencePapers();
   }, []);
 
-  const fetchPapers = async (page = 1) => {
+  const fetchPapers = async () => {
     try {
       setLoadingPapers(true);
       const token = localStorage.getItem("token");
-      const response = await api.get('/papers/my', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: papersPagination.limit }
-      });
-      const result = response.data;
-      if (result.pagination) {
-        setPapers(result.data || []);
-        setPapersPagination(result.pagination);
-      } else {
-        // Legacy response
-        setPapers(result || []);
+      
+      // Fetch ALL pages to get complete data
+      let allPapers = [];
+      let currentPage = 1;
+      let hasMore = true;
+      let totalCount = 0;
+      
+      while (hasMore) {
+        const response = await api.get('/papers/my', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            page: currentPage, 
+            limit: 100 // Fetch 100 per page
+          }
+        });
+        const result = response.data;
+        if (result.pagination) {
+          allPapers.push(...(result.data || []));
+          totalCount = result.pagination.total || 0;
+          const totalPages = result.pagination.totalPages || 1;
+          hasMore = currentPage < totalPages;
+          currentPage++;
+        } else {
+          allPapers.push(...(result || []));
+          totalCount = Array.isArray(result) ? result.length : 0;
+          hasMore = false;
+        }
       }
+      
+      const sortedPapers = allPapers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setPapers(sortedPapers);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = sortedPapers.length > 0 ? sortedPapers.length : totalCount;
+      setPapersPagination({
+        page: 1,
+        limit: 15,
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } catch (e) {
       console.error("Failed to fetch research papers:", e);
+      setPapers([]);
     } finally {
       setLoadingPapers(false);
     }
   };
 
-  const fetchBookChapters = async (page = 1) => {
+  const fetchBookChapters = async () => {
     try {
       setLoadingChapters(true);
       const token = localStorage.getItem("token");
@@ -156,11 +186,13 @@ const FacultyDashboard = () => {
       }
       
       setBookChapters(allChapters);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = allChapters.length > 0 ? allChapters.length : totalCount;
       setChaptersPagination({
         page: 1,
         limit: 15,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / 15),
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
         hasNextPage: false,
         hasPrevPage: false
       });
@@ -171,7 +203,7 @@ const FacultyDashboard = () => {
     }
   };
 
-  const fetchConferencePapers = async (page = 1) => {
+  const fetchConferencePapers = async () => {
     try {
       setLoadingConference(true);
       const token = localStorage.getItem("token");
@@ -205,11 +237,13 @@ const FacultyDashboard = () => {
       }
       
       setConferencePapers(allConference);
+      // Use actual array length for total to ensure accuracy
+      const actualTotal = allConference.length > 0 ? allConference.length : totalCount;
       setConferencePagination({
         page: 1,
         limit: 15,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / 15),
+        total: actualTotal,
+        totalPages: Math.ceil(actualTotal / 15),
         hasNextPage: false,
         hasPrevPage: false
       });
@@ -639,11 +673,8 @@ const FacultyDashboard = () => {
         onDeletePaper={deletePaper}
         deletingPaperId={deletingPaperId}
         papersPagination={papersPagination}
-        onPapersPageChange={(page) => fetchPapers(page)}
-        onPapersLimitChange={(limit) => {
-          setPapersPagination(prev => ({ ...prev, limit }));
-          fetchPapers(1);
-        }}
+        onPapersPageChange={() => {}} // Handled internally by table component
+        onPapersLimitChange={() => {}} // Handled internally by table component
         loadingPapers={loadingPapers}
         // Chapters props
         chapters={filteredChapters}
@@ -657,11 +688,8 @@ const FacultyDashboard = () => {
         onDeleteChapter={deleteChapter}
         deletingChapterId={deletingChapterId}
         chaptersPagination={chaptersPagination}
-        onChaptersPageChange={(page) => fetchBookChapters(page)}
-        onChaptersLimitChange={(limit) => {
-          setChaptersPagination(prev => ({ ...prev, limit }));
-          fetchBookChapters(1);
-        }}
+        onChaptersPageChange={() => {}} // Handled internally by table component
+        onChaptersLimitChange={() => {}} // Handled internally by table component
         loadingChapters={loadingChapters}
         // Conference props
         conference={filteredConference}
@@ -675,11 +703,8 @@ const FacultyDashboard = () => {
         onDeleteConference={deleteConferencePaper}
         deletingConferenceId={deletingConferenceId}
         conferencePagination={conferencePagination}
-        onConferencePageChange={(page) => fetchConferencePapers(page)}
-        onConferenceLimitChange={(limit) => {
-          setConferencePagination(prev => ({ ...prev, limit }));
-          fetchConferencePapers(1);
-        }}
+        onConferencePageChange={() => {}} // Handled internally by table component
+        onConferenceLimitChange={() => {}} // Handled internally by table component
         loadingConference={loadingConference}
         // Common props
         hasActiveFilters={hasActiveFilters}
@@ -689,8 +714,9 @@ const FacultyDashboard = () => {
           activeTab === "bookChapters" ? filteredChapters.length : filteredConference.length
         }
         totalCount={
-          activeTab === "papers" ? papersPagination.total :
-          activeTab === "bookChapters" ? chaptersPagination.total : conferencePagination.total
+          activeTab === "papers" ? (papers.length > 0 ? papers.length : papersPagination.total) :
+          activeTab === "bookChapters" ? (bookChapters.length > 0 ? bookChapters.length : chaptersPagination.total) : 
+          (conferencePapers.length > 0 ? conferencePapers.length : conferencePagination.total)
         }
         selectedCount={getSelectedCount()}
       />

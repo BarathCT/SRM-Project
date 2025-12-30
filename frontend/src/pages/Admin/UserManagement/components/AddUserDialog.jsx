@@ -6,6 +6,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +28,7 @@ import { User, Mail, Lock, Shield, BookOpen, BadgeCheck, Building2, CheckCircle,
 import { useToast } from '@/components/Toast';
 import { useEffect, useRef, useState } from 'react';
 import { getDepartments as getDepartmentsForCollegeAndInstitute } from '@/utils/collegeData';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -38,6 +47,7 @@ export default function AddUserDialog({
   getDepartmentsForCollegeAndInstitute: getDepartmentsProp // not used, but destructured for compatibility
 }) {
   const { toast } = useToast();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [availableInstitutes, setAvailableInstitutes] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
 
@@ -502,28 +512,10 @@ export default function AddUserDialog({
 
   const emailDomainHints = getEmailDomainHint(form.college, form.institute, currentUser);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center space-x-2">
-            {editMode ? (
-              <Shield className="h-5 w-5 text-blue-600" />
-            ) : (
-              <User className="h-5 w-5 text-blue-600" />
-            )}
-            <DialogTitle className="text-xl font-semibold">
-              {editMode ? 'Edit User' : 'Create New User'}
-            </DialogTitle>
-          </div>
-          <DialogDescription className="text-gray-600 mt-2">
-            {editMode
-              ? 'Update user details below'
-              : 'Fill in the details to create a new user'}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-6">
+  // Shared content component
+  const Content = () => (
+    <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -788,34 +780,93 @@ export default function AddUserDialog({
               )}
             </div>
           </div>
-        </div>
-        <DialogFooter className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
-          <Button 
-            type="button" 
-            onClick={handleSubmitWithToast}
-            disabled={isSubmitting || !isFormValid()}
-            className="w-full h-11 text-base font-medium"
-          >
-            {isSubmitting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {editMode ? 'Updating User...' : 'Creating User...'}
-              </>
-            ) : editMode ? (
-              <>
-                <Shield className="h-5 w-5 mr-2" />
-                Update User
-              </>
+    </div>
+  );
+
+  const Footer = () => (
+    <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
+      <Button 
+        type="button" 
+        onClick={handleSubmitWithToast}
+        disabled={isSubmitting || !isFormValid()}
+        className="w-full h-11 text-base font-medium"
+      >
+        {isSubmitting ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {editMode ? 'Updating User...' : 'Creating User...'}
+          </>
+        ) : editMode ? (
+          <>
+            <Shield className="h-5 w-5 mr-2" />
+            Update User
+          </>
+        ) : (
+          <>
+            <User className="h-5 w-5 mr-2" />
+            Create User
+          </>
+        )}
+      </Button>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90vh] flex flex-col">
+          <DrawerHeader className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center space-x-2">
+              {editMode ? (
+                <Shield className="h-5 w-5 text-blue-600" />
+              ) : (
+                <User className="h-5 w-5 text-blue-600" />
+              )}
+              <DrawerTitle className="text-xl font-semibold">
+                {editMode ? 'Edit User' : 'Create New User'}
+              </DrawerTitle>
+            </div>
+            <DrawerDescription className="text-gray-600 mt-2">
+              {editMode
+                ? 'Update user details below'
+                : 'Fill in the details to create a new user'}
+            </DrawerDescription>
+          </DrawerHeader>
+          <Content />
+          <DrawerFooter className="px-0 py-0">
+            <Footer />
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center space-x-2">
+            {editMode ? (
+              <Shield className="h-5 w-5 text-blue-600" />
             ) : (
-              <>
-                <User className="h-5 w-5 mr-2" />
-                Create User
-              </>
+              <User className="h-5 w-5 text-blue-600" />
             )}
-          </Button>
+            <DialogTitle className="text-xl font-semibold">
+              {editMode ? 'Edit User' : 'Create New User'}
+            </DialogTitle>
+          </div>
+          <DialogDescription className="text-gray-600 mt-2">
+            {editMode
+              ? 'Update user details below'
+              : 'Fill in the details to create a new user'}
+          </DialogDescription>
+        </DialogHeader>
+        <Content />
+        <DialogFooter className="px-0 py-0">
+          <Footer />
         </DialogFooter>
       </DialogContent>
     </Dialog>

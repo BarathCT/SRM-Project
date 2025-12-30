@@ -221,13 +221,11 @@ export default function SuperAdminDashboard() {
         
         // Fetch ALL pages for each pair to get complete data
         const all = [];
-        let totalCount = 0;
         
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
             let page = 1;
             let hasMore = true;
-            let pairTotal = 0;
             const pairPapers = [];
             
             // Fetch all pages for this college/institute pair
@@ -247,7 +245,6 @@ export default function SuperAdminDashboard() {
                 if (result.pagination) {
                   const pageData = result.data || [];
                   pairPapers.push(...pageData);
-                  pairTotal = result.pagination.total || 0;
                   
                   // Check if there are more pages
                   const totalPages = result.pagination.totalPages || 1;
@@ -257,7 +254,6 @@ export default function SuperAdminDashboard() {
                   // Legacy response - assume all data in one response
                   const pageData = Array.isArray(result) ? result : [];
                   pairPapers.push(...pageData);
-                  pairTotal = pageData.length;
                   hasMore = false;
                 }
               } catch (err) {
@@ -267,12 +263,13 @@ export default function SuperAdminDashboard() {
             }
             
             all.push(...pairPapers);
-            totalCount += pairTotal;
           })
         );
         
-        setScopePapers(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-        setScopePapersTotal(totalCount);
+        // Use actual array length since we've fetched all pages
+        const sortedAll = all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setScopePapers(sortedAll);
+        setScopePapersTotal(sortedAll.length);
         setExpanded(null);
         setSelectedPapers(new Set());
         setSelectAll(false);
@@ -329,13 +326,11 @@ export default function SuperAdminDashboard() {
         
         // Fetch ALL pages for each pair to get complete data
         const all = [];
-        let totalCount = 0;
         
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
             let page = 1;
             let hasMore = true;
-            let pairTotal = 0;
             const pairChapters = [];
             
             // Fetch all pages for this college/institute pair
@@ -355,7 +350,6 @@ export default function SuperAdminDashboard() {
                 if (result.pagination) {
                   const pageData = result.data || [];
                   pairChapters.push(...pageData);
-                  pairTotal = result.pagination.total || 0;
                   
                   // Check if there are more pages
                   const totalPages = result.pagination.totalPages || 1;
@@ -365,7 +359,6 @@ export default function SuperAdminDashboard() {
                   // Legacy response - assume all data in one response
                   const pageData = Array.isArray(result) ? result : [];
                   pairChapters.push(...pageData);
-                  pairTotal = pageData.length;
                   hasMore = false;
                 }
               } catch (err) {
@@ -375,12 +368,13 @@ export default function SuperAdminDashboard() {
             }
             
             all.push(...pairChapters);
-            totalCount += pairTotal;
           })
         );
         
-        setScopeBookChapters(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-        setScopeChaptersTotal(totalCount);
+        // Use actual array length since we've fetched all pages
+        const sortedAll = all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setScopeBookChapters(sortedAll);
+        setScopeChaptersTotal(sortedAll.length);
       } catch (error) {
         console.error("Failed to load book chapters for scope:", error);
         setScopeBookChapters([]);
@@ -432,13 +426,11 @@ export default function SuperAdminDashboard() {
         
         // Fetch ALL pages for each pair to get complete data
         const all = [];
-        let totalCount = 0;
         
         await Promise.all(
           pairs.map(async ({ college, institute }) => {
             let page = 1;
             let hasMore = true;
-            let pairTotal = 0;
             const pairConference = [];
             
             // Fetch all pages for this college/institute pair
@@ -458,7 +450,6 @@ export default function SuperAdminDashboard() {
                 if (result.pagination) {
                   const pageData = result.data || [];
                   pairConference.push(...pageData);
-                  pairTotal = result.pagination.total || 0;
                   
                   // Check if there are more pages
                   const totalPages = result.pagination.totalPages || 1;
@@ -468,7 +459,6 @@ export default function SuperAdminDashboard() {
                   // Legacy response - assume all data in one response
                   const pageData = Array.isArray(result) ? result : [];
                   pairConference.push(...pageData);
-                  pairTotal = pageData.length;
                   hasMore = false;
                 }
               } catch (err) {
@@ -478,12 +468,13 @@ export default function SuperAdminDashboard() {
             }
             
             all.push(...pairConference);
-            totalCount += pairTotal;
           })
         );
         
-        setScopeConference(all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-        setScopeConferenceTotal(totalCount);
+        // Use actual array length since we've fetched all pages
+        const sortedAll = all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setScopeConference(sortedAll);
+        setScopeConferenceTotal(sortedAll.length);
       } catch (error) {
         console.error("Failed to load conference papers for scope:", error);
         setScopeConference([]);
@@ -1134,7 +1125,7 @@ export default function SuperAdminDashboard() {
           <PublicationTableSection
             activeTab={activePublicationType}
             // Chapters props
-            chapters={paginatedChapters}
+            chapters={filteredChapters}
             selectedChapters={selectedChapters}
             selectAllChapters={selectAllChapters}
             onToggleSelectAllChapters={() => {
@@ -1142,7 +1133,7 @@ export default function SuperAdminDashboard() {
                 setSelectedChapters(new Set());
                 setSelectAllChapters(false);
               } else {
-                setSelectedChapters(new Set(paginatedChapters.map((c) => c._id)));
+                setSelectedChapters(new Set(filteredChapters.map((c) => c._id)));
                 setSelectAllChapters(true);
               }
             }}
@@ -1151,7 +1142,7 @@ export default function SuperAdminDashboard() {
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedChapters(next);
-              setSelectAllChapters(next.size === paginatedChapters.length && paginatedChapters.length > 0);
+              setSelectAllChapters(next.size === filteredChapters.length && filteredChapters.length > 0);
             }}
             expandedChapter={expandedChapter}
             onToggleExpandChapter={(i) => setExpandedChapter(expandedChapter === i ? null : i)}
@@ -1188,7 +1179,7 @@ export default function SuperAdminDashboard() {
             onChaptersLimitChange={() => {}}
             loadingChapters={scopeChaptersLoading}
             // Conference props
-            conference={paginatedConference}
+            conference={filteredConference}
             selectedConference={selectedConference}
             selectAllConference={selectAllConference}
             onToggleSelectAllConference={() => {
@@ -1196,7 +1187,7 @@ export default function SuperAdminDashboard() {
                 setSelectedConference(new Set());
                 setSelectAllConference(false);
               } else {
-                setSelectedConference(new Set(paginatedConference.map((p) => p._id)));
+                setSelectedConference(new Set(filteredConference.map((p) => p._id)));
                 setSelectAllConference(true);
               }
             }}
@@ -1205,7 +1196,7 @@ export default function SuperAdminDashboard() {
               if (next.has(id)) next.delete(id);
               else next.add(id);
               setSelectedConference(next);
-              setSelectAllConference(next.size === paginatedConference.length && paginatedConference.length > 0);
+              setSelectAllConference(next.size === filteredConference.length && filteredConference.length > 0);
             }}
             expandedConference={expandedConference}
             onToggleExpandConference={(i) => setExpandedConference(expandedConference === i ? null : i)}
@@ -1245,7 +1236,7 @@ export default function SuperAdminDashboard() {
             hasActiveFilters={false}
             onClearFilters={() => { }}
             filteredCount={
-              activePublicationType === "bookChapters" ? paginatedChapters.length : paginatedConference.length
+              activePublicationType === "bookChapters" ? filteredChapters.length : filteredConference.length
             }
             totalCount={
               activePublicationType === "bookChapters"

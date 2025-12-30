@@ -303,16 +303,16 @@ export default function Navbar() {
           {/* Left: Logo and Title */}
           <Link
             to={getDashboardPath()}
-            className="flex items-center space-x-2 sm:space-x-3 group min-w-0 flex-shrink-0 max-w-[calc(100%-200px)] sm:max-w-none"
+            className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0"
           >
             <div className="flex-shrink-0">
               <img
                 src="/logo.jpg"
                 alt="ScholarSync"
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg object-cover"
+                className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 lg:h-10 lg:w-10 xl:h-11 xl:w-11 rounded-lg object-cover transition-all duration-200"
               />
             </div>
-            <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-blue-600 whitespace-nowrap truncate">
+            <span className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-semibold text-blue-600 whitespace-nowrap">
               ScholarSync
             </span>
           </Link>
