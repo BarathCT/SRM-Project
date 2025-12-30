@@ -15,83 +15,91 @@ import FacultyDashboard from './pages/User/FacultyDashboard/FacultyDashboard';
 import AnalyticsPage from './pages/User/Analytics/AnalyticsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
+import PWAInstallBanner from './components/PWAInstallBanner';
 
 function AppContent() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
 
+  // Check if user is authenticated and not an admin (for PWA banner)
+  const isAuthenticated = !!localStorage.getItem('token');
+  const user = isAuthenticated ? JSON.parse(localStorage.getItem('user') || '{}') : null;
+  const showPWABanner = isAuthenticated && !isLoginPage && user?.role !== 'super_admin';
+
   return (
     <>
       {!isLoginPage && <Navbar />}
+      {/* PWA Install Banner - only for authenticated non-admin users */}
+      {showPWABanner && <PWAInstallBanner />}
       <Routes>
-          {/* Public route */}
-          <Route path="/login" element={<Login />} />
+        {/* Public route */}
+        <Route path="/login" element={<Login />} />
 
-          {/* Super Admin routes */}
-          <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
-            <Route path="/super-admin" element={<SuperAdminDashboard />} />
-            <Route path="/super-admin/users" element={<UserManagement />} />
-            <Route path="/super-admin/analytics" element={<AnalyticsPage />} />
-            <Route path="/super-admin/edit/:type/:id" element={<EditSelector />} />
-          </Route>
+        {/* Super Admin routes */}
+        <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
+          <Route path="/super-admin" element={<SuperAdminDashboard />} />
+          <Route path="/super-admin/users" element={<UserManagement />} />
+          <Route path="/super-admin/analytics" element={<AnalyticsPage />} />
+          <Route path="/super-admin/edit/:type/:id" element={<EditSelector />} />
+        </Route>
 
-          {/* Campus Admin routes */}
-          <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
-            <Route path="/campus-admin" element={<CampusAdminDashboard />} />
-            <Route path="/campus-admin/users" element={<UserManagement />} />
-            <Route path="/campus-admin/analytics" element={<AnalyticsPage />} />
- <Route path="/campus-admin/upload" element={<UploadSelector />} />
-  <Route path="/campus-admin/upload/research" element={<UploadResearchPage />} />
-  <Route path="/campus-admin/upload/conference" element={<UploadConferencePage />} />
-  <Route path="/campus-admin/upload/book-chapter" element={<UploadBookChapterPage />} />
-            <Route path="/campus-admin/edit/:type/:id" element={<EditSelector />} />
-            </Route>
+        {/* Campus Admin routes */}
+        <Route element={<ProtectedRoute allowedRoles={['campus_admin']} />}>
+          <Route path="/campus-admin" element={<CampusAdminDashboard />} />
+          <Route path="/campus-admin/users" element={<UserManagement />} />
+          <Route path="/campus-admin/analytics" element={<AnalyticsPage />} />
+          <Route path="/campus-admin/upload" element={<UploadSelector />} />
+          <Route path="/campus-admin/upload/research" element={<UploadResearchPage />} />
+          <Route path="/campus-admin/upload/conference" element={<UploadConferencePage />} />
+          <Route path="/campus-admin/upload/book-chapter" element={<UploadBookChapterPage />} />
+          <Route path="/campus-admin/edit/:type/:id" element={<EditSelector />} />
+        </Route>
 
 
-          {/* Faculty routes */}
-          <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
-            <Route path="/faculty" element={<FacultyDashboard />} />
-              <Route path="/faculty/upload" element={<UploadSelector />} />
-              <Route path="/faculty/upload/research" element={<UploadResearchPage />} />
-              <Route path="/faculty/upload/conference" element={<UploadConferencePage />} />
-              <Route path="/faculty/upload/book-chapter" element={<UploadBookChapterPage />} />
-              <Route path="/faculty/edit/:type/:id" element={<EditSelector />} />
-          </Route>
+        {/* Faculty routes */}
+        <Route element={<ProtectedRoute allowedRoles={['faculty']} />}>
+          <Route path="/faculty" element={<FacultyDashboard />} />
+          <Route path="/faculty/upload" element={<UploadSelector />} />
+          <Route path="/faculty/upload/research" element={<UploadResearchPage />} />
+          <Route path="/faculty/upload/conference" element={<UploadConferencePage />} />
+          <Route path="/faculty/upload/book-chapter" element={<UploadBookChapterPage />} />
+          <Route path="/faculty/edit/:type/:id" element={<EditSelector />} />
+        </Route>
 
-          {/* Common routes accessible to all authenticated users */}
-          <Route element={<ProtectedRoute allowedRoles={['super_admin', 'campus_admin', 'admin', 'faculty', 'scholar']} />}>
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
+        {/* Common routes accessible to all authenticated users */}
+        <Route element={<ProtectedRoute allowedRoles={['super_admin', 'campus_admin', 'admin', 'faculty', 'scholar']} />}>
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
 
-          {/* Redirect based on authentication status */}
-          <Route path="/" element={
-            localStorage.getItem('token') ? (
-              <Navigate to={
-                JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
+        {/* Redirect based on authentication status */}
+        <Route path="/" element={
+          localStorage.getItem('token') ? (
+            <Navigate to={
+              JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
                 JSON.parse(localStorage.getItem('user'))?.role === 'campus_admin' ? '/campus-admin' :
-                JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
-                JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
-                '/scholar'
-              } />
-            ) : (
-              <Navigate to="/login" />
-            )
-          } />
+                  JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
+                    JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
+                      '/scholar'
+            } />
+          ) : (
+            <Navigate to="/login" />
+          )
+        } />
 
-          {/* Catch-all route for unmatched URLs */}
-          <Route path="*" element={
-            localStorage.getItem('token') ? (
-              <Navigate to={
-                JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
+        {/* Catch-all route for unmatched URLs */}
+        <Route path="*" element={
+          localStorage.getItem('token') ? (
+            <Navigate to={
+              JSON.parse(localStorage.getItem('user'))?.role === 'super_admin' ? '/super-admin' :
                 JSON.parse(localStorage.getItem('user'))?.role === 'campus_admin' ? '/campus-admin' :
-                JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
-                JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
-                '/scholar'
-              } />
-            ) : (
-              <Navigate to="/login" />
-            )
-          } />
+                  JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? '/admin' :
+                    JSON.parse(localStorage.getItem('user'))?.role === 'faculty' ? '/faculty' :
+                      '/scholar'
+            } />
+          ) : (
+            <Navigate to="/login" />
+          )
+        } />
       </Routes>
     </>
   );
