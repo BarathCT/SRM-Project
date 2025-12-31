@@ -9,7 +9,7 @@
  * @param {number} maxLimit - Maximum items per page (default: 100)
  * @returns {object} { page, limit, skip }
  */
-export const getPaginationParams = (query, defaultLimit = 15, maxLimit = 100) => {
+export const getPaginationParams = (query, defaultLimit = 0, maxLimit = 0) => {
     const page = Math.max(1, parseInt(query.page) || 1);
     const limit = Math.min(maxLimit, Math.max(1, parseInt(query.limit) || defaultLimit));
     const skip = (page - 1) * limit;
