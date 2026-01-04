@@ -57,6 +57,15 @@ export default function AddUserDialog({
   const emailDebounce = useRef();
   const facultyIdDebounce = useRef();
 
+  // Refs to maintain input focus
+  const fullNameInputRef = useRef(null);
+  const facultyIdInputRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
+
+  // Store current focus state
+  const [focusedField, setFocusedField] = useState(null);
+
   // College domain mapping
   const collegeDomains = {
     'SRMIST RAMAPURAM': 'srmist.edu.in',
@@ -115,6 +124,94 @@ export default function AddUserDialog({
     return [];
   };
 
+  // Optimized input change handlers
+  const handleFullNameChange = (e) => {
+    setForm({ ...form, fullName: e.target.value });
+  };
+
+  const handleFacultyIdChange = (e) => {
+    setForm({ ...form, facultyId: e.target.value });
+  };
+
+  const handleEmailChange = (e) => {
+    setForm({ ...form, email: e.target.value });
+  };
+
+  const handlePasswordChange = (e) => {
+    setForm({ ...form, password: e.target.value });
+  };
+
+  // Focus handlers
+  const handleFullNameFocus = () => {
+    setFocusedField('fullName');
+    if (fullNameInputRef.current) {
+      fullNameInputRef.current.focus();
+    }
+  };
+
+  const handleFacultyIdFocus = () => {
+    setFocusedField('facultyId');
+    if (facultyIdInputRef.current) {
+      facultyIdInputRef.current.focus();
+    }
+  };
+
+  const handleEmailFocus = () => {
+    setFocusedField('email');
+    if (emailInputRef.current) {
+      emailInputRef.current.focus();
+    }
+  };
+
+  const handlePasswordFocus = () => {
+    setFocusedField('password');
+    if (passwordInputRef.current) {
+      passwordInputRef.current.focus();
+    }
+  };
+
+  // Restore focus after render
+  useEffect(() => {
+    if (focusedField && open) {
+      const restoreFocus = () => {
+        switch (focusedField) {
+          case 'fullName':
+            if (fullNameInputRef.current) {
+              fullNameInputRef.current.focus();
+              // Move cursor to end
+              const value = fullNameInputRef.current.value;
+              fullNameInputRef.current.setSelectionRange(value.length, value.length);
+            }
+            break;
+          case 'facultyId':
+            if (facultyIdInputRef.current) {
+              facultyIdInputRef.current.focus();
+              const value = facultyIdInputRef.current.value;
+              facultyIdInputRef.current.setSelectionRange(value.length, value.length);
+            }
+            break;
+          case 'email':
+            if (emailInputRef.current) {
+              emailInputRef.current.focus();
+              const value = emailInputRef.current.value;
+              emailInputRef.current.setSelectionRange(value.length, value.length);
+            }
+            break;
+          case 'password':
+            if (passwordInputRef.current) {
+              passwordInputRef.current.focus();
+              const value = passwordInputRef.current.value;
+              passwordInputRef.current.setSelectionRange(value.length, value.length);
+            }
+            break;
+        }
+      };
+      
+      // Small delay to ensure DOM is updated
+      setTimeout(restoreFocus, 10);
+    }
+  }, [form, focusedField, open]);
+
   // Auto-suggest email domain when college changes (but not for SRM RESEARCH)
   useEffect(() => {
     if (
@@ -168,9 +265,9 @@ export default function AddUserDialog({
     if (!open) return;
 
     if (
-      currentUser?.role === 'campus_admin'
-      && currentUser?.institute === 'SRM RESEARCH'
-      && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
+      currentUser?.role === 'campus_admin' &&
+      currentUser?.institute === 'SRM RESEARCH' &&
+      (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
     ) {
       const dept = getResearchDepartmentForCollege(currentUser.college);
       setAvailableDepartments([dept]);
@@ -233,7 +330,14 @@ export default function AddUserDialog({
       setEmailStatus({ checking: false, exists: false, checkedValue: form.email });
       return;
     }
-    setEmailStatus({ checking: true, exists: false, checkedValue: form.email });
+    setEmailStatus(prev => {
+      // Only update if email actually changed
+      if (prev.checkedValue === form.email && prev.checking === false) {
+        return prev;
+      }
+      return { checking: true, exists: false, checkedValue: form.email };
+    });
+    
     if (emailDebounce.current) clearTimeout(emailDebounce.current);
     emailDebounce.current = setTimeout(async () => {
       try {
@@ -248,7 +352,11 @@ export default function AddUserDialog({
       } catch {
         setEmailStatus({ checking: false, exists: false, checkedValue: form.email });
       }
-    }, 450);
+    }, 600); // Increased delay to reduce re-renders during typing
+    
+    return () => {
+      if (emailDebounce.current) clearTimeout(emailDebounce.current);
+    };
     // eslint-disable-next-line
   }, [form.email, form.role, editMode]);
 
@@ -262,7 +370,14 @@ export default function AddUserDialog({
       setFacultyIdStatus({ checking: false, exists: false, checkedValue: form.facultyId });
       return;
     }
-    setFacultyIdStatus({ checking: true, exists: false, checkedValue: form.facultyId });
+    setFacultyIdStatus(prev => {
+      // Only update if facultyId actually changed
+      if (prev.checkedValue === form.facultyId && prev.checking === false) {
+        return prev;
+      }
+      return { checking: true, exists: false, checkedValue: form.facultyId };
+    });
+    
     if (facultyIdDebounce.current) clearTimeout(facultyIdDebounce.current);
     facultyIdDebounce.current = setTimeout(async () => {
       try {
@@ -277,7 +392,11 @@ export default function AddUserDialog({
       } catch {
         setFacultyIdStatus({ checking: false, exists: false, checkedValue: form.facultyId });
       }
-    }, 450);
+    }, 600); // Increased delay to reduce re-renders during typing
+    
+    return () => {
+      if (facultyIdDebounce.current) clearTimeout(facultyIdDebounce.current);
+    };
     // eslint-disable-next-line
   }, [form.facultyId, form.role, editMode]);
 
@@ -306,9 +425,9 @@ export default function AddUserDialog({
     return false;
   };
 
-  const isResearchCampusAdmin = currentUser?.role === 'campus_admin'
-    && currentUser?.institute === 'SRM RESEARCH'
-    && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY');
+  const isResearchCampusAdmin = currentUser?.role === 'campus_admin' &&
+    currentUser?.institute === 'SRM RESEARCH' &&
+    (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY');
 
   const isDepartmentDisabled = () => {
     if (isResearchCampusAdmin) return true;
@@ -453,8 +572,8 @@ export default function AddUserDialog({
         payload.institute = currentUser.institute;
         payload.role = 'faculty';
         if (
-          currentUser.institute === 'SRM RESEARCH'
-          && (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
+          currentUser.institute === 'SRM RESEARCH' &&
+          (currentUser.college === 'SRMIST RAMAPURAM' || currentUser.college === 'SRM TRICHY')
         ) {
           payload.department = getResearchDepartmentForCollege(currentUser.college);
         }
@@ -516,270 +635,278 @@ export default function AddUserDialog({
   const Content = () => (
     <div className="flex-1 overflow-y-auto px-6 py-4">
       <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName" className="flex items-center text-sm font-medium">
-                    <User className="h-4 w-4 mr-2 text-gray-500" />
-                    Full Name
-                  </Label>
-                  <Input
-                    id="fullName"
-                    placeholder="John Doe"
-                    value={form.fullName}
-                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                    className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
-                  />
-                </div>
-                {form.role !== 'super_admin' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="facultyId" className="flex items-center text-sm font-medium">
-                      <BadgeCheck className="h-4 w-4 mr-2 text-gray-500" />
-                      Faculty ID
-                      {facultyIdStatus.checking && <Loader2 className="ml-2 h-4 w-4 text-blue-400 animate-spin" />}
-                      {!facultyIdStatus.checking && form.facultyId && (
-                        facultyIdStatus.exists
-                          ? <XCircle className="ml-2 h-4 w-4 text-red-600" title="Faculty ID already exists" />
-                          : <CheckCircle className="ml-2 h-4 w-4 text-green-600" title="Faculty ID available" />
-                      )}
-                    </Label>
-                    <Input
-                      id="facultyId"
-                      placeholder="FAC-12345"
-                      value={form.facultyId}
-                      onChange={(e) => setForm({ ...form, facultyId: e.target.value })}
-                      className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
-                    />
-                    {!facultyIdStatus.checking && facultyIdStatus.exists && form.facultyId && (
-                      <p className="text-xs text-red-500 mt-1">This faculty ID is already in use. Please enter a unique ID.</p>
-                    )}
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="flex items-center text-sm font-medium">
-                    <Mail className="h-4 w-4 mr-2 text-gray-500" />
-                    Email
-                    {emailStatus.checking && <Loader2 className="ml-2 h-4 w-4 text-blue-400 animate-spin" />}
-                    {!emailStatus.checking && form.email && (
-                      emailStatus.exists
-                        ? <XCircle className="ml-2 h-4 w-4 text-red-600" title="Email already exists" />
-                        : <CheckCircle className="ml-2 h-4 w-4 text-green-600" title="Email available" />
-                    )}
-                  </Label>
-                  <Input
-                    id="email"
-                    placeholder={
-                      emailDomainHints.length > 0
-                        ? `example@${emailDomainHints[0]}`
-                        : 'user@example.edu'
-                    }
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
-                  />
-                  {emailDomainHints.length > 0 && (
-                    <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                      {isCurrentUserFromSRMResearch() || form.institute === 'SRM RESEARCH' ? (
-                        <div>
-                          <p className="font-medium text-blue-700">SRM RESEARCH - Allowed domains:</p>
-                          <p className="text-blue-600">{emailDomainHints.map(d => `@${d}`).join(', ')}</p>
-                        </div>
-                      ) : (
-                        <p>Email must end with <span className="font-medium">@{emailDomainHints[0]}</span></p>
-                      )}
-                    </div>
-                  )}
-                  {form.email && !validateEmailDomain(form.email, form.college, form.institute, currentUser) && (
-                    <p className="text-xs text-red-500 bg-red-50 p-2 rounded">
-                      Invalid email domain. Allowed: {emailDomainHints.map(d => `@${d}`).join(', ')}
-                    </p>
-                  )}
-                  {!emailStatus.checking && emailStatus.exists && form.email && (
-                    <p className="text-xs text-red-500 mt-1">This email is already in use. Please enter a different email address.</p>
-                  )}
-                </div>
-              </div>
-              <div className="space-y-4">
-                {editMode ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="flex items-center text-sm font-medium">
-                      <Lock className="h-4 w-4 mr-2 text-gray-500" />
-                      New Password
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Leave blank to keep current"
-                      value={form.password || ''}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Only enter a password if you want to change it
-                    </p>
-                  </div>
-                ) : (
-                  currentUser?.role !== 'campus_admin' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="role" className="flex items-center text-sm font-medium">
-                        <Shield className="h-4 w-4 mr-2 text-gray-500" />
-                        Role
-                      </Label>
-                      <Select
-                        value={form.role}
-                        onValueChange={handleRoleChange}
-                        disabled={editMode && currentUser?.role !== 'super_admin'}
-                      >
-                        <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {getFilteredRoles().map((role) => (
-                            <SelectItem key={role.value} value={role.value}>
-                              {role.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )
-                )}
-                {shouldShowCollegeField() && (
-                  <div className="space-y-2">
-                    <Label htmlFor="college" className="flex items-center text-sm font-medium">
-                      <Building2 className="h-4 w-4 mr-2 text-gray-500" />
-                      College
-                    </Label>
-                    <Select
-                      value={form.college}
-                      onValueChange={handleCollegeChange}
-                    >
-                      <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
-                        <SelectValue placeholder="Select college" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {collegeOptions
-                          .filter(college => college.name !== 'N/A')
-                          .map((college) => (
-                            <SelectItem key={college.name} value={college.name}>
-                              {college.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName" className="flex items-center text-sm font-medium">
+                <User className="h-4 w-4 mr-2 text-gray-500" />
+                Full Name
+              </Label>
+              <Input
+                id="fullName"
+                ref={fullNameInputRef}
+                placeholder="John Doe"
+                value={form.fullName}
+                onChange={handleFullNameChange}
+                onFocus={handleFullNameFocus}
+                className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
+              />
             </div>
-            {shouldShowInstituteField() && (
+            {form.role !== 'super_admin' && (
               <div className="space-y-2">
-                <Label htmlFor="institute" className="flex items-center text-sm font-medium">
-                  <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
-                  Institute
+                <Label htmlFor="facultyId" className="flex items-center text-sm font-medium">
+                  <BadgeCheck className="h-4 w-4 mr-2 text-gray-500" />
+                  Faculty ID
+                  {facultyIdStatus.checking && <Loader2 className="ml-2 h-4 w-4 text-blue-400 animate-spin" />}
+                  {!facultyIdStatus.checking && form.facultyId && (
+                    facultyIdStatus.exists
+                      ? <XCircle className="ml-2 h-4 w-4 text-red-600" title="Faculty ID already exists" />
+                      : <CheckCircle className="ml-2 h-4 w-4 text-green-600" title="Faculty ID available" />
+                  )}
                 </Label>
-                <Select
-                  value={form.institute}
-                  onValueChange={handleInstituteChange}
-                  disabled={!form.college}
-                >
-                  <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
-                    <SelectValue placeholder="Select institute" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableInstitutes.map((institute) => (
-                      <SelectItem key={institute} value={institute}>
-                        {institute}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="facultyId"
+                  ref={facultyIdInputRef}
+                  placeholder="FAC-12345"
+                  value={form.facultyId}
+                  onChange={handleFacultyIdChange}
+                  onFocus={handleFacultyIdFocus}
+                  className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
+                />
+                {!facultyIdStatus.checking && facultyIdStatus.exists && form.facultyId && (
+                  <p className="text-xs text-red-500 mt-1">This faculty ID is already in use. Please enter a unique ID.</p>
+                )}
               </div>
             )}
-            {shouldShowDepartmentField() && (
-              <div className="space-y-2">
-                <Label htmlFor="department" className="flex items-center text-sm font-medium">
-                  <Building2 className="h-4 w-4 mr-2 text-gray-500" />
-                  Department
-                  {isDepartmentDisabled() && (
-                    <span className="ml-2 text-xs text-gray-500 font-normal">
-                      (Auto-assigned for SRM RESEARCH)
-                    </span>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="flex items-center text-sm font-medium">
+                <Mail className="h-4 w-4 mr-2 text-gray-500" />
+                Email
+                {emailStatus.checking && <Loader2 className="ml-2 h-4 w-4 text-blue-400 animate-spin" />}
+                {!emailStatus.checking && form.email && (
+                  emailStatus.exists
+                    ? <XCircle className="ml-2 h-4 w-4 text-red-600" title="Email already exists" />
+                    : <CheckCircle className="ml-2 h-4 w-4 text-green-600" title="Email available" />
+                )}
+              </Label>
+              <Input
+                id="email"
+                ref={emailInputRef}
+                placeholder={
+                  emailDomainHints.length > 0
+                    ? `example@${emailDomainHints[0]}`
+                    : 'user@example.edu'
+                }
+                value={form.email}
+                onChange={handleEmailChange}
+                onFocus={handleEmailFocus}
+                className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300"
+              />
+              {emailDomainHints.length > 0 && (
+                <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
+                  {isCurrentUserFromSRMResearch() || form.institute === 'SRM RESEARCH' ? (
+                    <div>
+                      <p className="font-medium text-blue-700">SRM RESEARCH - Allowed domains:</p>
+                      <p className="text-blue-600">{emailDomainHints.map(d => `@${d}`).join(', ')}</p>
+                    </div>
+                  ) : (
+                    <p>Email must end with <span className="font-medium">@{emailDomainHints[0]}</span></p>
                   )}
+                </div>
+              )}
+              {form.email && !validateEmailDomain(form.email, form.college, form.institute, currentUser) && (
+                <p className="text-xs text-red-500 bg-red-50 p-2 rounded">
+                  Invalid email domain. Allowed: {emailDomainHints.map(d => `@${d}`).join(', ')}
+                </p>
+              )}
+              {!emailStatus.checking && emailStatus.exists && form.email && (
+                <p className="text-xs text-red-500 mt-1">This email is already in use. Please enter a different email address.</p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-4">
+            {editMode ? (
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center text-sm font-medium">
+                  <Lock className="h-4 w-4 mr-2 text-gray-500" />
+                  New Password
                 </Label>
-                {isDepartmentDisabled() ? (
-                  <Input
-                    id="department"
-                    value={form.department || availableDepartments[0] || ''}
-                    disabled
-                    readOnly
-                    className="bg-gray-100 cursor-not-allowed text-gray-600 w-full"
-                  />
-                ) : (
+                <Input
+                  id="password"
+                  ref={passwordInputRef}
+                  type="password"
+                  placeholder="Leave blank to keep current"
+                  value={form.password || ''}
+                  onChange={handlePasswordChange}
+                  onFocus={handlePasswordFocus}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Only enter a password if you want to change it
+                </p>
+              </div>
+            ) : (
+              currentUser?.role !== 'campus_admin' && (
+                <div className="space-y-2">
+                  <Label htmlFor="role" className="flex items-center text-sm font-medium">
+                    <Shield className="h-4 w-4 mr-2 text-gray-500" />
+                    Role
+                  </Label>
                   <Select
-                    value={form.department}
-                    onValueChange={handleDepartmentChange}
-                    disabled={shouldShowInstituteField() && !form.institute && currentUser?.role !== 'campus_admin'}
+                    value={form.role}
+                    onValueChange={handleRoleChange}
+                    disabled={editMode && currentUser?.role !== 'super_admin'}
                   >
                     <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
-                      <SelectValue placeholder="Select department" />
+                      <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableDepartments.map((department) => (
-                        <SelectItem key={department} value={department}>
-                          {department}
+                      {getFilteredRoles().map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                )}
+                </div>
+              )
+            )}
+            {shouldShowCollegeField() && (
+              <div className="space-y-2">
+                <Label htmlFor="college" className="flex items-center text-sm font-medium">
+                  <Building2 className="h-4 w-4 mr-2 text-gray-500" />
+                  College
+                </Label>
+                <Select
+                  value={form.college}
+                  onValueChange={handleCollegeChange}
+                >
+                  <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
+                    <SelectValue placeholder="Select college" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {collegeOptions
+                      .filter(college => college.name !== 'N/A')
+                      .map((college) => (
+                        <SelectItem key={college.name} value={college.name}>
+                          {college.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
-            <div className="space-y-4">
-              {currentUser?.role === 'campus_admin' && form.role !== 'super_admin' && (
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                  <p className="text-sm text-green-700 font-medium mb-2">
-                    <strong>Note:</strong> User will be created under your college and institute:
-                  </p>
-                  <ul className="text-xs text-green-600 space-y-1">
-                    <li><strong>College:</strong> {currentUser.college}</li>
-                    <li><strong>Institute:</strong> {currentUser.institute}</li>
-                    {form.role === 'faculty' && (
-                      <li>
-                        <strong>Department:</strong>{" "}
-                        {(!form.department || form.department === 'N/A')
-                          ? 'Please select'
-                          : form.department}
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-              {form.role === 'campus_admin' && form.college && !selectedCollegeHasInstitutes() && (
-                <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
-                  <p className="text-sm text-orange-700 font-medium mb-2">
-                    <strong>Campus Admin for College without Institutes:</strong>
-                  </p>
-                  <ul className="text-xs text-orange-600 space-y-1">
-                    <li>• <strong>Role:</strong> Manages the entire {form.college}</li>
-                    <li>• <strong>Institute:</strong> Not applicable (set to N/A)</li>
-                    <li>• <strong>Department:</strong> Not applicable (manages all departments)</li>
-                  </ul>
-                </div>
-              )}
-              {(form.institute === 'SRM RESEARCH' || isCurrentUserFromSRMResearch()) && (
-                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                  <p className="text-sm text-blue-700 font-medium mb-2">
-                    <strong>SRM RESEARCH Institute:</strong>
-                  </p>
-                  <ul className="text-xs text-blue-600 space-y-1">
-                    <li>• <strong>Department:</strong> Automatically assigned to {form.department || availableDepartments[0]}</li>
-                    <li>• <strong>Email domains:</strong> Can use any of the four allowed domains</li>
-                    <li>• <strong>Department selection:</strong> Not needed - auto-assigned based on college</li>
-                  </ul>
-                </div>
-              )}
-            </div>
           </div>
+        </div>
+        {shouldShowInstituteField() && (
+          <div className="space-y-2">
+            <Label htmlFor="institute" className="flex items-center text-sm font-medium">
+              <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
+              Institute
+            </Label>
+            <Select
+              value={form.institute}
+              onValueChange={handleInstituteChange}
+              disabled={!form.college}
+            >
+              <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
+                <SelectValue placeholder="Select institute" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableInstitutes.map((institute) => (
+                  <SelectItem key={institute} value={institute}>
+                    {institute}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {shouldShowDepartmentField() && (
+          <div className="space-y-2">
+            <Label htmlFor="department" className="flex items-center text-sm font-medium">
+              <Building2 className="h-4 w-4 mr-2 text-gray-500" />
+              Department
+              {isDepartmentDisabled() && (
+                <span className="ml-2 text-xs text-gray-500 font-normal">
+                  (Auto-assigned for SRM RESEARCH)
+                </span>
+              )}
+            </Label>
+            {isDepartmentDisabled() ? (
+              <Input
+                id="department"
+                value={form.department || availableDepartments[0] || ''}
+                disabled
+                readOnly
+                className="bg-gray-100 cursor-not-allowed text-gray-600 w-full"
+              />
+            ) : (
+              <Select
+                value={form.department}
+                onValueChange={handleDepartmentChange}
+                disabled={shouldShowInstituteField() && !form.institute && currentUser?.role !== 'campus_admin'}
+              >
+                <SelectTrigger className="w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDepartments.map((department) => (
+                    <SelectItem key={department} value={department}>
+                      {department}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+        <div className="space-y-4">
+          {currentUser?.role === 'campus_admin' && form.role !== 'super_admin' && (
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+              <p className="text-sm text-green-700 font-medium mb-2">
+                <strong>Note:</strong> User will be created under your college and institute:
+              </p>
+              <ul className="text-xs text-green-600 space-y-1">
+                <li><strong>College:</strong> {currentUser.college}</li>
+                <li><strong>Institute:</strong> {currentUser.institute}</li>
+                {form.role === 'faculty' && (
+                  <li>
+                    <strong>Department:</strong>{" "}
+                    {(!form.department || form.department === 'N/A')
+                      ? 'Please select'
+                      : form.department}
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+          {form.role === 'campus_admin' && form.college && !selectedCollegeHasInstitutes() && (
+            <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
+              <p className="text-sm text-orange-700 font-medium mb-2">
+                <strong>Campus Admin for College without Institutes:</strong>
+              </p>
+              <ul className="text-xs text-orange-600 space-y-1">
+                <li>• <strong>Role:</strong> Manages the entire {form.college}</li>
+                <li>• <strong>Institute:</strong> Not applicable (set to N/A)</li>
+                <li>• <strong>Department:</strong> Not applicable (manages all departments)</li>
+              </ul>
+            </div>
+          )}
+          {(form.institute === 'SRM RESEARCH' || isCurrentUserFromSRMResearch()) && (
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <p className="text-sm text-blue-700 font-medium mb-2">
+                <strong>SRM RESEARCH Institute:</strong>
+              </p>
+              <ul className="text-xs text-blue-600 space-y-1">
+                <li>• <strong>Department:</strong> Automatically assigned to {form.department || availableDepartments[0]}</li>
+                <li>• <strong>Email domains:</strong> Can use any of the four allowed domains</li>
+                <li>• <strong>Department selection:</strong> Not needed - auto-assigned based on college</li>
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 
