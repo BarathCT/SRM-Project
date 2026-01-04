@@ -963,7 +963,7 @@ export default function SuperAdminDashboard() {
             <StatsCard
               title="Total Faculty"
               value={`${stats.totalFaculty}`}
-              subtitle=" "
+              subtitle=" (with publications)"
               icon={<Users className="h-8 w-8 text-blue-600" />}
               loading={scopeLoading}
             />
