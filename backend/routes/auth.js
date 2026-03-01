@@ -33,7 +33,11 @@ const sendEmailViaBrevo = async (to, subject, html, toName = '') => {
     const brevoApiKey = process.env.BREVO_API_KEY;
     const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
 
+    console.log(`[Brevo] Attempting to send email to ${to} (Subject: ${subject})`);
+    console.log(`[Brevo] Sender: ${brevoSenderEmail}`);
+
     if (!brevoApiKey) {
+      console.error('[Brevo] API Key is missing in environment variables');
       throw new Error('BREVO_API_KEY environment variable is not set');
     }
 
@@ -65,18 +69,19 @@ const sendEmailViaBrevo = async (to, subject, html, toName = '') => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Brevo API Error Response:', data);
+      console.error('[Brevo] API Error Response:', JSON.stringify(data, null, 2));
       throw new Error(`Brevo API error: ${data.message || JSON.stringify(data)}`);
     }
 
-    console.log('✅ Email sent successfully via Brevo API. Message ID:', data.messageId);
+    console.log('✅ [Brevo] Email sent successfully. Message ID:', data.messageId);
     return { success: true, messageId: data.messageId };
-    
+
   } catch (error) {
-    console.error('❌ Failed to send email via Brevo API:', error.message);
+    console.error('❌ [Brevo] Failed to send email:', error.message);
     throw error;
   }
 };
+
 
 // ------------------------- LOGIN -------------------------
 router.post('/login', [

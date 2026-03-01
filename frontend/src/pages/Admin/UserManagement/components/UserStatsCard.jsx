@@ -122,7 +122,7 @@ function FilterButtonGroup({
 }) {
   const totalCount = showCount ? Object.values(countMap || {}).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0) : 0;
   const hasManyFilters = filters.length > 8;
-  
+
   return (
     <div className="mt-3 mb-2">
       {/* All button - always visible */}
@@ -153,7 +153,7 @@ function FilterButtonGroup({
           )}
         </button>
       </div>
-      
+
       {/* Filter buttons - scrollable if many */}
       <div className={`${hasManyFilters ? 'max-h-32 overflow-y-auto pr-1' : ''} scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100`}>
         <div className="flex flex-wrap gap-1.5 justify-center">
@@ -161,7 +161,7 @@ function FilterButtonGroup({
             const isActive = selected === v;
             const color = colorPalette[idx % colorPalette.length] || filledColor;
             const count = showCount ? ((countMap && countMap[v]) || 0) : null;
-            
+
             return (
               <button
                 key={v}
@@ -249,7 +249,7 @@ export default function UserStatsCard({
     try {
       setStatsLoading(true);
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         console.error("No authentication token found");
         return;
@@ -282,7 +282,7 @@ export default function UserStatsCard({
           rolesByDepartment: response.data.rolesByDepartment && typeof response.data.rolesByDepartment === 'object' ? response.data.rolesByDepartment : {}
         };
         setStatistics(newStats);
-        
+
         // Store unfiltered statistics only when no filters are applied (for count maps)
         const hasFilters = filters.role !== 'all' || filters.college !== 'all' || filters.institute !== 'all' || filters.department !== 'all' || filters.search;
         if (!hasFilters) {
@@ -493,7 +493,7 @@ export default function UserStatsCard({
         cornerRadius: 8,
         displayColors: true,
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             const label = context.label || '';
             const value = context.parsed || 0;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -510,10 +510,10 @@ export default function UserStatsCard({
   const createRolesByDepartmentChart = (data) => {
     const departments = activeDepartmentList;
     const roles = ['campus_admin', 'faculty'];
-    
+
     // Check if data exists and has any actual values
     const hasData = data && typeof data === 'object' && Object.keys(data).length > 0;
-    
+
     if (!hasData) {
       // Return empty chart data if data is invalid
       return {
@@ -527,13 +527,13 @@ export default function UserStatsCard({
         }))
       };
     }
-    
+
     // Check if there's any actual data (non-zero values) in the entire data object
     const hasAnyData = Object.values(data).some(deptData => {
       if (!deptData || typeof deptData !== 'object') return false;
       return (deptData.campus_admin || 0) + (deptData.faculty || 0) > 0;
     });
-    
+
     // If there's data but not in activeDepartmentList, use all departments from data
     if (hasAnyData) {
       const allDepartmentsWithData = Object.keys(data).filter(dept => {
@@ -541,7 +541,7 @@ export default function UserStatsCard({
         if (!deptData || typeof deptData !== 'object') return false;
         return (deptData.campus_admin || 0) + (deptData.faculty || 0) > 0;
       });
-      
+
       // Filter departments: prefer those with data from activeDepartmentList, 
       // but also include any departments from data that have values
       const departmentsWithData = departments.filter(dept => {
@@ -549,15 +549,15 @@ export default function UserStatsCard({
         if (!deptData || typeof deptData !== 'object') return false;
         return (deptData.campus_admin || 0) + (deptData.faculty || 0) > 0;
       });
-      
+
       // Combine: use active departments with data first, then add any other departments with data
       const combinedDepartments = [...new Set([...departmentsWithData, ...allDepartmentsWithData])];
-      
+
       // Use departments with data if available, otherwise use first 10 departments
-      const finalDepartments = combinedDepartments.length > 0 
+      const finalDepartments = combinedDepartments.length > 0
         ? combinedDepartments.slice(0, 20) // Limit to 20 for performance
         : (departments.length > 0 ? departments.slice(0, 10) : ['No Departments']);
-      
+
       return {
         labels: finalDepartments,
         datasets: roles.map(role => ({
@@ -574,10 +574,10 @@ export default function UserStatsCard({
         }))
       };
     }
-    
+
     // No data at all - return empty chart
     const finalDepartments = departments.length > 0 ? departments.slice(0, 10) : ['No Departments'];
-    
+
     return {
       labels: finalDepartments,
       datasets: roles.map(role => ({
@@ -598,7 +598,7 @@ export default function UserStatsCard({
   const createRolesByLocationChart = (data, allLocations) => {
     const locations = Array.isArray(allLocations) ? allLocations : [];
     const roles = ['campus_admin', 'faculty'];
-    
+
     if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
       // Return empty chart data if data is invalid
       return {
@@ -612,16 +612,16 @@ export default function UserStatsCard({
         }))
       };
     }
-    
+
     // Filter out locations with zero counts for better visualization
     const locationsWithData = locations.filter(location => {
       const locationData = data[location];
       if (!locationData || typeof locationData !== 'object') return false;
       return (locationData.campus_admin || 0) + (locationData.faculty || 0) > 0;
     });
-    
+
     const finalLocations = locationsWithData.length > 0 ? locationsWithData : locations.slice(0, 15);
-    
+
     return {
       labels: finalLocations,
       datasets: roles.map(role => ({
@@ -652,20 +652,20 @@ export default function UserStatsCard({
         }]
       };
     }
-    
+
     // If a label is selected, highlight it and gray out others
     const colors = distribution.map((item, index) => {
       const label = item?.label || 'Unknown';
       const originalColor = extendedColors[index % extendedColors.length];
-      
+
       if (selectedLabel && selectedLabel !== 'all') {
         // Highlight selected segment, gray out others
         return label === selectedLabel ? originalColor : '#d1d5db'; // gray-300
       }
-      
+
       return originalColor;
     });
-    
+
     return {
       labels: distribution.map(item => item?.label || 'Unknown'),
       datasets: [{
@@ -680,8 +680,8 @@ export default function UserStatsCard({
   // COUNT MAPS for all chart filter groups - use unfiltered statistics so counts don't become zero
   const collegeCountMap = useMemo(() => {
     const map = {};
-    const distribution = unfilteredStatistics.collegeDistribution.length > 0 
-      ? unfilteredStatistics.collegeDistribution 
+    const distribution = unfilteredStatistics.collegeDistribution.length > 0
+      ? unfilteredStatistics.collegeDistribution
       : statistics.collegeDistribution;
     if (Array.isArray(distribution)) {
       distribution.forEach(item => {
@@ -695,8 +695,8 @@ export default function UserStatsCard({
 
   const instituteCountMap = useMemo(() => {
     const map = {};
-    const distribution = unfilteredStatistics.instituteDistribution.length > 0 
-      ? unfilteredStatistics.instituteDistribution 
+    const distribution = unfilteredStatistics.instituteDistribution.length > 0
+      ? unfilteredStatistics.instituteDistribution
       : statistics.instituteDistribution;
     if (Array.isArray(distribution)) {
       distribution.forEach(item => {
@@ -710,8 +710,8 @@ export default function UserStatsCard({
 
   const departmentCountMap = useMemo(() => {
     const map = {};
-    const distribution = unfilteredStatistics.departmentDistribution.length > 0 
-      ? unfilteredStatistics.departmentDistribution 
+    const distribution = unfilteredStatistics.departmentDistribution.length > 0
+      ? unfilteredStatistics.departmentDistribution
       : statistics.departmentDistribution;
     if (Array.isArray(distribution)) {
       distribution.forEach(item => {
@@ -728,19 +728,27 @@ export default function UserStatsCard({
     const tree = {};
     const { rolesByCollege, rolesByInstitute } = statistics;
 
-    // Process Institutes
+    // Pre-populate with all colleges from master data
+    COLLEGE_OPTIONS.forEach(college => {
+      tree[college.name] = {};
+      if (college.hasInstitutes) {
+        college.institutes.forEach(inst => {
+          tree[college.name][inst.name] = { campus_admin: 0, faculty: 0 };
+        });
+      } else {
+        // For colleges without institutes, show the college itself as a node
+        tree[college.name][college.name] = { campus_admin: 0, faculty: 0 };
+      }
+    });
+
+    // Process Institutes (Actual stats from server)
     if (rolesByInstitute && typeof rolesByInstitute === 'object') {
       Object.entries(rolesByInstitute).forEach(([institute, roles]) => {
-        // Skip if institute is "N/A" or empty
         if (!institute || institute === "N/A") return;
-        
-        // Find college for this institute
         const collegeOption = COLLEGE_OPTIONS.find(c =>
           c.institutes && c.institutes.some(i => i.name === institute)
         );
         const collegeName = collegeOption ? collegeOption.name : null;
-        
-        // Only add if we found a valid college
         if (collegeName) {
           if (!tree[collegeName]) tree[collegeName] = {};
           tree[collegeName][institute] = roles || {};
@@ -748,12 +756,10 @@ export default function UserStatsCard({
       });
     }
 
-    // Process non-institute colleges
+    // Process non-institute colleges (Actual stats from server)
     if (rolesByCollege && typeof rolesByCollege === 'object') {
       Object.entries(rolesByCollege).forEach(([college, roles]) => {
-        // Skip if college is "N/A" or empty
         if (!college || college === "N/A") return;
-        
         if (collegesWithoutInstitutes.includes(college)) {
           if (!tree[college]) tree[college] = {};
           tree[college][college] = roles || {};
@@ -763,6 +769,7 @@ export default function UserStatsCard({
 
     return tree;
   }, [statistics]);
+
 
   // College Hierarchical Tree: show only for super admin and not filtering for super_admin
   const showCollegeHierarchicalTree =
@@ -863,11 +870,10 @@ export default function UserStatsCard({
             </div>
           )}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full mb-6 bg-gray-50 p-1 rounded-xl ${
-              chartTabs.length === 2 ? 'grid-cols-2' :
-              chartTabs.length === 3 ? 'grid-cols-3' :
-              chartTabs.length === 4 ? 'grid-cols-4' : 'grid-cols-2'
-            }`}>
+            <TabsList className={`grid w-full mb-6 bg-gray-50 p-1 rounded-xl ${chartTabs.length === 2 ? 'grid-cols-2' :
+                chartTabs.length === 3 ? 'grid-cols-3' :
+                  chartTabs.length === 4 ? 'grid-cols-4' : 'grid-cols-2'
+              }`}>
               {chartTabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value} className="flex items-center space-x-2 rounded-lg">
                   <tab.icon className="w-4 h-4" />

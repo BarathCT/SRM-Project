@@ -408,12 +408,16 @@ export default function UserManagement() {
   }, [users]);
 
   const availableColleges = useMemo(() => {
+    if (currentUser?.role === 'super_admin') {
+      return ALL_COLLEGE_NAMES;
+    }
     return [...new Set(
       users
         .filter(user => user.college && user.college !== 'N/A')
         .map(user => user.college)
     )];
-  }, [users]);
+  }, [users, currentUser]);
+
 
   const availableDepartments = useMemo(() => {
     return [...new Set(
