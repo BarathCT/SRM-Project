@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { jwtDecode } from 'jwt-decode';
+import api from '@/lib/api';
 
 import { DeleteConfirmationDialog } from './components/DeleteConfirmationDialog';
 import AddUserDialog from './components/AddUserDialog.jsx';
@@ -29,7 +30,6 @@ const ROLE_OPTIONS = [
 ];
 
 const COLLEGES_WITH_INSTITUTES = ['SRMIST RAMAPURAM', 'SRM TRICHY'];
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -160,46 +160,28 @@ export default function UserManagement() {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      
+
       // Fetch ALL pages to get complete data for client-side pagination
       let allUsers = [];
       let currentPage = 1;
       let hasMore = true;
       let totalCount = 0;
-      
+
       while (hasMore) {
-        let url = `${API_BASE_URL}/api/admin/users`;
-        const params = new URLSearchParams();
+        let url = `/admin/users`;
+        const params = {};
 
         // Add pagination params
-        params.append('page', currentPage);
-        params.append('limit', 100); // Fetch 100 per page to reduce API calls
+        params.page = currentPage;
+        params.limit = 100; // Fetch 100 per page to reduce API calls
 
         // Add filters based on user role
         if (user.role === 'campus_admin') {
-          params.append('college', user.college);
+          params.college = user.college;
         }
 
-        // Append params to URL
-        url += `?${params.toString()}`;
-
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        // Handle response
-        const contentType = res.headers.get('content-type');
-        let data;
-        if (contentType?.includes('application/json')) {
-          data = await res.json();
-        } else {
-          const text = await res.text();
-          throw new Error(`Server did not return JSON. Response: ${text}`);
-        }
+        const res = await api.get(url, { params });
+        const data = res.data;
 
         // Handle paginated response
         if (data.pagination) {
@@ -217,7 +199,7 @@ export default function UserManagement() {
           hasMore = false;
         }
       }
-      
+
       setUsers(allUsers);
       setPagination(prev => ({
         ...prev,
@@ -292,29 +274,16 @@ export default function UserManagement() {
       }
 
       const url = editMode
-        ? `${API_BASE_URL}/api/admin/users/${currentUserId}`
-        : `${API_BASE_URL}/api/admin/users`;
-      const method = editMode ? 'PUT' : 'POST';
+        ? `/admin/users/${currentUserId}`
+        : `/admin/users`;
 
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(realPayload),
-      });
+      const response = editMode
+        ? await api.put(url, realPayload)
+        : await api.post(url, realPayload);
 
-      const contentType = res.headers.get('content-type');
-      let result;
-      if (contentType?.includes('application/json')) {
-        result = await res.json();
-      } else {
-        const text = await res.text();
-        throw new Error(`Server did not return JSON. Response: ${text}`);
-      }
+      const result = response.data;
 
-      if (!res.ok) {
+      if (response.status >= 400) {
         if (result.message?.toLowerCase().includes('user already exists')) {
           toast.error('Email already exists');
         } else {
@@ -355,24 +324,10 @@ export default function UserManagement() {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const res = await api.delete(`/admin/users/${id}`);
+      const result = res.data;
 
-      const contentType = res.headers.get('content-type');
-      let result;
-      if (contentType?.includes('application/json')) {
-        result = await res.json();
-      } else {
-        const text = await res.text();
-        throw new Error(`Server did not return JSON. Response: ${text}`);
-      }
-
-      if (!res.ok) {
+      if (res.status >= 400) {
         toast.error(result.error || result.message || 'Failed to delete user');
         return;
       }
@@ -472,24 +427,14 @@ export default function UserManagement() {
   const handleBulkUpload = async (formData) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/bulk-upload-users`, {
-        method: 'POST',
+      const res = await api.post('/admin/bulk-upload-users', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       });
+      const result = res.data;
 
-      const contentType = res.headers.get('content-type');
-      let result;
-      if (contentType?.includes('application/json')) {
-        result = await res.json();
-      } else {
-        const text = await res.text();
-        throw new Error(`Server did not return JSON. Response: ${text}`);
-      }
-
-      if (!res.ok) {
+      if (res.status >= 400) {
         toast.error(result.error || result.message || 'Bulk upload failed');
         return;
       }

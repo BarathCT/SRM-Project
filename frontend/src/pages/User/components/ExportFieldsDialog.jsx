@@ -159,7 +159,7 @@ const ExportFieldsDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-none md:max-w-4xl w-screen md:w-auto h-screen md:h-[90vh] m-0 rounded-none md:rounded-lg p-0 overflow-hidden !translate-x-0 !translate-y-0 md:translate-x-[-50%] md:translate-y-[-50%] top-0 left-0 right-0 bottom-0 md:top-[50%] md:left-[50%] md:right-auto md:bottom-auto"
+        className="max-w-none md:max-w-4xl w-screen md:w-auto h-screen md:h-[90vh] m-0 rounded-none md:rounded-lg p-0 overflow-hidden translate-x-0 translate-y-0 md:!translate-x-[-50%] md:!translate-y-[-50%] top-0 left-0 right-0 bottom-0 md:top-[50%] md:left-[50%] md:right-auto md:bottom-auto"
         showCloseButton={true}
       >
         <DialogHeader className="px-4 pt-4 pb-2 border-b border-gray-200 bg-white flex-shrink-0 relative">

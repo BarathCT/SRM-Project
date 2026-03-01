@@ -26,11 +26,11 @@ import {
 } from '@/components/ui/select';
 import { User, Mail, Lock, Shield, BookOpen, BadgeCheck, Building2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
+import api from '@/lib/api';
 import { useEffect, useRef, useState } from 'react';
 import { getDepartments as getDepartmentsForCollegeAndInstitute } from '@/utils/collegeData';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function AddUserDialog({
   open,
@@ -206,7 +206,7 @@ export default function AddUserDialog({
             break;
         }
       };
-      
+
       // Small delay to ensure DOM is updated
       setTimeout(restoreFocus, 10);
     }
@@ -337,23 +337,20 @@ export default function AddUserDialog({
       }
       return { checking: true, exists: false, checkedValue: form.email };
     });
-    
+
     if (emailDebounce.current) clearTimeout(emailDebounce.current);
     emailDebounce.current = setTimeout(async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/api/admin/user-keys`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Failed to check email');
-        const data = await res.json();
+        const res = await api.get('/admin/user-keys');
+        const data = res.data;
         const exists = data.emails.includes(form.email.toLowerCase());
         setEmailStatus({ checking: false, exists, checkedValue: form.email });
       } catch {
         setEmailStatus({ checking: false, exists: false, checkedValue: form.email });
       }
     }, 600); // Increased delay to reduce re-renders during typing
-    
+
     return () => {
       if (emailDebounce.current) clearTimeout(emailDebounce.current);
     };
@@ -377,23 +374,20 @@ export default function AddUserDialog({
       }
       return { checking: true, exists: false, checkedValue: form.facultyId };
     });
-    
+
     if (facultyIdDebounce.current) clearTimeout(facultyIdDebounce.current);
     facultyIdDebounce.current = setTimeout(async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/api/admin/user-keys`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Failed to check facultyId');
-        const data = await res.json();
+        const res = await api.get('/admin/user-keys');
+        const data = res.data;
         const exists = data.facultyIds.includes(form.facultyId.toLowerCase());
         setFacultyIdStatus({ checking: false, exists, checkedValue: form.facultyId });
       } catch {
         setFacultyIdStatus({ checking: false, exists: false, checkedValue: form.facultyId });
       }
     }, 600); // Increased delay to reduce re-renders during typing
-    
+
     return () => {
       if (facultyIdDebounce.current) clearTimeout(facultyIdDebounce.current);
     };
@@ -625,8 +619,8 @@ export default function AddUserDialog({
       return form.department && form.department !== 'N/A' && !emailStatus.exists && !facultyIdStatus.exists;
     }
     return (!shouldShowInstituteField() || form.institute) &&
-           (!shouldShowDepartmentField() || form.department) &&
-           !emailStatus.exists && !facultyIdStatus.exists;
+      (!shouldShowDepartmentField() || form.department) &&
+      !emailStatus.exists && !facultyIdStatus.exists;
   };
 
   const emailDomainHints = getEmailDomainHint(form.college, form.institute, currentUser);
@@ -912,8 +906,8 @@ export default function AddUserDialog({
 
   const Footer = () => (
     <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
-      <Button 
-        type="button" 
+      <Button
+        type="button"
         onClick={handleSubmitWithToast}
         disabled={isSubmitting || !isFormValid()}
         className="w-full h-11 text-base font-medium"

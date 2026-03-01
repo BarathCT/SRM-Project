@@ -66,7 +66,7 @@ const subjectAreasData = {
     "Animal Science and Zoology",
     "Aquatic Science",
     "Ecology, Evolution, Behavior and Systematics",
-    "Food Science", 
+    "Food Science",
     "Forestry",
     "Horticulture",
     "Insect Science",
@@ -703,7 +703,7 @@ export default function UploadPage({ embedded = false, editMode = false, initial
         year: initialData.year?.toString() || "",
         qRating: initialData.qRating || "",
         issueType: initialData.typeOfIssue || "",
-        studentScholars: initialData.studentScholars?.map(s => 
+        studentScholars: initialData.studentScholars?.map(s =>
           typeof s === "string" ? { name: s, id: "" } : { name: s.name || "", id: s.id || "" }
         ) || [],
         publication: initialData.publicationType || undefined,
@@ -718,7 +718,6 @@ export default function UploadPage({ embedded = false, editMode = false, initial
     }
   }, [editMode, initialData, form]);
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const publicationType = form.watch("publication");
   const publicationLabel = useMemo(
@@ -744,31 +743,31 @@ export default function UploadPage({ embedded = false, editMode = false, initial
   const watchSubjectAreas = form.watch("subjectAreas");
   const correspondingAuthor = watchAuthors?.find(a => a.isCorresponding);
 
-useEffect(() => {
-  const sub = form.watch((values, { name }) => {
-    if (name === "claimedBy") {
-      const claimed = values.claimedBy;
-      if (!claimed) {
-        form.setValue("authorNo", "", { shouldValidate: true });
-        return;
-      }
+  useEffect(() => {
+    const sub = form.watch((values, { name }) => {
+      if (name === "claimedBy") {
+        const claimed = values.claimedBy;
+        if (!claimed) {
+          form.setValue("authorNo", "", { shouldValidate: true });
+          return;
+        }
 
-      // find author index from current authors list
-      const foundIndex = watchAuthors?.findIndex(a => a.name === claimed) ?? -1;
+        // find author index from current authors list
+        const foundIndex = watchAuthors?.findIndex(a => a.name === claimed) ?? -1;
 
-      // if the claimed author is the corresponding author, set 'C'
-      const corr = watchAuthors?.find(a => a.isCorresponding);
-      if (corr && corr.name === claimed) {
-        form.setValue("authorNo", "C", { shouldValidate: true });
-      } else if (foundIndex !== -1) {
-        form.setValue("authorNo", (foundIndex + 1).toString(), { shouldValidate: true });
-      } else {
-        form.setValue("authorNo", "", { shouldValidate: true });
+        // if the claimed author is the corresponding author, set 'C'
+        const corr = watchAuthors?.find(a => a.isCorresponding);
+        if (corr && corr.name === claimed) {
+          form.setValue("authorNo", "C", { shouldValidate: true });
+        } else if (foundIndex !== -1) {
+          form.setValue("authorNo", (foundIndex + 1).toString(), { shouldValidate: true });
+        } else {
+          form.setValue("authorNo", "", { shouldValidate: true });
+        }
       }
-    }
-  });
-  return () => sub.unsubscribe();
-}, [form, watchAuthors]);
+    });
+    return () => sub.unsubscribe();
+  }, [form, watchAuthors]);
 
 
   const debouncedDoiCheck = useCallback(
@@ -869,11 +868,11 @@ useEffect(() => {
     try {
       const data = await toast.promise(
         (async () => {
-          const url = editMode && initialData?._id 
+          const url = editMode && initialData?._id
             ? `${API_BASE_URL}/api/papers/${initialData._id}`
             : `${API_BASE_URL}/api/papers`;
           const method = editMode ? 'PUT' : 'POST';
-          
+
           const res = await fetch(url, {
             method: method,
             headers: {
@@ -1144,17 +1143,17 @@ useEffect(() => {
                           <FormItem>
                             <FormLabel className="text-black">Volume</FormLabel>
                             <FormControl>
-                             <Input
-          type="text"
-          placeholder="e.g., 5186"
-          {...field}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (/^[0-9]*$/.test(value)) {
-              field.onChange(value);
-            }
-          }}
-        />
+                              <Input
+                                type="text"
+                                placeholder="e.g., 5186"
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (/^[0-9]*$/.test(value)) {
+                                    field.onChange(value);
+                                  }
+                                }}
+                              />
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
@@ -1168,17 +1167,17 @@ useEffect(() => {
                           <FormItem>
                             <FormLabel className="text-black">Issue</FormLabel>
                             <FormControl>
-                             <Input
-          type="text"
-          placeholder="e.g., 15"
-          {...field}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (/^[0-9]*$/.test(value)) {
-              field.onChange(value);
-            }
-          }}
-        />
+                              <Input
+                                type="text"
+                                placeholder="e.g., 15"
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (/^[0-9]*$/.test(value)) {
+                                    field.onChange(value);
+                                  }
+                                }}
+                              />
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
@@ -1192,18 +1191,18 @@ useEffect(() => {
                           <FormItem>
                             <FormLabel className="text-black">Page No.</FormLabel>
                             <FormControl>
-                             <Input
-          type="text"
-          placeholder="e.g., 7008-7022"
-          {...field}
-          onChange={(e) => {
-            const value = e.target.value;
-            // allow only digits and one dash
-            if (/^[0-9]*-?[0-9]*$/.test(value)) {
-              field.onChange(value);
-            }
-          }}
-        />
+                              <Input
+                                type="text"
+                                placeholder="e.g., 7008-7022"
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  // allow only digits and one dash
+                                  if (/^[0-9]*-?[0-9]*$/.test(value)) {
+                                    field.onChange(value);
+                                  }
+                                }}
+                              />
                             </FormControl>
                             <FormMessage className="text-blue-700" />
                           </FormItem>
@@ -1284,151 +1283,151 @@ useEffect(() => {
 
                       {/* Publication dropdown - only show types the user has in their settings */}
                       <FormField
-  control={form.control}
-  name="publication"
-  render={({ field }) => (
-    <FormItem>
-      <div className="flex items-center gap-2">
-        <FormLabel className="text-black">Publication</FormLabel>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-4 w-4 text-gray-500 hover:text-gray-700 cursor-pointer" />
-            </TooltipTrigger>
-            <TooltipContent side="right" className="max-w-xs text-sm">
-              This is your added Author ID.  
-              If you want to use another ID, please add it in the Settings page.
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+                        control={form.control}
+                        name="publication"
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="flex items-center gap-2">
+                              <FormLabel className="text-black">Publication</FormLabel>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-gray-500 hover:text-gray-700 cursor-pointer" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs text-sm">
+                                    This is your added Author ID.
+                                    If you want to use another ID, please add it in the Settings page.
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
 
-      <FormControl>
-        <Select
-          onValueChange={(value) => {
-            field.onChange(value);
-            if (value && userAuthorIds[value]) {
-              form.setValue("publicationId", userAuthorIds[value], { shouldValidate: true });
-            } else {
-              form.setValue("publicationId", "", { shouldValidate: true });
-            }
-          }}
-          value={field.value ?? ""}
-          disabled={publicationOptions.length === 0}
-        >
-          <FormControl>
-            <SelectTrigger className="text-black">
-              <SelectValue
-                placeholder={
-                  publicationOptions.length
-                    ? "Select publication identifier"
-                    : "No identifiers available in profile"
-                }
-              />
-            </SelectTrigger>
-          </FormControl>
-          <SelectContent>
-            {publicationOptions.map((opt) => (
-              <SelectItem key={opt.key} value={opt.key}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </FormControl>
-      <FormMessage className="text-blue-700" />
-    </FormItem>
-  )}
-/>
+                            <FormControl>
+                              <Select
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  if (value && userAuthorIds[value]) {
+                                    form.setValue("publicationId", userAuthorIds[value], { shouldValidate: true });
+                                  } else {
+                                    form.setValue("publicationId", "", { shouldValidate: true });
+                                  }
+                                }}
+                                value={field.value ?? ""}
+                                disabled={publicationOptions.length === 0}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="text-black">
+                                    <SelectValue
+                                      placeholder={
+                                        publicationOptions.length
+                                          ? "Select publication identifier"
+                                          : "No identifiers available in profile"
+                                      }
+                                    />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {publicationOptions.map((opt) => (
+                                    <SelectItem key={opt.key} value={opt.key}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage className="text-blue-700" />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* PublicationId field - readOnly, populated from userAuthorIds */}
                       {/* Publication ID - full width */}
-<div className="w-full">
-  <FormField
-    control={form.control}
-    name="publicationId"
-    render={({ field }) => (
-      <FormItem>
-        <FormLabel className="text-black">{publicationLabel}</FormLabel>
-        <FormControl>
-          <Input
-            {...field}
-            placeholder="Select publication to auto-fill"
-            readOnly
-            className="bg-blue-50 w-full"
-          />
-        </FormControl>
-        <FormMessage className="text-blue-700" />
-      </FormItem>
-    )}
-  />
-</div>
+                      <div className="w-full">
+                        <FormField
+                          control={form.control}
+                          name="publicationId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-black">{publicationLabel}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="Select publication to auto-fill"
+                                  readOnly
+                                  className="bg-blue-50 w-full"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-blue-700" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-{/* Claimed By and Author No. on the same row */}
-<div className="flex gap-4 w-full mt-2">
-  <div className="flex-1">
-    <FormField
-      control={form.control}
-      name="claimedBy"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-black">Claimed By</FormLabel>
-          <Select onValueChange={field.onChange} value={field.value ?? ""}>
-            <FormControl>
-              <SelectTrigger className="text-black">
-                <SelectValue placeholder="Select an author" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {watchAuthors?.map((author, index) =>
-                author.name ? (
-                  <SelectItem key={index} value={author.name}>
-                    {author.name}
-                  </SelectItem>
-                ) : null
-              )}
-            </SelectContent>
-          </Select>
-          <FormMessage className="text-blue-700" />
-        </FormItem>
-      )}
-    />
-  </div>
+                      {/* Claimed By and Author No. on the same row */}
+                      <div className="flex gap-4 w-full mt-2">
+                        <div className="flex-1">
+                          <FormField
+                            control={form.control}
+                            name="claimedBy"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-black">Claimed By</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                  <FormControl>
+                                    <SelectTrigger className="text-black">
+                                      <SelectValue placeholder="Select an author" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {watchAuthors?.map((author, index) =>
+                                      author.name ? (
+                                        <SelectItem key={index} value={author.name}>
+                                          {author.name}
+                                        </SelectItem>
+                                      ) : null
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage className="text-blue-700" />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
-  <div className="w-40">
-    <FormField
-      control={form.control}
-      name="authorNo"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-black">Author No.</FormLabel>
-          <FormControl>
-            <Select value={field.value ?? ""} disabled>
-              <FormControl>
-                <SelectTrigger className="text-black">
-                  <SelectValue placeholder="" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {watchAuthors?.map((author, index) =>
-                  author.name ? (
-                    <SelectItem key={index} value={(index + 1).toString()}>
-                      {index + 1}
-                    </SelectItem>
-                  ) : null
-                )}
-                {correspondingAuthor && correspondingAuthor.name && (
-                  <SelectItem value="C">C (Corresponding)</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </FormControl>
-          <FormMessage className="text-blue-700" />
-        </FormItem>
-      )}
-    />
-  </div>
-</div>
+                        <div className="w-40">
+                          <FormField
+                            control={form.control}
+                            name="authorNo"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-black">Author No.</FormLabel>
+                                <FormControl>
+                                  <Select value={field.value ?? ""} disabled>
+                                    <FormControl>
+                                      <SelectTrigger className="text-black">
+                                        <SelectValue placeholder="" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {watchAuthors?.map((author, index) =>
+                                        author.name ? (
+                                          <SelectItem key={index} value={(index + 1).toString()}>
+                                            {index + 1}
+                                          </SelectItem>
+                                        ) : null
+                                      )}
+                                      {correspondingAuthor && correspondingAuthor.name && (
+                                        <SelectItem value="C">C (Corresponding)</SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage className="text-blue-700" />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
 
                     </div>
                   </div>

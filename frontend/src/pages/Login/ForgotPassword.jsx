@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/Toast";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import api from "@/lib/api";
 
 function OtpInput({ value, onChange, isLoading }) {
   const inputs = Array.from({ length: 6 }, () => useRef(null));
@@ -63,7 +64,6 @@ export default function ForgotPassword({ onClose }) {
   const [emailError, setEmailError] = useState("");
   const [attemptsLeft, setAttemptsLeft] = useState(3);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -84,21 +84,14 @@ export default function ForgotPassword({ onClose }) {
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
-    
+
     if (!validateEmail(email)) return;
 
     setOtpLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email.trim() }),
-      });
+      const response = await api.post('/auth/forgot-password', { email: email.trim() });
+      const data = response.data;
 
-      const data = await response.json();
-      
       if (!response.ok) {
         throw new Error(data.message || "Failed to send OTP");
       }
@@ -122,58 +115,49 @@ export default function ForgotPassword({ onClose }) {
   };
 
   const handleVerifyOtp = async (e) => {
-  e.preventDefault();
-  if (otp.length !== 6) {
-    toast.error("Please enter the complete 6-digit OTP");
-    return;
-  }
-
-  setOtpLoading(true);
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        email: email.trim(), 
-        otp: otp.trim() 
-      }),
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      if (data.message.includes('attempts')) {
-        setAttemptsLeft(prev => prev - 1);
-      }
-      throw new Error(data.message || "OTP verification failed");
+    e.preventDefault();
+    if (otp.length !== 6) {
+      toast.error("Please enter the complete 6-digit OTP");
+      return;
     }
 
-    // Store verification timestamp in localStorage
-    localStorage.setItem('otpVerified', Date.now().toString());
-    
-    toast.success(data.message);
-    setStep(3);
-  } catch (err) {
-    console.error("OTP verification error:", err);
-    toast.error(err.message || "OTP verification failed. Please try again.");
-  } finally {
-    setOtpLoading(false);
-  }
-};
+    setOtpLoading(true);
+    try {
+      const response = await api.post('/auth/verify-otp', {
+        email: email.trim(),
+        otp: otp.trim()
+      });
+
+      const data = response.data;
+
+      if (!response.ok) {
+        if (data.message.includes('attempts')) {
+          setAttemptsLeft(prev => prev - 1);
+        }
+        throw new Error(data.message || "OTP verification failed");
+      }
+
+      // Store verification timestamp in localStorage
+      localStorage.setItem('otpVerified', Date.now().toString());
+
+      toast.success(data.message);
+      setStep(3);
+    } catch (err) {
+      console.error("OTP verification error:", err);
+      toast.error(err.message || "OTP verification failed. Please try again.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
 
     setOtpLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
+      const response = await api.post('/auth/forgot-password', { email: email.trim() });
+      const data = response.data;
 
-      const data = await response.json();
-      
       if (!response.ok) {
         throw new Error(data.message || "Failed to resend OTP");
       }
@@ -191,9 +175,9 @@ export default function ForgotPassword({ onClose }) {
   };
 
   const handleResetPassword = async (e) => {
-  e.preventDefault();
-  
-  // Check if verification was recent (within 5 minutes)
+    e.preventDefault();
+
+    // Check if verification was recent (within 5 minutes)
     const verificationTime = localStorage.getItem('otpVerified');
     if (!verificationTime || (Date.now() - parseInt(verificationTime)) > 5 * 60 * 1000) {
       toast.error("OTP session expired. Please verify again.");
@@ -215,20 +199,14 @@ export default function ForgotPassword({ onClose }) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          email: email.trim(), 
-          otp: otp.trim(), 
-          newPassword: newPassword.trim() 
-        }),
+      const response = await api.post('/auth/reset-password', {
+        email: email.trim(),
+        otp: otp.trim(),
+        newPassword: newPassword.trim()
       });
 
-      const data = await response.json();
-      
+      const data = response.data;
+
       if (!response.ok) {
         if (data.message.includes('Invalid or expired OTP')) {
           setStep(1);
@@ -276,7 +254,7 @@ export default function ForgotPassword({ onClose }) {
       >
         ×
       </button>
-      
+
       {step > 1 && (
         <button
           className="absolute top-4 left-4 text-gray-500 hover:text-gray-700"
@@ -286,14 +264,14 @@ export default function ForgotPassword({ onClose }) {
           <ArrowLeft className="h-5 w-5" />
         </button>
       )}
-      
+
       {step === 1 && (
         <form onSubmit={handleRequestOtp} className="space-y-5">
           <h2 className="text-2xl font-bold text-center text-gray-800">Forgot Password</h2>
           <div className="text-sm text-gray-600 text-center">
             Enter your institutional email to receive a password reset OTP
           </div>
-          
+
           <div className="space-y-2">
             <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700">
               Institutional Email
@@ -319,7 +297,7 @@ export default function ForgotPassword({ onClose }) {
               <div className="text-red-500 text-xs mt-1">{emailError}</div>
             )}
           </div>
-          
+
           <Button
             type="submit"
             className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
@@ -341,15 +319,15 @@ export default function ForgotPassword({ onClose }) {
           <div className="text-sm text-gray-600 text-center">
             We sent a 6-digit code to <span className="font-semibold">{email}</span>
           </div>
-          
+
           <OtpInput value={otp} onChange={setOtp} isLoading={otpLoading} />
-          
+
           {attemptsLeft < 3 && (
             <div className="text-sm text-center text-red-500">
               {attemptsLeft} attempt{attemptsLeft !== 1 ? 's' : ''} remaining
             </div>
           )}
-          
+
           <div className="flex items-center justify-center text-sm text-gray-600">
             Didn't receive code?{" "}
             <Button
@@ -362,7 +340,7 @@ export default function ForgotPassword({ onClose }) {
               {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
             </Button>
           </div>
-          
+
           <Button
             type="submit"
             className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
@@ -384,7 +362,7 @@ export default function ForgotPassword({ onClose }) {
           <div className="text-sm text-gray-600 text-center">
             Create a strong new password (min 8 characters)
           </div>
-          
+
           <div className="space-y-2">
             <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
               New Password
@@ -416,7 +394,7 @@ export default function ForgotPassword({ onClose }) {
               </button>
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
               Confirm Password
@@ -448,7 +426,7 @@ export default function ForgotPassword({ onClose }) {
               </button>
             </div>
           </div>
-          
+
           <Button
             type="submit"
             className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"

@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import api from '@/lib/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function LogDialog({ open, onOpenChange }) {
   const [logs, setLogs] = useState([]);
@@ -19,7 +19,7 @@ export default function LogDialog({ open, onOpenChange }) {
       setError(null);
       return;
     }
-    
+
     setLoading(true);
     setError(null);
 
@@ -32,20 +32,9 @@ export default function LogDialog({ open, onOpenChange }) {
           return;
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/admin/user-logs`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const response = await api.get('/admin/user-logs');
+        const data = response.data;
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Failed to fetch logs' }));
-          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
         // Handle different response structures
         let logsData = [];
         if (Array.isArray(data)) {
@@ -57,10 +46,10 @@ export default function LogDialog({ open, onOpenChange }) {
         } else if (data.success && Array.isArray(data.data)) {
           logsData = data.data;
         }
-        
+
         // Filter out invalid logs and ensure required fields exist
         logsData = logsData.filter(log => log && (log.action || log.timestamp));
-        
+
         // Sort by timestamp descending (most recent first)
         logsData = logsData.sort((a, b) => {
           const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
@@ -127,15 +116,14 @@ export default function LogDialog({ open, onOpenChange }) {
                     </td>
                     <td className="p-3 border-b border-gray-100">
                       <span
-                        className={`px-2 py-1 rounded text-xs font-bold tracking-wide border ${
-                          log.action === 'create'
+                        className={`px-2 py-1 rounded text-xs font-bold tracking-wide border ${log.action === 'create'
                             ? 'bg-blue-50 text-blue-700 border-blue-100'
                             : log.action === 'update'
-                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                            : log.action === 'delete'
-                            ? 'bg-red-100 text-red-700 border-red-200'
-                            : 'bg-gray-100 text-gray-700 border-gray-200'
-                        }`}
+                              ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                              : log.action === 'delete'
+                                ? 'bg-red-100 text-red-700 border-red-200'
+                                : 'bg-gray-100 text-gray-700 border-gray-200'
+                          }`}
                       >
                         {log.action?.toUpperCase()}
                       </span>
@@ -198,8 +186,8 @@ export default function LogDialog({ open, onOpenChange }) {
   if (isMobileOrTablet) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent 
-          side="bottom" 
+        <SheetContent
+          side="bottom"
           className="h-screen w-screen max-w-none rounded-none p-0 flex flex-col gap-0 bg-white [&>button.absolute]:hidden"
         >
           <SheetHeader className="px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-white">
@@ -214,8 +202,8 @@ export default function LogDialog({ open, onOpenChange }) {
               </Button>
               <SheetTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" className="text-blue-400">
-                  <circle cx="12" cy="12" r="10" fill="#e0ecff"/>
-                  <path d="M12 7v5m0 4h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="12" r="10" fill="#e0ecff" />
+                  <path d="M12 7v5m0 4h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 User Activity Logs
               </SheetTitle>
@@ -237,8 +225,8 @@ export default function LogDialog({ open, onOpenChange }) {
           <DialogTitle>
             <span className="text-2xl font-bold text-gray-800 flex items-center gap-2">
               <svg width="28" height="28" fill="none" viewBox="0 0 24 24" className="text-blue-400">
-                <circle cx="12" cy="12" r="10" fill="#e0ecff"/>
-                <path d="M12 7v5m0 4h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="12" r="10" fill="#e0ecff" />
+                <path d="M12 7v5m0 4h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               User Activity Logs
             </span>

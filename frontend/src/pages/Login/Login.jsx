@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '@/lib/api';
 import { useToast } from '@/components/Toast';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import ForgotPassword from './ForgotPassword';
@@ -15,7 +16,6 @@ export default function Login() {
   const [showForgot, setShowForgot] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,26 +30,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password.trim()
-        }),
+      const response = await api.post('/auth/login', {
+        email: email.trim(),
+        password: password.trim()
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(data.message || 'Invalid email or password');
-        }
-        throw new Error(data.message || 'Login failed');
-      }
+      const data = response.data;
 
       if (data.token) {
         localStorage.setItem('token', data.token);
