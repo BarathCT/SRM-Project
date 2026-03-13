@@ -29,6 +29,7 @@ import {
 import { useToast } from '@/components/Toast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import * as XLSX from 'xlsx';
+import { apiBaseURL } from '@/lib/api';
 
 export default function BulkUploadDialog({
   open,
@@ -67,7 +68,7 @@ export default function BulkUploadDialog({
   const downloadTemplate = async (templateType = null) => {
     try {
       const token = localStorage.getItem('token');
-      let url = '/api/admin/download-template';
+      let url = `${apiBaseURL}/admin/download-template`;
 
       if (currentUser?.role === 'super_admin' && templateType) {
         url += `?templateType=${templateType}`;
@@ -115,7 +116,7 @@ export default function BulkUploadDialog({
   // Fetch existing emails/facultyIds from backend for validation
   const fetchExistingKeys = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/admin/user-keys', {
+    const res = await fetch(`${apiBaseURL}/admin/user-keys`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Failed to fetch user keys');
