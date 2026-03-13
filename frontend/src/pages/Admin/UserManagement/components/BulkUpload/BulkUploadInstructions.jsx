@@ -9,6 +9,15 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+  DrawerFooter,
+} from '@/components/ui/drawer';
 
 export default function BulkUploadInstructions({
   currentUser = {},
@@ -18,6 +27,185 @@ export default function BulkUploadInstructions({
 }) {
   const safeUser = currentUser || {};
   const { role } = safeUser;
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const Header = () => (
+    <>
+      <Info className="h-5 w-5 text-blue-600" />
+      <div>
+        <p>{instructions.title}</p>
+        <p className="text-sm font-normal text-gray-600 mt-1">
+          {instructions.description}
+        </p>
+      </div>
+    </>
+  );
+
+  const Content = () => (
+    <div className="space-y-6 p-4">
+      {/* Enhanced Template Features */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="font-medium text-blue-800 mb-2">📋 Clean Template Features</h3>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• <strong>Real Dropdown Validation:</strong> Excel dropdown menus for College, Institute, Department</li>
+          <li>• <strong>Clean Start:</strong> No sample data - enter your own data from row 2</li>
+          <li>• <strong>Error Prevention:</strong> No spelling mistakes or invalid selections</li>
+          <li>• <strong>Role-Based Templates:</strong> Different templates for campus admin vs faculty creation</li>
+          <li>• <strong>Auto-Generated Passwords:</strong> No password column in Excel</li>
+          <li>• <strong>Dynamic Generation:</strong> Templates created on-demand with latest data</li>
+        </ul>
+      </div>
+
+      {/* Template Structure */}
+      <div className="space-y-4">
+        <h3 className="font-medium text-gray-800">Template Structure & Requirements</h3>
+        
+        {/* Super Admin Templates */}
+        {role === 'super_admin' && (
+          <div className="space-y-4">
+            <div className="border rounded-lg p-4">
+              <h4 className="font-semibold text-blue-700 mb-3 text-sm sm:text-base">Campus Admin Template Structure</h4>
+              <div className="rounded-lg border overflow-x-auto">
+                <Table className="min-w-[600px] sm:min-w-full">
+                  <TableHeader className="bg-blue-50">
+                    <TableRow>
+                      <TableHead className="w-[120px] sm:w-[150px]">Column Name</TableHead>
+                      <TableHead className="w-[80px] sm:w-[100px]">Input Type</TableHead>
+                      <TableHead className="w-[70px] sm:w-[80px]">Required</TableHead>
+                      <TableHead>Description & Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {instructions.campusAdminColumns?.map((col) => (
+                      <TemplateColumnRow key={col.name} col={col} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div className="border rounded-lg p-4">
+              <h4 className="font-semibold text-green-700 mb-3 text-sm sm:text-base">Faculty Template Structure</h4>
+              <div className="rounded-lg border overflow-x-auto">
+                <Table className="min-w-[600px] sm:min-w-full">
+                  <TableHeader className="bg-green-50">
+                    <TableRow>
+                      <TableHead className="w-[120px] sm:w-[150px]">Column Name</TableHead>
+                      <TableHead className="w-[80px] sm:w-[100px]">Input Type</TableHead>
+                      <TableHead className="w-[70px] sm:w-[80px]">Required</TableHead>
+                      <TableHead>Description & Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {instructions.facultyColumns?.map((col) => (
+                      <TemplateColumnRow key={col.name} col={col} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Campus Admin Single Template */}
+        {role === 'campus_admin' && (
+          <div className="border rounded-lg p-4">
+            <h4 className="font-semibold text-blue-700 mb-3 text-sm sm:text-base">Faculty Template Structure</h4>
+            <div className="rounded-lg border overflow-x-auto">
+              <Table className="min-w-[600px] sm:min-w-full">
+                <TableHeader className="bg-blue-50">
+                  <TableRow>
+                    <TableHead className="w-[120px] sm:w-[150px]">Column Name</TableHead>
+                    <TableHead className="w-[80px] sm:w-[100px]">Input Type</TableHead>
+                    <TableHead className="w-[70px] sm:w-[80px]">Required</TableHead>
+                    <TableHead>Description & Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {instructions.columns?.map((col) => (
+                    <TemplateColumnRow key={col.name} col={col} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Row-Order Input Type Legend */}
+      <RowOrderColumnTypeLegend />
+
+      {/* Usage Instructions */}
+      <UsageInstructions role={role} />
+
+      {/* Important Notes */}
+      <ImportantNotes instructions={instructions} />
+
+      {/* Email Domain Requirements */}
+      <EmailDomainRequirements />
+
+      {/* Template Preview */}
+      <TemplatePreview />
+    </div>
+  );
+
+  const Footer = () => (
+    <div className={`flex flex-col sm:flex-row gap-2 w-full ${isMobile ? '' : 'justify-end'}`}>
+      {role === 'super_admin' ? (
+        <>
+          <Button 
+            variant="outline" 
+            onClick={() => downloadTemplate('campus_admin')}
+            className="w-full sm:w-auto"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Campus Admin Template
+          </Button>
+          <Button 
+            onClick={() => downloadTemplate('faculty')}
+            className="w-full sm:w-auto"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Faculty Template
+          </Button>
+        </>
+      ) : (
+        <Button 
+          onClick={() => downloadTemplate()}
+          className="w-full sm:w-auto"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Download Template
+        </Button>
+      )}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer>
+        <DrawerTrigger asChild>
+          {trigger}
+        </DrawerTrigger>
+        <DrawerContent className="h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col rounded-none border-none">
+          <DrawerHeader className="border-b flex-shrink-0 px-4">
+            <DrawerTitle className="flex items-start gap-3">
+              <Header />
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto flex-1 px-0">
+            <Content />
+          </div>
+          <DrawerFooter className="border-t p-4 flex-shrink-0">
+            <Footer />
+            <Button variant="ghost" className="mt-2 w-full sm:hidden" onClick={() => document.querySelector('[data-vaul-drawer]')?.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))}>
+              Close
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
   return (
     <Dialog>
@@ -27,149 +215,16 @@ export default function BulkUploadInstructions({
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="border-b pb-4">
           <DialogTitle className="flex items-center gap-3">
-            <Info className="h-5 w-5 text-blue-600" />
-            <div>
-              <p>{instructions.title}</p>
-              <p className="text-sm font-normal text-gray-600 mt-1">
-                {instructions.description}
-              </p>
-            </div>
+            <Header />
           </DialogTitle>
         </DialogHeader>
 
         <div className="overflow-y-auto flex-1 px-1">
-          <div className="space-y-6 p-4">
-            {/* Enhanced Template Features */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-medium text-blue-800 mb-2">📋 Clean Template Features</h3>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• <strong>Real Dropdown Validation:</strong> Excel dropdown menus for College, Institute, Department</li>
-                <li>• <strong>Clean Start:</strong> No sample data - enter your own data from row 2</li>
-                <li>• <strong>Error Prevention:</strong> No spelling mistakes or invalid selections</li>
-                <li>• <strong>Role-Based Templates:</strong> Different templates for campus admin vs faculty creation</li>
-                <li>• <strong>Auto-Generated Passwords:</strong> No password column in Excel</li>
-                <li>• <strong>Dynamic Generation:</strong> Templates created on-demand with latest data</li>
-              </ul>
-            </div>
-
-            {/* Template Structure */}
-            <div className="space-y-4">
-              <h3 className="font-medium text-gray-800">Template Structure & Requirements</h3>
-              
-              {/* Super Admin Templates */}
-              {role === 'super_admin' && (
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold text-blue-700 mb-3">Campus Admin Template Structure</h4>
-                    <div className="rounded-lg border overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-blue-50">
-                          <TableRow>
-                            <TableHead className="w-[150px]">Column Name</TableHead>
-                            <TableHead className="w-[100px]">Input Type</TableHead>
-                            <TableHead className="w-[80px]">Required</TableHead>
-                            <TableHead>Description & Notes</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {instructions.campusAdminColumns?.map((col) => (
-                            <TemplateColumnRow key={col.name} col={col} />
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold text-green-700 mb-3">Faculty Template Structure</h4>
-                    <div className="rounded-lg border overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-green-50">
-                          <TableRow>
-                            <TableHead className="w-[150px]">Column Name</TableHead>
-                            <TableHead className="w-[100px]">Input Type</TableHead>
-                            <TableHead className="w-[80px]">Required</TableHead>
-                            <TableHead>Description & Notes</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {instructions.facultyColumns?.map((col) => (
-                            <TemplateColumnRow key={col.name} col={col} />
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Campus Admin Single Template */}
-              {role === 'campus_admin' && (
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-700 mb-3">Faculty Template Structure</h4>
-                  <div className="rounded-lg border overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-blue-50">
-                        <TableRow>
-                          <TableHead className="w-[150px]">Column Name</TableHead>
-                          <TableHead className="w-[100px]">Input Type</TableHead>
-                          <TableHead className="w-[80px]">Required</TableHead>
-                          <TableHead>Description & Notes</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {instructions.columns?.map((col) => (
-                          <TemplateColumnRow key={col.name} col={col} />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Row-Order Input Type Legend */}
-            <RowOrderColumnTypeLegend />
-
-            {/* Usage Instructions */}
-            <UsageInstructions role={role} />
-
-            {/* Important Notes */}
-            <ImportantNotes instructions={instructions} />
-
-            {/* Email Domain Requirements */}
-            <EmailDomainRequirements />
-
-            {/* Template Preview */}
-            <TemplatePreview />
-          </div>
+          <Content />
         </div>
 
-        <div className="border-t pt-4 flex justify-end">
-          {role === 'super_admin' ? (
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => downloadTemplate('campus_admin')}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Campus Admin Template
-              </Button>
-              <Button 
-                onClick={() => downloadTemplate('faculty')}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Faculty Template
-              </Button>
-            </div>
-          ) : (
-            <Button 
-              onClick={() => downloadTemplate()}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download Template
-            </Button>
-          )}
+        <div className="border-t p-4 flex justify-end">
+          <Footer />
         </div>
       </DialogContent>
     </Dialog>
