@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
+import { apiBaseURL } from "@/lib/api";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -467,7 +468,7 @@ function decodeToken(token) {
     return null;
   }
 }
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
 function SectionHeader({ step, icon: Icon, title, subtitle }) {
   return (
@@ -843,8 +844,8 @@ export default function UploadConferencePage({ embedded = false, editMode = fals
       const data = await toast.promise(
         (async () => {
           const url = editMode && initialData?._id 
-            ? `${API_BASE_URL}/api/conference-papers/${initialData._id}`
-            : `${API_BASE_URL}/api/conference-papers`;
+            ? `${apiBaseURL}/conference-papers/${initialData._id}`
+            : `${apiBaseURL}/conference-papers`;
           const method = editMode ? 'PUT' : 'POST';
           
           const res = await fetch(url, {

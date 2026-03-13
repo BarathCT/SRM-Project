@@ -83,7 +83,7 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
   // Load data
   useEffect(() => {

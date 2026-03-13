@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/lib/api';
 import {
   Users,
   Building2,
@@ -63,7 +63,7 @@ ChartJS.register(
   Filler
 );
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
 const roleConfig = {
   super_admin: {
@@ -263,8 +263,7 @@ export default function UserStatsCard({
       if (filters.department !== 'all') params.append('department', filters.department);
       if (filters.search) params.append('search', filters.search);
 
-      const response = await axios.get(`${API_BASE_URL}/api/admin/stats?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await api.get(`/admin/stats?${params.toString()}`, {
         timeout: 10000 // 10 second timeout
       });
 

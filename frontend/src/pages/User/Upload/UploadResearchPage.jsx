@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
+import { apiBaseURL } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -662,8 +663,8 @@ export default function UploadPage({ embedded = false, editMode = false, initial
     // Fetch user's author IDs from /api/settings to populate publication dropdown
     (async () => {
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-        const res = await fetch(`${API_BASE_URL}/api/settings`, {
+        
+        const res = await fetch(`${apiBaseURL}/settings`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) return; // ignore silently, user may not have author IDs
@@ -784,7 +785,7 @@ export default function UploadPage({ embedded = false, editMode = false, initial
         // Step 1: Check duplicate in DB
         let dataDb = null;
         try {
-          const resDb = await fetch(`${API_BASE_URL}/api/papers/doi/${encodeURIComponent(doi)}`, {
+          const resDb = await fetch(`${apiBaseURL}/papers/doi/${encodeURIComponent(doi)}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (resDb.ok) {
@@ -869,8 +870,8 @@ export default function UploadPage({ embedded = false, editMode = false, initial
       const data = await toast.promise(
         (async () => {
           const url = editMode && initialData?._id
-            ? `${API_BASE_URL}/api/papers/${initialData._id}`
-            : `${API_BASE_URL}/api/papers`;
+            ? `${apiBaseURL}/papers/${initialData._id}`
+            : `${apiBaseURL}/papers`;
           const method = editMode ? 'PUT' : 'POST';
 
           const res = await fetch(url, {

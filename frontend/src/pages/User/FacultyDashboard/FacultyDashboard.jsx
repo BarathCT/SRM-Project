@@ -61,7 +61,7 @@ const FacultyDashboard = () => {
   const [editConferenceOpen, setEditConferenceOpen] = useState(false);
   const [editingConference, setEditingConference] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
   // Export
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -411,7 +411,7 @@ const FacultyDashboard = () => {
     setDeletingPaperId(id);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE_URL}/api/papers/${id}`, {
+      await api.delete(`/papers/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPapers((prev) => prev.filter((p) => p._id !== id));
@@ -428,7 +428,7 @@ const FacultyDashboard = () => {
     setDeletingChapterId(id);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE_URL}/api/book-chapters/${id}`, {
+      await api.delete(`/book-chapters/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setBookChapters((prev) => prev.filter((c) => c._id !== id));
@@ -445,7 +445,7 @@ const FacultyDashboard = () => {
     setDeletingConferenceId(id);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE_URL}/api/conference-papers/${id}`, {
+      await api.delete(`/conference-papers/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setConferencePapers((prev) => prev.filter((p) => p._id !== id));
@@ -471,7 +471,7 @@ const FacultyDashboard = () => {
     setIsUpdating(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API_BASE_URL}/api/papers/${data._id}`, data, {
+      await api.put(`/papers/${data._id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPapers((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
@@ -494,7 +494,7 @@ const FacultyDashboard = () => {
     setIsUpdating(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API_BASE_URL}/api/book-chapters/${data._id}`, data, {
+      await api.put(`/book-chapters/${data._id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
@@ -517,7 +517,7 @@ const FacultyDashboard = () => {
     setIsUpdating(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API_BASE_URL}/api/conference-papers/${data._id}`, data, {
+      await api.put(`/conference-papers/${data._id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setConferencePapers((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
@@ -544,7 +544,7 @@ const FacultyDashboard = () => {
       const token = localStorage.getItem("token");
       await Promise.all(
         Array.from(selected).map((id) =>
-          axios.delete(`${API_BASE_URL}/api/${endpoint}/${id}`, {
+          api.delete(`/${endpoint}/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           })
         )

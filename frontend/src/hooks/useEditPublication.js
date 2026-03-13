@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import axios from 'axios';
+import api from '@/lib/api';
 import { useToast } from '@/components/Toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
 /**
  * Custom hook for handling publication editing
@@ -37,7 +37,7 @@ export function useEditPublication({
     setIsUpdating(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put(`${API_BASE_URL}/api/${endpoint}/${data._id}`, data, {
+      const response = await api.put(`/${endpoint}/${data._id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

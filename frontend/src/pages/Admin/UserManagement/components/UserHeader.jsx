@@ -1,4 +1,5 @@
 import { UserCog, UserPlus, Info, FileText } from 'lucide-react';
+import { apiBaseURL } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/Toast';
@@ -111,8 +112,7 @@ export default function UserHeader({
   const downloadTemplate = async (templateType = null) => {
     try {
       const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-      let url = `${API_BASE_URL}/api/admin/download-template`;
+      let url = `${apiBaseURL}/admin/download-template`;
 
       if (role === 'super_admin' && templateType) {
         url += `?templateType=${templateType}`;

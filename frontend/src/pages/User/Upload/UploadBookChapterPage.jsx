@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
+import { apiBaseURL } from "@/lib/api";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -692,7 +693,7 @@ export default function UploadBookChapterPage({ embedded = false, editMode = fal
   const watchSubjectCategories = form.watch("subjectCategories");
   const watchClaimedBy = form.watch("claimedBy");
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
   // Auto-calculate author number when claimedBy changes
   useEffect(() => {
@@ -819,8 +820,8 @@ export default function UploadBookChapterPage({ embedded = false, editMode = fal
       const data = await toast.promise(
         (async () => {
           const url = editMode && initialData?._id 
-            ? `${API_BASE_URL}/api/book-chapters/${initialData._id}`
-            : `${API_BASE_URL}/api/book-chapters`;
+            ? `${apiBaseURL}/book-chapters/${initialData._id}`
+            : `${apiBaseURL}/book-chapters`;
           const method = editMode ? 'PUT' : 'POST';
           
           const res = await fetch(url, {

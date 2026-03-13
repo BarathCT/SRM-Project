@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import axios from 'axios';
+import api from '@/lib/api';
 import { useToast } from '@/components/Toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
 /**
  * Custom hook for handling publication deletion
@@ -21,7 +21,7 @@ export function useDeletePublication({
     setDeletingId(id);
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/api/${endpoint}/${id}`, {
+      await api.delete(`/${endpoint}/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

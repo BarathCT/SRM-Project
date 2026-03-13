@@ -144,7 +144,7 @@ export default function SuperAdminDashboard() {
   // Finder modal/drawer
   const [finderOpen, setFinderOpen] = useState(false);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
   // Selected user (faculty or campus_admin) and their publications
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -1081,7 +1081,7 @@ export default function SuperAdminDashboard() {
               setDeletingId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`${API_BASE_URL}/api/papers/${id}`, {
+                await api.delete(`/papers/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setScopePapers((prev) => prev.filter((p) => p._id !== id));
@@ -1154,7 +1154,7 @@ export default function SuperAdminDashboard() {
               setDeletingChapterId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`${API_BASE_URL}/api/book-chapters/${id}`, {
+                await api.delete(`/book-chapters/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setScopeBookChapters((prev) => prev.filter((c) => c._id !== id));
@@ -1208,7 +1208,7 @@ export default function SuperAdminDashboard() {
               setDeletingConferenceId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`${API_BASE_URL}/api/conference-papers/${id}`, {
+                await api.delete(`/conference-papers/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setScopeConference((prev) => prev.filter((p) => p._id !== id));
@@ -1259,7 +1259,7 @@ export default function SuperAdminDashboard() {
           if (!editingId || !editData) return;
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`${API_BASE_URL}/api/papers/${editingId}`, editData, {
+            await api.put(`/papers/${editingId}`, editData, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setScopePapers((prev) => prev.map((p) => (p._id === editingId ? { ...p, ...editData } : p)));
@@ -1278,7 +1278,7 @@ export default function SuperAdminDashboard() {
         onUpdateChapter={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`${API_BASE_URL}/api/book-chapters/${data._id}`, data, {
+            await api.put(`/book-chapters/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setScopeBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
@@ -1296,7 +1296,7 @@ export default function SuperAdminDashboard() {
         onUpdateConference={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`${API_BASE_URL}/api/conference-papers/${data._id}`, data, {
+            await api.put(`/conference-papers/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setScopeConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));

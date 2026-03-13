@@ -39,7 +39,7 @@ function useDebouncedValue(value, delay = 250) {
   }, [value, delay]);
   return debounced;
 }
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
 const PUBLICATION_TYPES = ["scopus", "sci", "webOfScience"];
 const Q_RATINGS = ["Q1", "Q2", "Q3", "Q4"];
@@ -851,7 +851,7 @@ const CampusAdminDashboard = () => {
     setDeletingId(id);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE_URL}/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await api.delete(`/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 
       setInstitutePapers((prev) => prev.filter((p) => p._id !== id));
       setMyPapers((prev) => prev.filter((p) => p._id !== id));
@@ -886,7 +886,7 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       await Promise.all(
         Array.from(instituteSelectedPapers).map((id) =>
-          axios.delete(`${API_BASE_URL}/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+          api.delete(`/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
         )
       );
       setInstitutePapers((prev) => prev.filter((p) => !instituteSelectedPapers.has(p._id)));
@@ -905,7 +905,7 @@ const CampusAdminDashboard = () => {
       const token = localStorage.getItem("token");
       await Promise.all(
         Array.from(mySelectedPapers).map((id) =>
-          axios.delete(`${API_BASE_URL}/api/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+          api.delete(`/papers/${id}`, { headers: { Authorization: `Bearer ${token}` } })
         )
       );
       setMyPapers((prev) => prev.filter((p) => !mySelectedPapers.has(p._id)));
@@ -967,7 +967,7 @@ const CampusAdminDashboard = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API_BASE_URL}/api/papers/${editingId}`, editData, {
+      await api.put(`/papers/${editingId}`, editData, {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
 
@@ -1277,7 +1277,7 @@ const CampusAdminDashboard = () => {
               setDeletingChapterId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`${API_BASE_URL}/api/book-chapters/${id}`, {
+                await api.delete(`/book-chapters/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setInstituteBookChapters((prev) => prev.filter((c) => c._id !== id));
@@ -1318,7 +1318,7 @@ const CampusAdminDashboard = () => {
               setDeletingConferenceId(id);
               try {
                 const token = localStorage.getItem("token");
-                await axios.delete(`${API_BASE_URL}/api/conference-papers/${id}`, {
+                await api.delete(`/conference-papers/${id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 setInstituteConference((prev) => prev.filter((p) => p._id !== id));
@@ -1609,7 +1609,7 @@ const CampusAdminDashboard = () => {
         onUpdateChapter={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`${API_BASE_URL}/api/book-chapters/${data._id}`, data, {
+            await api.put(`/book-chapters/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setInstituteBookChapters((prev) => prev.map((c) => (c._id === data._id ? { ...c, ...data } : c)));
@@ -1628,7 +1628,7 @@ const CampusAdminDashboard = () => {
         onUpdateConference={async (data) => {
           try {
             const token = localStorage.getItem("token");
-            await axios.put(`${API_BASE_URL}/api/conference-papers/${data._id}`, data, {
+            await api.put(`/conference-papers/${data._id}`, data, {
               headers: { Authorization: `Bearer ${token}` },
             });
             setInstituteConference((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));

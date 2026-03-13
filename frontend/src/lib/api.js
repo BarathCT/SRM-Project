@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Ensure baseURL ends with /api
 const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-const apiBaseURL = baseURL.endsWith('/api') ? baseURL : `${baseURL.replace(/\/$/, '')}/api`;
+export const apiBaseURL = baseURL.endsWith('/api') ? baseURL : `${baseURL.replace(/\/$/, '')}/api`;
 
 if (!baseURL) {
   console.warn('VITE_API_BASE_URL is not set. API calls may fail.');
