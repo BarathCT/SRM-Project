@@ -13,6 +13,7 @@ import settingsRoutes from './routes/settings.js';
 import paperRoutes from './routes/papers.js';
 import conferencePaperRoutes from "./routes/conferencePapers.js";
 import bookChapterRoutes from "./routes/bookChapters.js";
+import { verifySmtpConnection } from './utils/mailer.js';
 
 dotenv.config();
 
@@ -55,7 +56,7 @@ app.get('/api/health', (req, res) => res.status(200).json({ status: 'OK' }));
 
 // Root route handler
 app.get('/', (req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     message: 'SRM Project Backend API',
     status: 'running',
     endpoints: {
@@ -101,6 +102,15 @@ const start = async () => {
     }
     await mongoose.connect(process.env.MONGO_URI);
     console.log('MongoDB Connected');
+
+    const smtpReady = await verifySmtpConnection();
+    const mailerStrict = process.env.MAILER_STRICT === 'true'
+      || (process.env.NODE_ENV === 'production' && process.env.MAILER_STRICT !== 'false');
+
+    if (mailerStrict && !smtpReady) {
+      throw new Error('SMTP verification failed. Set MAILER_STRICT=false to continue without email.');
+    }
+
     const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
     // Graceful shutdown

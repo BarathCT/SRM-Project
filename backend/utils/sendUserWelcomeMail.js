@@ -1,7 +1,7 @@
-import fetch from 'node-fetch';
+import { sendMail } from './mailer.js';
 
 /**
- * Sends a styled, responsive welcome email to the new user using Brevo API
+ * Sends a styled, responsive welcome email to the new user using SMTP
  * Email template uses table-based layout and inline styles for maximum compatibility and perfect center alignment.
  * @param {Object} params
  * @param {string} params.to
@@ -187,55 +187,15 @@ export async function sendUserWelcomeEmail({
   `;
 
   try {
-    // Get API credentials from environment variables
-    const brevoApiKey = process.env.BREVO_API_KEY;
-    const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL || 'scholarsync.registermail1@gmail.com';
-
-    console.log(`[Brevo] Attempting to send welcome email to ${to}`);
-    console.log(`[Brevo] Sender: ${brevoSenderEmail}`);
-
-    if (!brevoApiKey) {
-      console.error('[Brevo] API Key is missing in environment variables');
-      throw new Error('BREVO_API_KEY environment variable is not set');
-    }
-
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': brevoApiKey,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        sender: {
-          name: 'ScholarSync',
-          email: brevoSenderEmail
-        },
-        to: [{
-          email: to,
-          name: fullName
-        }],
-        subject: `Your ${collegeName} ScholarSync Account Credentials`,
-        htmlContent: html,
-        replyTo: {
-          email: brevoSenderEmail,
-          name: 'ScholarSync Support'
-        }
-      })
+    const result = await sendMail({
+      to: `${fullName} <${to}>`,
+      subject: `Your ${collegeName} ScholarSync Account Credentials`,
+      html,
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('[Brevo] API Error Response:', JSON.stringify(data, null, 2));
-      throw new Error(`Brevo API error: ${data.message || JSON.stringify(data)}`);
-    }
-
-    console.log('✅ [Brevo] Welcome email sent successfully. Message ID:', data.messageId);
-    return { success: true, messageId: data.messageId };
+    return { success: true, messageId: result.messageId };
 
   } catch (error) {
-    console.error('❌ [Brevo] Failed to send welcome email:', error.message);
+    console.error('Welcome email sending failed:', error.message);
     throw new Error(`Email sending failed: ${error.message}`);
   }
 }

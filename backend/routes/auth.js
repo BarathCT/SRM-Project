@@ -6,14 +6,12 @@ import { body, validationResult } from 'express-validator';
 import dotenv from 'dotenv';
 import OTP from '../models/Otp.js';
 import cookieParser from 'cookie-parser';
-import fetch from 'node-fetch'; // Add this import
+import { sendMail } from '../utils/mailer.js';
 
 dotenv.config();
 
 const router = express.Router();
 router.use(cookieParser());
-
-// Remove the nodemailer transporter entirely
 
 // Helper function to validate institutional email
 const validateInstitutionalEmail = (email) => {
@@ -26,62 +24,6 @@ const validateInstitutionalEmail = (email) => {
   const domain = email.split('@')[1];
   return institutionalDomains.includes(domain);
 };
-
-// Helper function to send email via Brevo API
-const sendEmailViaBrevo = async (to, subject, html, toName = '') => {
-  try {
-    const brevoApiKey = process.env.BREVO_API_KEY;
-    const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
-
-    console.log(`[Brevo] Attempting to send email to ${to} (Subject: ${subject})`);
-    console.log(`[Brevo] Sender: ${brevoSenderEmail}`);
-
-    if (!brevoApiKey) {
-      console.error('[Brevo] API Key is missing in environment variables');
-      throw new Error('BREVO_API_KEY environment variable is not set');
-    }
-
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': brevoApiKey,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        sender: {
-          name: 'ScholarSync',
-          email: brevoSenderEmail
-        },
-        to: [{
-          email: to,
-          name: toName
-        }],
-        subject: subject,
-        htmlContent: html,
-        replyTo: {
-          email: brevoSenderEmail,
-          name: 'ScholarSync Support'
-        }
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('[Brevo] API Error Response:', JSON.stringify(data, null, 2));
-      throw new Error(`Brevo API error: ${data.message || JSON.stringify(data)}`);
-    }
-
-    console.log('✅ [Brevo] Email sent successfully. Message ID:', data.messageId);
-    return { success: true, messageId: data.messageId };
-
-  } catch (error) {
-    console.error('❌ [Brevo] Failed to send email:', error.message);
-    throw error;
-  }
-};
-
 
 // ------------------------- LOGIN -------------------------
 router.post('/login', [
@@ -251,7 +193,11 @@ router.post('/forgot-password', [
       </div>
     `;
 
-    await sendEmailViaBrevo(email, 'Password Reset OTP - ScholarSync', html, userName);
+    await sendMail({
+      to: `${userName} <${email}>`,
+      subject: 'Password Reset OTP - ScholarSync',
+      html
+    });
 
     return res.json({ success: true, message: 'OTP sent to your email' });
 
@@ -342,7 +288,11 @@ router.post('/reset-password', [
       </div>
     `;
 
-    await sendEmailViaBrevo(email, 'Password Reset Confirmation - ScholarSync', html, user.fullName);
+    await sendMail({
+      to: `${user.fullName} <${email}>`,
+      subject: 'Password Reset Confirmation - ScholarSync',
+      html
+    });
 
     return res.json({ success: true, message: 'Password reset successfully' });
 
